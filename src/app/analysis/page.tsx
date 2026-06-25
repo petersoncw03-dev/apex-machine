@@ -1,0 +1,354 @@
+// 'analysis' page – placeholder name, will be renamed later
+'use client';
+
+import { useEffect, useState, useMemo } from 'react';
+import { LiveHistoryCard } from '@/components/LiveHistoryCard';
+import { Target } from 'lucide-react';
+
+// Types
+interface TickerData {
+  id: string;
+  timestamp: string; // ISO string
+  color: string; // "Branco", "Vermelho", "Preto" …
+  roll: string;
+}
+
+// Helper to parse hour/minute from timestamp
+const getHourMinute = (ts: string) => {
+  const d = new Date(ts);
+  return { hour: d.getHours(), minute: d.getMinutes() };
+};
+
+export default function AnalysisPage() {
+  // Data for previous day and current day
+  const [prevData, setPrevData] = useState<TickerData[]>([]);
+  const [currData, setCurrData] = useState<TickerData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ---------------------------------------------------------------------
+  // Fetch data – for now we simply request the last 48 hours (24 h each) and
+  // split it by date. In production replace with two dedicated endpoints.
+  // ---------------------------------------------------------------------
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/results/period?hours=48');
+      const json = await res.json();
+      if (json.data) {
+        const parsed: TickerData[] = json.data.map((r: any) => ({
+          ...r,
+          color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
+          roll: r.roll?.toString(),
+        }));
+        // split by date (previous vs current day)
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        const isSameDay = (date: Date, day: Date) =>
+          date.getFullYear() === day.getFullYear() &&
+          date.getMonth() === day.getMonth() &&
+          date.getDate() === day.getDate();
+        const prev: TickerData[] = [];
+        const curr: TickerData[] = [];
+        parsed.forEach((r) => {
+          const d = new Date(r.timestamp);
+          if (isSameDay(d, yesterday)) prev.push(r);
+          else if (isSameDay(d, now)) curr.push(r);
+        });
+        setPrevData(prev);
+        setCurrData(curr);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000); // 5 seconds polling
+    return () => clearInterval(interval);
+  }, []);
+
+  // ---------------------------------------------------------------------
+  // Build the 24 × 60 matrix for a given dataset.
+  // matrix[hour][minute] = true if a white was paid at that exact time.
+  // ---------------------------------------------------------------------
+  const buildMatrix = (data: TickerData[]) => {
+    const matrix = Array.from({ length: 24 }, () => Array(60).fill(false));
+    data.forEach((r) => {
+      if (r.color?.toLowerCase().includes('branco')) {
+        const { hour, minute } = getHourMinute(r.timestamp);
+        matrix[hour][minute] = true;
+      }
+    });
+    return matrix;
+  };
+
+  const prevMatrix = useMemo(() => buildMatrix(prevData), [prevData]);
+  const currMatrix = useMemo(() => buildMatrix(currData), [currData]);
+
+  // ---------------------------------------------------------------------
+  // Count whites per minute (total column) and per hour (houses).
+  // ---------------------------------------------------------------------
+  const minuteTotalsPrev = useMemo(() => {
+    const totals = Array(60).fill(0);
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m++) {
+        if (prevMatrix[h][m]) totals[m]++;
+      }
+    }
+    return totals;
+  }, [prevMatrix]);
+
+  const minuteTotalsCurr = useMemo(() => {
+    const totals = Array(60).fill(0);
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m++) {
+        if (currMatrix[h][m]) totals[m]++;
+      }
+    }
+    return totals;
+  }, [currMatrix]);
+
+  // ---------------------------------------------------------------------
+  // Calculate house counts and SM/SA for all 24 houses
+  // ---------------------------------------------------------------------
+  const computeGapsAndScores = (targetMatrix: boolean[][], prevMatrixForLookback: boolean[][] | null, isToday: boolean) => {
+    const counts = Array(24).fill(0);
+    const sm = Array(24).fill(0);
+    const sa = Array(24).fill(0);
+
+    const currentMisses = Array(24).fill(0);
+    const lastHourArray = Array<number | null>(60).fill(null);
+
+    const now = new Date();
+    const currH = now.getHours();
+    const currM = now.getMinutes();
+
+    // Evaluate chronologically across the grid
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m++) {
+        // Stop evaluating if it's in the future
+        if (isToday) {
+          if (h > currH || (h === currH && m >= currM)) {
+            continue;
+          }
+        }
+
+        const lastHour = lastHourArray[m];
+        if (lastHour !== null) {
+          const gap = h - lastHour;
+          if (gap >= 1 && gap <= 24) {
+            // We reached a gap of `gap` hours without a white hitting previously.
+            // This is an attempt for Casa `gap`!
+            if (targetMatrix[h][m]) {
+              // Hit!
+              counts[gap - 1]++;
+              currentMisses[gap - 1] = 0; // Reset SA for this Casa
+            } else {
+              // Miss!
+              currentMisses[gap - 1]++;
+              if (currentMisses[gap - 1] > sm[gap - 1]) {
+                sm[gap - 1] = currentMisses[gap - 1]; // Update Max Sequencia (SM)
+              }
+            }
+          }
+        }
+
+        // If a white hits, update the anchor point
+        if (targetMatrix[h][m]) {
+          lastHourArray[m] = h;
+        }
+      }
+    }
+
+    for (let i = 0; i < 24; i++) {
+      sa[i] = currentMisses[i];
+    }
+
+    return { counts, sm, sa };
+  };
+
+  const { counts: houseCountsPrev, sm: smPrev, sa: saPrev } = useMemo(() => {
+    return computeGapsAndScores(prevMatrix, null, false);
+  }, [prevMatrix]);
+
+  const { counts: houseCountsCurr, sm: smCurr, sa: saCurr } = useMemo(() => {
+    return computeGapsAndScores(currMatrix, prevMatrix, true);
+  }, [currMatrix, prevMatrix]);
+
+  const bestHousesCurr = useMemo(() => {
+    const paired = houseCountsCurr.map((c, i) => ({ houseIndex: i, count: c }));
+    paired.sort((a, b) => b.count - a.count);
+    return paired.slice(0, 3).map((p) => p.houseIndex);
+  }, [houseCountsCurr]);
+
+  const bestHousesPrev = useMemo(() => {
+    const paired = houseCountsPrev.map((c, i) => ({ houseIndex: i, count: c }));
+    paired.sort((a, b) => b.count - a.count);
+    return paired.slice(0, 3).map((p) => p.houseIndex);
+  }, [houseCountsPrev]);
+
+  // Compute future predictions for the current day based on best houses
+  const currPredictionsMatrix = useMemo(() => {
+    const pMatrix = Array.from({ length: 24 }, () => Array(60).fill(false));
+    const now = new Date();
+    const currH = now.getHours();
+    const currM = now.getMinutes();
+
+    for (let m = 0; m < 60; m++) {
+      // Find latest white for this minute
+      let lastHour: number | null = null;
+      for (let h = 23; h >= 0; h--) {
+        if (currMatrix[h][m]) {
+          lastHour = h;
+          break;
+        }
+      }
+      if (lastHour === null && prevMatrix) {
+        for (let h = 23; h >= 0; h--) {
+          if (prevMatrix[h][m]) {
+            lastHour = h - 24;
+            break;
+          }
+        }
+      }
+
+      if (lastHour !== null) {
+        bestHousesCurr.forEach(gapIndex => {
+          const gap = gapIndex + 1;
+          const expectedHour = lastHour! + gap;
+          // If expected hit is within today's bounds
+          if (expectedHour >= 0 && expectedHour < 24) {
+            // Only highlight if it hasn't passed yet
+            if (expectedHour > currH || (expectedHour === currH && m >= currM)) {
+              pMatrix[expectedHour][m] = true;
+            }
+          }
+        });
+      }
+    }
+    return pMatrix;
+  }, [currMatrix, prevMatrix, bestHousesCurr]);
+
+  // ---------------------------------------------------------------------
+  // Rendering helpers
+  // ---------------------------------------------------------------------
+  const renderHouseSummary = (title: string, counts: number[], smArray: number[], saArray: number[], bestHouses: number[]) => {
+    return (
+      <div className="flex flex-col mb-4">
+        <h3 className="text-xs font-bold mb-2 uppercase text-gray-400 tracking-wider">{title}</h3>
+        <div className="flex w-full border border-white/20 rounded overflow-hidden">
+          {Array.from({ length: 24 }, (_, i) => {
+            const isBest = bestHouses.includes(i);
+            const styleClass = isBest ? { backgroundColor: '#800080', color: '#fff' } : { backgroundColor: '#7a9be3', color: '#000' };
+            return (
+              <div key={i} className="flex-1 flex flex-col border-r border-white/20 last:border-r-0">
+                <div className="py-1 text-center text-[11px] font-black border-b border-white/20" style={styleClass}>
+                  {i + 1}
+                </div>
+                <div className="py-1 text-center text-[12px] font-bold border-b border-white/20" style={styleClass}>
+                  {counts[i]}
+                </div>
+                <div className="py-0.5 text-center text-[9px] font-bold bg-[#1a1a24] text-red-400">
+                  SM {smArray[i]}
+                </div>
+                <div className="py-0.5 text-center text-[9px] font-bold bg-[#1a1a24] text-red-500">
+                  SA {saArray[i]}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  const renderGrid = (matrix: boolean[][], minuteTotals: number[], predictionsMatrix?: boolean[][]) => {
+    const maxTotal = Math.max(...minuteTotals);
+    const rows = [] as JSX.Element[];
+    for (let m = 0; m < 60; m++) {
+      const total = minuteTotals[m];
+      
+      let styleTotal = { backgroundColor: '#7a9be3', color: '#000' };
+      if (total === 0) styleTotal = { backgroundColor: '#d32f2f', color: '#fff' };
+      else if (total === maxTotal && maxTotal > 0) styleTotal = { backgroundColor: '#16a34a', color: '#fff' };
+      
+      rows.push(
+        <tr key={m}>
+          <td className="p-1 text-center font-bold text-[11px] border border-white/20" style={styleTotal}>{total}</td>
+          <td className="p-1 text-center font-bold text-[11px] border border-white/20" style={{ backgroundColor: '#7a9be3', color: '#000' }}>{m}</td>
+          {Array.from({ length: 24 }, (_, h) => {
+            const isWhite = matrix[h][m];
+            const isPrediction = predictionsMatrix ? predictionsMatrix[h][m] : false;
+            const bgColor = isWhite ? '#22c55e' : (isPrediction ? '#800080' : '#262626');
+            return (
+              <td 
+                key={h} 
+                className="h-6 border border-white/20" 
+                style={{ backgroundColor: bgColor }}
+              ></td>
+            );
+          })}
+        </tr>
+      );
+    }
+    return rows;
+  };
+
+  return (
+    <main className="min-h-screen p-4 md:p-8 max-w-[1400px] mx-auto flex flex-col gap-6 bg-[#050507] text-white">
+      {/* Top card – same style as painel‑master */}
+      <section className="bg-[#0a0a0f] border border-white/5 rounded-lg p-4 shadow-2xl mb-4">
+        <LiveHistoryCard data={currData} maxItems={20} />
+      </section>
+
+      {/* Houses summary – current day & previous day */}
+      <section className="flex flex-col gap-4 bg-[#0a0a0f] border border-white/5 rounded-lg p-4 shadow-xl">
+        {renderHouseSummary('Hoje', houseCountsCurr, smCurr, saCurr, bestHousesCurr)}
+        {renderHouseSummary('Dia Anterior', houseCountsPrev, smPrev, saPrev, bestHousesPrev)}
+      </section>
+
+      {/* Excel‑style grid – current day */}
+      <section className="overflow-auto rounded-lg border border-white/5 bg-[#0a0a0f]">
+        <h3 className="text-sm font-bold text-center py-2 text-white">Hoje</h3>
+        <table className="w-full min-w-max table-fixed border-collapse">
+          <thead>
+            <tr>
+              <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Total</th>
+              <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Minuto</th>
+              {Array.from({ length: 24 }, (_, i) => (
+                <th key={i} className="p-1 font-bold text-[10px] border border-white/20 min-w-[45px] sm:min-w-[50px]" style={{ backgroundColor: '#7a9be3', color: '#000' }}>
+                  {i.toString().padStart(2, '0')}:00
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{renderGrid(currMatrix, minuteTotalsCurr, currPredictionsMatrix)}</tbody>
+        </table>
+      </section>
+
+      {/* Excel‑style grid – previous day */}
+      <section className="overflow-auto rounded-lg border border-white/5 bg-[#0a0a0f]">
+        <h3 className="text-sm font-bold text-center py-2 text-white">Dia Anterior</h3>
+        <table className="w-full min-w-max table-fixed border-collapse">
+          <thead>
+            <tr>
+              <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Total</th>
+              <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Minuto</th>
+              {Array.from({ length: 24 }, (_, i) => (
+                <th key={i} className="p-1 font-bold text-[10px] border border-white/20 min-w-[45px] sm:min-w-[50px]" style={{ backgroundColor: '#7a9be3', color: '#000' }}>
+                  {i.toString().padStart(2, '0')}:00
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{renderGrid(prevMatrix, minuteTotalsPrev)}</tbody>
+        </table>
+      </section>
+
+
+    </main>
+  );
+}

@@ -1,0 +1,6 @@
+<svg viewBox="15 10 70 70" xmlns="http://www.w3.org/2000/svg">
+  <!-- Seta Verde -->
+  <path d="M50 15 L80 65 L70 65 L50 30 L30 65 L20 65 Z" fill="#00ff41" />
+  <!-- Seta Vermelha -->
+  <path d="M45 45 L75 60 L45 75 L45 65 L60 60 L45 55 Z" fill="#e51e3e" />
+</svg>
