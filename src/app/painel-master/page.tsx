@@ -4,20 +4,25 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, useDeferredVa
 import { useSSE } from '@/contexts/SSEContext';
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 import ResumoDiarioPanel from '@/components/painel-master/ResumoDiarioPanel';
+import GraficoPnlPanel from '@/components/painel-master/GraficoPnlPanel';
 
 interface Roll { color: string; roll: number; timestamp: string; id?: string; }
 
 // ─── Design tokens (Radar Style Premium) ──────────────────────────────────────
-const CARD = 'bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300';
-const HEAD = 'px-5 py-4 bg-gradient-to-b from-[#0062ff]/10 to-transparent border-b border-[#0062ff]/20 flex justify-between items-center border-t-[3px] border-t-[#0062ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
-const SEL = 'bg-[#0b0e14] border border-white/10 text-white text-[10px] px-3 py-1.5 rounded-lg outline-none focus:border-[#0062ff] uppercase font-black tracking-widest hover:border-white/20 transition-colors cursor-pointer';
+const CARD = 'bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300';
+const HEAD = 'px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
+const SEL = 'bg-[#0b0e14] border border-white/10 text-white text-[10px] px-3 py-1.5 rounded-lg outline-none focus:border-[#00c83a] uppercase font-black tracking-widest hover:border-white/20 transition-colors cursor-pointer';
+
+const CARD_GREEN = 'bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300';
+const HEAD_GREEN = 'px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
+const SEL_GREEN = 'bg-[#0b0e14] border border-white/10 text-white text-[10px] px-3 py-1.5 rounded-lg outline-none focus:border-[#00c83a] uppercase font-black tracking-widest hover:border-white/20 transition-colors cursor-pointer';
 
 type SortDirection = 'desc' | 'asc' | null;
 
 
 
 export default function RadarAvancado() {
-  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'grafico'>('home');
   const [histRealTime, setHistRealTime] = useState(true);
   const [histFixedCols, setHistFixedCols] = useState(false);
   const [histReverse, setHistReverse] = useState(false);
@@ -35,13 +40,62 @@ export default function RadarAvancado() {
   const [coresHoraOffsetDays, setCoresHoraOffsetDays] = useState<number>(0);
   const [hotHoursPrevDay, setHotHoursPrevDay] = useState<{ hour: number, count: number }[]>([]);
   
+  const [seqColorLen, setSeqColorLen] = useState(5);
   // ── SOUND & TOAST STATE ───────────────────────────────────────────────────
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundEnabledRef = useRef(true);
   useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
 
   const [showBrancoToast, setShowBrancoToast] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const playAlert = useCallback(() => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      const playBell = (time: number, freq: number) => {
+        // Fundamental
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(freq, time);
+        gain1.gain.setValueAtTime(0, time);
+        gain1.gain.linearRampToValueAtTime(1, time + 0.02);
+        gain1.gain.exponentialRampToValueAtTime(0.001, time + 2.5); // Longo e suave
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        
+        // Harmônico metálico
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(freq * 2.76, time); // Fator inarmônico para dar o tom de sino
+        gain2.gain.setValueAtTime(0, time);
+        gain2.gain.linearRampToValueAtTime(0.35, time + 0.02);
+        gain2.gain.exponentialRampToValueAtTime(0.001, time + 1.0);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+
+        // Harmônico agudo (brilho)
+        const osc3 = audioCtx.createOscillator();
+        const gain3 = audioCtx.createGain();
+        osc3.type = 'sine';
+        osc3.frequency.setValueAtTime(freq * 5.4, time); 
+        gain3.gain.setValueAtTime(0, time);
+        gain3.gain.linearRampToValueAtTime(0.15, time + 0.02);
+        gain3.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+        osc3.connect(gain3);
+        gain3.connect(audioCtx.destination);
+        
+        osc1.start(time); osc2.start(time); osc3.start(time);
+        osc1.stop(time + 3); osc2.stop(time + 3); osc3.stop(time + 3);
+      };
+
+      const now = audioCtx.currentTime;
+      // Toque de Sino duplo de "Win" (Comemoração)
+      playBell(now, 1046.50); // C6
+      playBell(now + 0.15, 1318.51); // E6
+    } catch(e) {}
+  }, []);
 
   useEffect(() => {
     if (!globalData || globalData.length === 0) return;
@@ -233,6 +287,132 @@ export default function RadarAvancado() {
 
   }, [globalData]);
 
+  const seqColorStats = useMemo(() => {
+    if (!globalData || globalData.length === 0) return {
+      any: { minAtras: 0, rodadasAtras: 0, maxima: 0 },
+      red: { minAtras: 0, rodadasAtras: 0, maxima: 0 },
+      black: { minAtras: 0, rodadasAtras: 0, maxima: 0 }
+    };
+
+    const now = Date.now();
+    const isR = (r: any) => r?.color?.toUpperCase() === 'VERMELHO' || r?.color?.toUpperCase() === 'RED' || r?.color?.toUpperCase() === 'V' || (Number(r?.roll) >= 1 && Number(r?.roll) <= 7);
+    const isB = (r: any) => r?.color?.toUpperCase() === 'PRETO' || r?.color?.toUpperCase() === 'BLACK' || r?.color?.toUpperCase() === 'P' || (Number(r?.roll) >= 8 && Number(r?.roll) <= 14);
+
+    const findSeqColor = (colorCheck: (r: any) => boolean, count: number) => {
+      let maxDelay = 0;
+      let lastEndIdx = -1;
+
+      for (let i = 0; i <= globalData.length - count; i++) {
+        let isSeq = true;
+        for (let j = 0; j < count; j++) {
+          if (!colorCheck(globalData[i + j])) {
+            isSeq = false;
+            break;
+          }
+        }
+
+        if (isSeq) {
+          const endIdx = i + count - 1;
+          if (lastEndIdx !== -1) {
+            const delay = endIdx - lastEndIdx;
+            if (delay > maxDelay) maxDelay = delay;
+          }
+          lastEndIdx = endIdx;
+          i += count - 1;
+        }
+      }
+
+      if (lastEndIdx !== -1) {
+        const currentDelay = (globalData.length - 1) - lastEndIdx;
+        if (currentDelay > maxDelay) maxDelay = currentDelay;
+      } else {
+        maxDelay = globalData.length;
+      }
+
+      let minAtras = 0;
+      let rodadasAtras = -1;
+
+      for (let i = globalData.length - 1; i >= count - 1; i--) {
+        let isSeq = true;
+        for (let j = 0; j < count; j++) {
+          if (!colorCheck(globalData[i - j])) {
+            isSeq = false;
+            break;
+          }
+        }
+
+        if (isSeq) {
+          rodadasAtras = globalData.length - 1 - i;
+          minAtras = Math.floor((now - new Date(globalData[i].timestamp).getTime()) / 60000);
+          break;
+        }
+      }
+
+      if (rodadasAtras === -1) rodadasAtras = globalData.length;
+
+      return { minAtras, rodadasAtras, maxima: maxDelay };
+    };
+
+    const findSeqAnyColor = (count: number) => {
+      let maxDelay = 0;
+      let lastEndIdx = -1;
+
+      for (let i = 0; i <= globalData.length - count; i++) {
+        let isSeqR = true;
+        let isSeqB = true;
+        for (let j = 0; j < count; j++) {
+          if (!isR(globalData[i + j])) isSeqR = false;
+          if (!isB(globalData[i + j])) isSeqB = false;
+        }
+
+        if (isSeqR || isSeqB) {
+          const endIdx = i + count - 1;
+          if (lastEndIdx !== -1) {
+            const delay = endIdx - lastEndIdx;
+            if (delay > maxDelay) maxDelay = delay;
+          }
+          lastEndIdx = endIdx;
+          i += count - 1;
+        }
+      }
+
+      if (lastEndIdx !== -1) {
+        const currentDelay = (globalData.length - 1) - lastEndIdx;
+        if (currentDelay > maxDelay) maxDelay = currentDelay;
+      } else {
+        maxDelay = globalData.length;
+      }
+
+      let minAtras = 0;
+      let rodadasAtras = -1;
+
+      for (let i = globalData.length - 1; i >= count - 1; i--) {
+        let isSeqR = true;
+        let isSeqB = true;
+        for (let j = 0; j < count; j++) {
+          if (!isR(globalData[i - j])) isSeqR = false;
+          if (!isB(globalData[i - j])) isSeqB = false;
+        }
+
+        if (isSeqR || isSeqB) {
+          rodadasAtras = globalData.length - 1 - i;
+          minAtras = Math.floor((now - new Date(globalData[i].timestamp).getTime()) / 60000);
+          break;
+        }
+      }
+
+      if (rodadasAtras === -1) rodadasAtras = globalData.length;
+
+      return { minAtras, rodadasAtras, maxima: maxDelay };
+    };
+
+    return {
+      red: findSeqColor(isR, seqColorLen),
+      black: findSeqColor(isB, seqColorLen),
+      any: findSeqAnyColor(seqColorLen)
+    };
+  }, [globalData, seqColorLen]);
+
   // --- IA SIGNALS CALCULATION ---
   const iaSignals = useMemo(() => {
     const scores = Array(60).fill(0);
@@ -354,7 +534,7 @@ export default function RadarAvancado() {
     const endStamp = getMinuteStamp(endTime);
     const totalMinutes = endStamp - startStamp;
     
-    const signals = new Uint8Array(totalMinutes + 1);
+    const signalGenList = new Array(totalMinutes + 1).fill(null).map(() => [] as number[]);
     const whiteMinutes = new Uint8Array(totalMinutes + 1);
 
     for (let i = 0; i < globalData.length; i++) {
@@ -383,9 +563,13 @@ export default function RadarAvancado() {
       if (prev > 0) strats.push(timeW + prev * 60000);
       if (next !== null && next > 0) strats.push(timeW + next * 60000);
 
+      const genTime = getMinuteStamp(timeW) - startStamp;
+
       for (const st of strats) {
         const idx = getMinuteStamp(st) - startStamp;
-        if (idx >= 0 && idx <= totalMinutes) signals[idx]++; // Incrementa para registrar o número de sinais (confluência)
+        if (idx >= 0 && idx <= totalMinutes) {
+           signalGenList[idx].push(genTime);
+        }
       }
     }
 
@@ -444,13 +628,13 @@ export default function RadarAvancado() {
         .filter(x => x.hits >= 2)
         .sort((a, b) => b.hits - a.hits);
       for(let i=0; i<3 && i<sortedMins.length; i++) {
-         if (sortedMins[i].min === currMinNum) signals[mIdx]++; // Incrementa
+         if (sortedMins[i].min === currMinNum) signalGenList[mIdx].push(-1); // Incrementa
       }
 
       const r = Math.floor(currMinNum/10);
       const c = currMinNum%10;
       if (rowCount[r] >= 2 && colCount[c] >= 2) {
-         signals[mIdx]++; // Incrementa
+         signalGenList[mIdx].push(-1); // Incrementa
       }
     }
 
@@ -463,13 +647,21 @@ export default function RadarAvancado() {
     // Se um sinal está no minuto atual (totalMinutes), a margem dele vai até totalMinutes + 1 (futuro).
     // Não podemos contar como Loss um sinal que ainda tem minutos futuros de margem pendentes.
     for (let i = warmupMinutes; i <= totalMinutes - 1; i++) {
-        if (signals[i] >= iaMinConfluence) {
+        if (signalGenList[i].length >= iaMinConfluence) {
             let hit = false;
             // Verifica se caiu branco na margem do sinal (1 minuto antes, no exato, ou 1 minuto depois)
             for (let m = i - 1; m <= i + 1; m++) {
                 if (m >= 0 && m <= totalMinutes && whiteMinutes[m] === 1) {
-                    hit = true;
-                    break;
+                    let validSignalsForM = 0;
+                    for (const genTime of signalGenList[i]) {
+                        if (genTime === -1 || genTime < m) {
+                            validSignalsForM++;
+                        }
+                    }
+                    if (validSignalsForM >= iaMinConfluence) {
+                        hit = true;
+                        break;
+                    }
                 }
             }
 
@@ -725,9 +917,8 @@ export default function RadarAvancado() {
       const isBranco = mappedRoll.color?.toUpperCase().includes('BRANCO') || mappedRoll.color?.toUpperCase().includes('WHITE') || mappedRoll.roll === 0;
       if (isBranco) {
          setShowBrancoToast(true);
-         if (soundEnabledRef.current && audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(()=>{});
+         if (soundEnabledRef.current) {
+            playAlert();
          }
          setTimeout(() => setShowBrancoToast(false), 5000);
       }
@@ -936,18 +1127,21 @@ export default function RadarAvancado() {
 
     const latestDate = new Date(Date.now() - 3 * 3600 * 1000);
     const latestDayKey = dayKey(latestDate);
-    const latestBlock = Math.floor((latestDate.getUTCHours() * 60 + latestDate.getUTCMinutes()) / scanMin);
+    const latestBlock = Math.floor((latestDate.getUTCHours() * 60 + latestDate.getUTCMinutes() + latestDate.getUTCSeconds() / 60) / scanMin);
 
     data.forEach(r => {
       if (!isBranco(r)) return;
       const dt = getBRTDate(r.timestamp);
-      const min = dt.getUTCHours() * 60 + dt.getUTCMinutes();
+      const min = dt.getUTCHours() * 60 + dt.getUTCMinutes() + dt.getUTCSeconds() / 60;
       const blk = Math.floor(min / scanMin);
       if (blk < blocks) hitsPerDay[dayKey(dt)].add(blk);
     });
 
     const result = Array.from({ length: blocks }, (_, b) => {
-      const h = Math.floor(b * scanMin / 60), m = (b * scanMin) % 60;
+      const totalMin = b * scanMin;
+      const h = Math.floor(totalMin / 60);
+      const m = Math.floor(totalMin % 60);
+      const s = Math.round((totalMin % 1) * 60);
       let sa = 0, sma = 0, hits = 0;
       for (const d of days) {
         if (d === latestDayKey && b > latestBlock) continue;
@@ -964,7 +1158,10 @@ export default function RadarAvancado() {
           }
         }
       }
-      return { id: b, label: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, sa, sma, hits };
+      const label = scanMin < 1 
+          ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+          : `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      return { id: b, label, sa, sma, hits };
     });
 
     if (scanSortCol && scanSortDir) {
@@ -1095,16 +1292,18 @@ export default function RadarAvancado() {
     <div className="h-screen overflow-hidden bg-[#030303] text-gray-200 font-sans flex flex-col relative">
       
       {/* ── AUDIO & TOAST DE BRANCO ────────────────────────────────────────────── */}
-      <audio ref={audioRef} src="/notif.mp3" preload="auto" />
       
       {showBrancoToast && (
-        <div className="absolute top-6 right-6 z-[9999] bg-[#ffffff] border-2 border-slate-200 shadow-[0_0_40px_rgba(255,255,255,0.6)] px-6 py-4 rounded-xl flex items-center gap-4 animate-in fade-in slide-in-from-top-10 duration-300">
-          <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-300 rounded-full flex items-center justify-center shadow-inner border border-slate-300">
-            <span className="text-xl font-black text-slate-800 drop-shadow-md">0</span>
+        <div className="absolute top-6 right-6 z-[9999] bg-[#0b0e14]/90 backdrop-blur-xl border border-white/20 shadow-[0_0_40px_rgba(255,255,255,0.3)] px-6 py-4 rounded-xl flex items-center gap-5 animate-in fade-in slide-in-from-top-10 duration-300">
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(255,255,255,0.4)] overflow-hidden bg-transparent">
+            <img src="/blaze-white.png" alt="Branco" className="w-full h-full object-contain drop-shadow-xl scale-110" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-slate-800 font-black tracking-widest uppercase text-sm">Branco Detectado!</span>
-            <span className="text-slate-500 font-bold text-[10px] uppercase">Atenção ao pagamento</span>
+          <div className="flex flex-col justify-center">
+            <span className="text-white font-black tracking-widest uppercase text-lg leading-tight drop-shadow-md">BRANCO DETECTADO!</span>
+            <span className="text-emerald-400 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 mt-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+              Pagamento 14x Confirmado
+            </span>
           </div>
         </div>
       )}
@@ -1118,27 +1317,34 @@ export default function RadarAvancado() {
         {/* ── TOP SECTION (TABS + TICKER) ─────────────────────────────────── */}
         <div className="w-full max-w-[1600px] mx-auto px-6 pt-6 pb-2 shrink-0 flex flex-col gap-4 z-50">
            {/* Abas Principais (Top Navigation) */}
-           <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar bg-[#0b0e14]/80 backdrop-blur-md border border-[#0062ff]/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 shrink-0">
+           <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar bg-[#0b0e14]/80 backdrop-blur-md border border-[#00c83a]/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 shrink-0">
              <button 
                onClick={() => setActiveTab('home')} 
-               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'home' ? 'bg-[#0062ff] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'home' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
              >
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                Home
              </button>
              <button 
                onClick={() => setActiveTab('history')} 
-               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'history' ? 'bg-[#0062ff] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'history' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
              >
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
                Histórico
              </button>
              <button 
                onClick={() => setActiveTab('resumos')} 
-               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'resumos' ? 'bg-[#0062ff] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'resumos' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
              >
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                Resumos
+             </button>
+             <button 
+               onClick={() => setActiveTab('grafico')} 
+               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'grafico' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+             >
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+               Gráfico
              </button>
              <a 
                 href="https://blaze.bet.br/pt/games/double" 
@@ -1151,10 +1357,10 @@ export default function RadarAvancado() {
            </div>
 
            {/* ── HISTÓRICO AO VIVO (Tempo Real Premium Card) ─────────────────────────── */}
-           <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative flex flex-col">
+           <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative flex flex-col">
              
              {/* Header */}
-             <div className="px-5 py-3 bg-gradient-to-b from-[#0062ff]/10 to-transparent border-b border-[#0062ff]/20 flex justify-between items-center border-t-[3px] border-t-[#0062ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+             <div className="px-5 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                <div className="flex items-center gap-4">
                  <div className="flex items-center gap-2">
                    <span className="relative flex h-3 w-3">
@@ -1189,7 +1395,7 @@ export default function RadarAvancado() {
                  const n = parseInt(roll.roll as any);
                  const time = new Date(roll.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                  return (
-                   <div key={roll.id || roll.timestamp} className="flex flex-col items-center p-1.5 border border-[#0062ff]/10 bg-[#0b0e14]/70 rounded-xl shrink-0 w-[60px] shadow-sm hover:bg-[#0062ff]/20 transition-all hover:-translate-y-1">
+                   <div key={roll.id || roll.timestamp} className="flex flex-col items-center p-1.5 border border-[#00c83a]/10 bg-[#0b0e14]/70 rounded-xl shrink-0 w-[60px] shadow-sm hover:bg-[#00c83a]/20 transition-all hover:-translate-y-1">
                      <StoneIcon n={n} size="ticker" />
                      <span className="text-[10px] text-gray-500 font-bold mt-2 tracking-widest">{time}</span>
                    </div>
@@ -1223,7 +1429,7 @@ export default function RadarAvancado() {
                 <div className="flex flex-col gap-6 w-full xl:w-[300px] shrink-0">
 
                 {/* Análise de Brancos */}
-                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
+                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
                   <div className="px-4 py-3 border-b border-white/5 bg-[#0b0e14]/50 text-center">
                     <span className="text-[11px] font-black uppercase tracking-widest text-white">Análise de Brancos</span>
                   </div>
@@ -1250,7 +1456,7 @@ export default function RadarAvancado() {
                 </div>
 
                 {/* Sequência de Brancos (Duplos/Triplos) */}
-                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
+                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
                   <div className="px-4 py-3 border-b border-white/5 bg-[#0b0e14]/50 text-center">
                     <span className="text-[11px] font-black uppercase tracking-widest text-white">Sequência de Brancos</span>
                   </div>
@@ -1299,8 +1505,8 @@ export default function RadarAvancado() {
                 </div>
 
                 {/* Pagamento por Cor */}
-                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
-                  <div className="px-4 py-3 bg-gradient-to-b from-[#0062ff]/10 to-transparent border-b border-[#0062ff]/20 flex justify-between items-center border-t-[3px] border-t-[#0062ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
+                  <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                     <span className="text-[11px] font-black uppercase tracking-widest text-white">Pagamento por Cor</span>
                     <select className={SEL} value={horasCor} onChange={e => setHorasCor(+e.target.value)}>
                       {[1, 2, 3, 4, 5, 6, 12, 18, 24].map(v => <option key={v} value={v}>{v}h</option>)}
@@ -1335,8 +1541,8 @@ export default function RadarAvancado() {
                 </div>
 
                 {/* Pagamento Par e Ímpar */}
-                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
-                  <div className="px-4 py-3 bg-gradient-to-b from-[#0062ff]/10 to-transparent border-b border-[#0062ff]/20 flex justify-between items-center border-t-[3px] border-t-[#0062ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
+                  <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                     <span className="text-[11px] font-black uppercase tracking-widest text-white">Par e Ímpar</span>
                     <select className={SEL} value={horasParImpar} onChange={e => setHorasParImpar(+e.target.value)}>
                       {[1, 2, 3, 4, 5, 6, 12, 18, 24].map(v => <option key={v} value={v}>{v}h</option>)}
@@ -1375,8 +1581,8 @@ export default function RadarAvancado() {
                 </div>
 
                 {/* Cores por Hora */}
-                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative flex-1 flex flex-col min-h-[500px]">
-                  <div className="px-4 py-2 bg-gradient-to-b from-[#0062ff]/10 to-transparent border-b border-[#0062ff]/20 flex justify-between items-center shrink-0 border-t-[3px] border-t-[#0062ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative flex-1 flex flex-col min-h-[500px]">
+                  <div className="px-4 py-2 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center shrink-0 border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                     <button onClick={() => setCoresHoraOffsetDays(prev => prev - 1)} className="text-slate-500 hover:text-white p-1.5 bg-white/5 rounded border border-white/10 hover:border-white/30 transition-all flex items-center justify-center">
                       <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
@@ -1448,8 +1654,8 @@ export default function RadarAvancado() {
               <div className="flex flex-col gap-6 w-full xl:w-[320px] shrink-0">
               {/* ── LEFT TOP: SCANNER DO BRANCO ────────────────────────────────────────── */}
               <div className="flex flex-col gap-6 overflow-hidden h-[870px] max-h-[870px] shrink-0">
-                <div className={`${CARD} flex flex-col h-full`}>
-                  <div className={HEAD}>
+                <div className={`${CARD_GREEN} flex flex-col h-full`}>
+                  <div className={HEAD_GREEN}>
                     <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
                       <div className={`w-1.5 h-1.5 rounded-full ${isScannerStale ? 'bg-[#f12c4c] animate-pulse' : 'bg-emerald-500'}`}></div> Scanner BCO
                     </span>
@@ -1457,11 +1663,11 @@ export default function RadarAvancado() {
 
                   <div className="px-3 py-2 bg-black/40 border-b border-white/10 flex flex-col gap-2">
                     <div className="flex gap-2 w-full">
-                      <select className={`${SEL} flex-1`} value={scanDays} onChange={e => setScanDays(+e.target.value)}>
-                        {[1, 2, 3, 5, 7, 10, 14, 30, 60, 90].map(v => <option key={v} value={v}>{v} Dias</option>)}
+                      <select className={`${SEL_GREEN} flex-1`} value={scanDays} onChange={e => setScanDays(+e.target.value)}>
+                        {[1, 2, 3, 5, 7, 10, 14, 30, 60, 90, 120].map(v => <option key={v} value={v}>{v} Dias</option>)}
                       </select>
-                      <select className={`${SEL} flex-1`} value={scanMin} onChange={e => setScanMin(+e.target.value)}>
-                        {[1, 2, 3, 5, 10, 15, 20, 30, 45, 60].map(v => <option key={v} value={v}>{v} Min</option>)}
+                      <select className={`${SEL_GREEN} flex-1`} value={scanMin} onChange={e => setScanMin(+e.target.value)}>
+                        {[0.5, 1, 2, 3, 5, 10, 15, 20, 30, 45, 60].map(v => <option key={v} value={v}>{v} Min</option>)}
                       </select>
                     </div>
                     <button
@@ -1540,11 +1746,11 @@ export default function RadarAvancado() {
 
 
               {/* ── LEFT BOTTOM: SOMA DE 2 PEDRAS ────────────────────── */}
-              <div className="flex flex-col gap-6 overflow-hidden h-[940px] max-h-[940px] shrink-0">
+              <div className="flex flex-col gap-6 overflow-hidden flex-1 min-h-[500px] shrink-0">
                 <div className={`${CARD} flex flex-col h-full`}>
                   <div className={HEAD}>
                     <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Soma de 2 Pedras
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#00c83a]"></div> Soma de 2 Pedras
                     </span>
                   </div>
 
@@ -1612,6 +1818,56 @@ export default function RadarAvancado() {
                 </div>
               </div>
 
+              {/* ── SEQUÊNCIA DE CORES ────────────────────── */}
+              <div className="flex flex-col gap-6 overflow-hidden shrink-0">
+                <div className={`${CARD} flex flex-col h-full`}>
+                  <div className={HEAD}>
+                    <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
+                      Sequência de Cores
+                    </span>
+                    <select className={SEL} value={seqColorLen} onChange={e => setSeqColorLen(+e.target.value)}>
+                      {[5, 6, 7, 8, 9].map(v => <option key={v} value={v}>{v} Cores</option>)}
+                    </select>
+                  </div>
+                  <div className="p-4 flex flex-col gap-4">
+                    {/* Preto/Vermelho (Ambos) */}
+                    <div className="flex items-start gap-4">
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <div className="w-8 h-8 rounded bg-[linear-gradient(135deg,#E51E3E_50%,#131722_50%)] text-white font-black flex items-center justify-center text-xs border border-white/20 shadow-md">X{seqColorLen}</div>
+                      </div>
+                      <div className="flex flex-col justify-center gap-1">
+                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Preto/Vermelho foi há <strong className="text-white">{seqColorStats.any.minAtras} min</strong></span>
+                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.any.rodadasAtras} rodadas atrás</span>
+                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.any.maxima}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Vermelho */}
+                    <div className="flex items-start gap-4 pt-3 border-t border-white/5">
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <div className="w-8 h-8 rounded bg-[#E51E3E] text-white font-black flex items-center justify-center text-xs border border-white/20">X{seqColorLen}</div>
+                      </div>
+                      <div className="flex flex-col justify-center gap-1">
+                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Vermelho foi há <strong className="text-white">{seqColorStats.red.minAtras} min</strong></span>
+                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.red.rodadasAtras} rodadas atrás</span>
+                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.red.maxima}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Preto */}
+                    <div className="flex items-start gap-4 pt-3 border-t border-white/5">
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <div className="w-8 h-8 rounded bg-[#2C2F33] text-white font-black flex items-center justify-center text-xs border border-white/20">X{seqColorLen}</div>
+                      </div>
+                      <div className="flex flex-col justify-center gap-1">
+                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Preto foi há <strong className="text-white">{seqColorStats.black.minAtras} min</strong></span>
+                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.black.rodadasAtras} rodadas atrás</span>
+                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.black.maxima}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
             </div>
             )}
@@ -1941,8 +2197,8 @@ export default function RadarAvancado() {
               </div>
 
               {/* ── MINUTOS DA IA ────────────────────── */}
-              <div className={`${CARD} shrink-0`}>
-                <div className={HEAD}>
+              <div className={`${CARD_GREEN} shrink-0`}>
+                <div className={HEAD_GREEN}>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse"></div> MINUTOS DA IA
@@ -2013,9 +2269,11 @@ export default function RadarAvancado() {
                   histReverse={histReverse} setHistReverse={setHistReverse}
                   histShowSeconds={histShowSeconds} setHistShowSeconds={setHistShowSeconds}
                 />
-              ) : (
+              ) : activeTab === 'resumos' ? (
                 <ResumoDiarioPanel globalData={globalData} />
-              )}
+              ) : activeTab === 'grafico' ? (
+                <GraficoPnlPanel globalData={globalData} />
+              ) : null}
             </div>
 
 
@@ -2646,23 +2904,23 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
 
 
 
-  const F_INPUT = "w-full bg-[#0b0e14] border border-white/10 text-white text-[11px] px-3 py-2 rounded outline-none focus:border-[#0062ff] transition-colors";
+  const F_INPUT = "w-full bg-[#0b0e14] border border-white/10 text-white text-[11px] px-3 py-2 rounded outline-none focus:border-[#00c83a] transition-colors";
   const F_LABEL = "text-[10px] font-bold text-slate-400 mb-1.5 block";
-  const F_SELECT = "w-full bg-[#0b0e14] border border-white/10 text-white text-[11px] px-3 py-2 rounded outline-none focus:border-[#0062ff] transition-colors appearance-none";
+  const F_SELECT = "w-full bg-[#0b0e14] border border-white/10 text-white text-[11px] px-3 py-2 rounded outline-none focus:border-[#00c83a] transition-colors appearance-none";
 
   return (
     <div className="flex flex-col gap-4 h-[1800px] w-full">
       <div className="flex flex-col">
          <div className="flex items-end gap-1 px-4">
-            <button onClick={() => { setActiveTool('filtros'); setIsFilterOpen(true); }} className={`px-5 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all rounded-t-xl border-x border-t ${activeTool === 'filtros' ? 'bg-[#0f141e]/90 text-[#0062ff] border-[#0062ff]/25 border-b-transparent shadow-[0_-4px_20px_rgba(0,98,255,0.15)] relative z-10' : 'bg-[#0b0e14]/50 text-slate-500 hover:text-slate-300 hover:bg-[#0f141e]/60 border-transparent hover:border-white/5 border-b-[#0062ff]/25'}`}>Filtros</button>
-            <button onClick={() => { setActiveTool('notificador'); setIsFilterOpen(true); }} className={`px-5 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all rounded-t-xl border-x border-t ${activeTool === 'notificador' ? 'bg-[#0f141e]/90 text-[#0062ff] border-[#0062ff]/25 border-b-transparent shadow-[0_-4px_20px_rgba(0,98,255,0.15)] relative z-10' : 'bg-[#0b0e14]/50 text-slate-500 hover:text-slate-300 hover:bg-[#0f141e]/60 border-transparent hover:border-white/5 border-b-[#0062ff]/25'}`}>Notificador de padrão</button>
-            <button onClick={() => { setActiveTool('validador'); setIsFilterOpen(true); }} className={`px-5 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all rounded-t-xl border-x border-t ${activeTool === 'validador' ? 'bg-[#0f141e]/90 text-[#0062ff] border-[#0062ff]/25 border-b-transparent shadow-[0_-4px_20px_rgba(0,98,255,0.15)] relative z-10' : 'bg-[#0b0e14]/50 text-slate-500 hover:text-slate-300 hover:bg-[#0f141e]/60 border-transparent hover:border-white/5 border-b-[#0062ff]/25'}`}>Validador de padrão</button>
+            <button onClick={() => { setActiveTool('filtros'); setIsFilterOpen(true); }} className={`px-5 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all rounded-t-xl border-x border-t ${activeTool === 'filtros' ? 'bg-[#0f141e]/90 text-[#00c83a] border-[#00c83a]/25 border-b-transparent shadow-[0_-4px_20px_rgba(0,98,255,0.15)] relative z-10' : 'bg-[#0b0e14]/50 text-slate-500 hover:text-slate-300 hover:bg-[#0f141e]/60 border-transparent hover:border-white/5 border-b-[#00c83a]/25'}`}>Filtros</button>
+            <button onClick={() => { setActiveTool('notificador'); setIsFilterOpen(true); }} className={`px-5 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all rounded-t-xl border-x border-t ${activeTool === 'notificador' ? 'bg-[#0f141e]/90 text-[#00c83a] border-[#00c83a]/25 border-b-transparent shadow-[0_-4px_20px_rgba(0,98,255,0.15)] relative z-10' : 'bg-[#0b0e14]/50 text-slate-500 hover:text-slate-300 hover:bg-[#0f141e]/60 border-transparent hover:border-white/5 border-b-[#00c83a]/25'}`}>Notificador de padrão</button>
+            <button onClick={() => { setActiveTool('validador'); setIsFilterOpen(true); }} className={`px-5 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all rounded-t-xl border-x border-t ${activeTool === 'validador' ? 'bg-[#0f141e]/90 text-[#00c83a] border-[#00c83a]/25 border-b-transparent shadow-[0_-4px_20px_rgba(0,98,255,0.15)] relative z-10' : 'bg-[#0b0e14]/50 text-slate-500 hover:text-slate-300 hover:bg-[#0f141e]/60 border-transparent hover:border-white/5 border-b-[#00c83a]/25'}`}>Validador de padrão</button>
          </div>
 
-         <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-b-xl rounded-tr-xl p-4 flex flex-wrap items-center gap-x-8 gap-y-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] shrink-0 transition-all duration-300 -mt-px relative z-0">
+         <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-b-xl rounded-tr-xl p-4 flex flex-wrap items-center gap-x-8 gap-y-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] shrink-0 transition-all duration-300 -mt-px relative z-0">
             <button 
                onClick={() => setIsFilterOpen(!isFilterOpen)}
-               className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-black tracking-widest px-4 py-2 rounded-lg flex items-center gap-2 transition-colors uppercase shadow-md"
+               className="bg-[#00c83a] hover:bg-blue-600 text-white text-[10px] font-black tracking-widest px-4 py-2 rounded-lg flex items-center gap-2 transition-colors uppercase shadow-md"
             >
                {isFilterOpen ? (
                   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
@@ -2682,11 +2940,11 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
 
 
       {isFilterOpen && (
-         <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl p-5 shrink-0 flex flex-col gap-5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300">
+         <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl p-5 shrink-0 flex flex-col gap-5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300">
             {activeTool === 'filtros' && (
                <>
             {/* Shortcuts */}
-            <div className="flex flex-wrap items-center justify-between text-[11px] font-bold text-slate-400 bg-[#0b0e14]/50 border border-[#0062ff]/20 px-4 py-3 rounded-lg shadow-inner gap-4">
+            <div className="flex flex-wrap items-center justify-between text-[11px] font-bold text-slate-400 bg-[#0b0e14]/50 border border-[#00c83a]/20 px-4 py-3 rounded-lg shadow-inner gap-4">
                <div className="flex flex-wrap items-center gap-6">
                   <span className="cursor-pointer hover:text-white transition-colors" onClick={() => applyShortcut('200')}>200 rodadas</span>
                   <span className="cursor-pointer hover:text-white transition-colors" onClick={() => applyShortcut('hoje')}>De hoje</span>
@@ -2782,7 +3040,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
             <div className="flex pt-4 border-t border-[#2a2a35]">
                <button 
                   onClick={handleApplyFilter}
-                  className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg"
+                  className="bg-[#00c83a] hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg"
                >
                   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                   Filtrar
@@ -2796,7 +3054,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                   {/* Header: Tabs de Padrões */}
                   <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2">
                      {notifPatterns.map(p => (
-                        <div key={p.id} onClick={() => { if (editingPatternId !== p.id) setNotifActiveId(p.id); }} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg cursor-pointer transition-all border ${notifActiveId === p.id ? 'bg-[#0062ff] border-[#0062ff] text-white shadow-[0_0_15px_rgba(0,98,255,0.4)]' : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+                        <div key={p.id} onClick={() => { if (editingPatternId !== p.id) setNotifActiveId(p.id); }} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg cursor-pointer transition-all border ${notifActiveId === p.id ? 'bg-[#00c83a] border-[#00c83a] text-white shadow-[0_0_15px_rgba(0,98,255,0.4)]' : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
                            {editingPatternId === p.id ? (
                               <input 
                                  autoFocus
@@ -2876,7 +3134,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                                  </button>
 
                                  {block.isGroup && (
-                                    <div className="absolute -top-2 -left-2 w-5 h-5 bg-blue-500 text-white font-black text-[10px] rounded-full flex items-center justify-center border-2 border-[#12141c] z-30 shadow-sm">
+                                    <div className="absolute -top-2 -left-2 w-5 h-5 bg-[#00c83a] text-white font-black text-[10px] rounded-full flex items-center justify-center border-2 border-[#12141c] z-30 shadow-sm">
                                        {block.count}
                                     </div>
                                  )}
@@ -2942,7 +3200,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                            <select 
                               value={(notifPatterns.find(p => p.id === notifActiveId)?.target) || 'Branco'}
                               onChange={(e) => updateTarget(e.target.value)}
-                              className="bg-[#0b0e14] border border-white/10 rounded-lg px-3 h-10 text-[12px] font-bold text-white outline-none focus:border-[#0062ff] transition-colors w-full appearance-none"
+                              className="bg-[#0b0e14] border border-white/10 rounded-lg px-3 h-10 text-[12px] font-bold text-white outline-none focus:border-[#00c83a] transition-colors w-full appearance-none"
                            >
                               <option value="Branco">Branco</option>
                               <option value="Vermelho">Vermelho</option>
@@ -2956,7 +3214,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                      {/* Actions: Notificador / Validador */}
                      {activeTool === 'notificador' && (
                         <div className="flex pt-4 mt-2 border-t border-[#2a2a35]">
-                           <button className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg">
+                           <button className="bg-[#00c83a] hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg">
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                               Ativar Notificador
                            </button>
@@ -2965,7 +3223,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                      
                      {activeTool === 'validador' && (
                         <div className="flex flex-col pt-4 mt-2 border-t border-[#2a2a35]">
-                           <button className="bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg w-max">
+                           <button className="bg-[#00c83a] hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg w-max">
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                               Validar Padrão
                            </button>
@@ -2980,7 +3238,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                               <span className="text-[12px] font-black uppercase tracking-widest text-slate-400">Resultados</span>
                               <div className="flex items-center bg-black/40 rounded-lg p-0.5 border border-white/5">
                                  <button onClick={() => setValidadorMode('basico')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${validadorMode === 'basico' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>Básico</button>
-                                 <button onClick={() => setValidadorMode('analitico')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all flex items-center gap-1.5 ${validadorMode === 'analitico' ? 'bg-blue-500/20 text-blue-400 shadow-sm border border-blue-500/30' : 'text-slate-500 hover:text-slate-300'}`}>
+                                 <button onClick={() => setValidadorMode('analitico')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all flex items-center gap-1.5 ${validadorMode === 'analitico' ? 'bg-[#00c83a]/20 text-blue-400 shadow-sm border border-blue-500/30' : 'text-slate-500 hover:text-slate-300'}`}>
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                                     Premium
                                  </button>
@@ -3046,7 +3304,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                                     <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
                                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                           <path className="text-white/5" strokeWidth="3" stroke="currentColor" fill="none" strokeDasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                          {hasValidationResults && <path className="text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]" strokeWidth="3" strokeLinecap="round" stroke="currentColor" fill="none" strokeDasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />}
+                                          {hasValidationResults && <path className="text-[#00c83a] drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]" strokeWidth="3" strokeLinecap="round" stroke="currentColor" fill="none" strokeDasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />}
                                        </svg>
                                        <span className="absolute text-[11px] font-black text-white">{hasValidationResults ? '85%' : '--%'}</span>
                                     </div>
@@ -3247,7 +3505,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
          </div>
       )}
 
-      <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-y-auto custom-scrollbar p-4 flex-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300">
+      <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-y-auto custom-scrollbar p-4 flex-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300">
          {histFixedCols ? (
             <FixedColumnsHistory data={filteredData} reverse={histReverse} showSec={histShowSeconds} />
          ) : (
@@ -3272,7 +3530,7 @@ function HistoryCardComponent({ roll, showSec }: any) {
    const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: showSec ? '2-digit' : undefined, timeZone: 'America/Sao_Paulo' });
    
    return (
-      <div className="flex flex-col items-center shrink-0 w-[54px] p-1 gap-[3px] bg-[#0b0e14]/70 rounded-lg border border-[#0062ff]/20 shadow-sm transition-all hover:bg-[#0062ff]/10">
+      <div className="flex flex-col items-center shrink-0 w-[54px] p-1 gap-[3px] bg-[#0b0e14]/70 rounded-lg border border-[#00c83a]/20 shadow-sm transition-all hover:bg-[#00c83a]/10">
          <div className="flex justify-center w-full">
             <GlobalStoneIcon n={n} size="lg" />
          </div>
