@@ -21,6 +21,11 @@ export default function VendasPage() {
   const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
 
+  const scrollToPlanos = (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const PLANS = [
     {
       id: 'diario',
@@ -93,7 +98,7 @@ export default function VendasPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#050507] text-gray-200 font-sans selection:bg-[#00c83a]/30 relative overflow-hidden">
+    <main className="min-h-screen bg-[#050507] text-gray-200 font-sans selection:bg-[#00c83a]/30 relative overflow-x-hidden">
       {/* Background Matrix/Cyber Vibe */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 z-0 pointer-events-none"></div>
       
@@ -115,9 +120,6 @@ export default function VendasPage() {
             </h1>
           </div>
           <div className="flex items-center gap-6">
-            <Link href="#funcionalidades" className="hidden md:block text-xs font-bold tracking-widest text-gray-400 hover:text-white uppercase transition-colors">
-              Tecnologia
-            </Link>
             <Link href="/login" className="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-xs font-bold tracking-widest text-white uppercase rounded-lg transition-all flex items-center gap-2">
               <Lock size={14} className="text-gray-400" />
               Acesso ao Terminal
@@ -167,13 +169,13 @@ export default function VendasPage() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto"
           >
-            <Link 
-              href="#planos"
+            <button 
+              onClick={scrollToPlanos}
               className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#00c83a] to-emerald-600 hover:from-[#00e044] hover:to-emerald-500 text-black font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(0,200,58,0.4)] flex items-center justify-center gap-2"
             >
               Ver Licenças Disponíveis
               <ChevronRight size={18} />
-            </Link>
+            </button>
           </motion.div>
         </div>
 
@@ -437,13 +439,13 @@ export default function VendasPage() {
           <p className="text-gray-400 text-lg mb-10 max-w-xl">
             Pare de depender da sorte e coloque a matemática institucional para trabalhar a seu favor agora mesmo.
           </p>
-          <Link 
-            href="#planos"
+          <button 
+            onClick={scrollToPlanos}
             className="px-10 py-5 bg-white text-black font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)] flex items-center gap-3"
           >
             Quero fazer parte da Elite
             <ArrowRight size={18} />
-          </Link>
+          </button>
         </div>
       </section>
 
