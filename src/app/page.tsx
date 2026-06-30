@@ -19,6 +19,70 @@ import {
 
 export default function VendasPage() {
   const [scrolled, setScrolled] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const PLANS = [
+    {
+      id: 'diario',
+      name: 'Passe Diário',
+      days: 1,
+      price: '5',
+      stripePriceId: 'price_1To6Vp630gqKt3w8p246HmHQ',
+      description: 'Teste a assertividade em 24 horas.',
+      recommended: false,
+    },
+    {
+      id: 'semanal',
+      name: 'Acesso Semanal',
+      days: 7,
+      price: '15',
+      stripePriceId: 'price_1To6W6630gqKt3w8Sjp0fcxI',
+      description: 'Uma semana inteira de sinais VIP.',
+      recommended: false,
+    },
+    {
+      id: 'quinzenal',
+      name: 'Acesso Quinzenal',
+      days: 15,
+      price: '35',
+      stripePriceId: 'price_1To6WS630gqKt3w8csHOOm9c',
+      description: 'Tempo ideal para criar consistência.',
+      recommended: false,
+    },
+    {
+      id: 'mensal',
+      name: 'Passe Mensal',
+      days: 30,
+      price: '50',
+      stripePriceId: 'price_1To6Wi630gqKt3w84c7usskg',
+      description: 'O melhor custo-benefício (30 dias).',
+      recommended: true,
+    }
+  ];
+
+  const handleCheckout = async (priceId: string, days: number) => {
+    setLoading(priceId);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId, days }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Erro ao iniciar o pagamento.');
+        setLoading(null);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro inesperado.');
+      setLoading(null);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -297,75 +361,45 @@ export default function VendasPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center max-w-5xl mx-auto">
-            {/* Plan 1 */}
-            <div className="bg-[#0a0a0f] border border-white/10 rounded-2xl p-8 flex flex-col gap-6 hover:border-white/30 transition-all">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-center max-w-7xl mx-auto">
+          {PLANS.map((plan) => (
+            <div 
+              key={plan.id}
+              className={`relative bg-[#0a0a0f] border ${plan.recommended ? 'border-[#00c83a] shadow-[0_10px_30px_rgba(0,200,58,0.15)] transform md:-translate-y-4' : 'border-white/10 hover:border-white/30'} rounded-2xl p-8 flex flex-col gap-6 transition-all h-full`}
+            >
+               {plan.recommended && (
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#00c83a] text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
+                   Melhor Custo Benefício
+                 </div>
+               )}
                <div className="flex flex-col gap-1">
-                 <h4 className="text-lg font-black uppercase text-white tracking-widest">Acesso Mensal</h4>
-                 <p className="text-xs text-gray-500">Para operadores casuais.</p>
+                 <h4 className={`text-lg font-black uppercase tracking-widest ${plan.recommended ? 'text-[#00c83a]' : 'text-white'}`}>{plan.name}</h4>
+                 <p className="text-xs text-gray-500 min-h-[32px]">{plan.description}</p>
                </div>
                <div className="flex items-end gap-1">
                  <span className="text-sm font-bold text-gray-400 mb-2">R$</span>
-                 <span className="text-4xl font-black text-white">147</span>
-                 <span className="text-xs font-bold text-gray-500 mb-2">/mês</span>
+                 <span className="text-4xl font-black text-white">{plan.price}</span>
+                 <span className="text-xs font-bold text-gray-500 mb-2">/ {plan.days === 1 ? 'dia' : `${plan.days} dias`}</span>
                </div>
-               <ul className="flex flex-col gap-4 text-sm font-medium text-gray-300 mt-4 border-t border-white/5 pt-6">
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Todos os Painéis Liberados</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Radares Avançados</li>
-                 <li className="flex items-center gap-3 opacity-50"><ShieldCheck size={16} className="text-gray-600" /> Suporte VIP Priority</li>
+               <ul className="flex flex-col gap-4 text-sm font-medium text-gray-300 mt-2 border-t border-white/5 pt-6 flex-1">
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Sinais em Tempo Real</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Todos os Radares (Confluências)</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Simulador (Backtester)</li>
                </ul>
-               <button className="mt-8 w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all">
-                 Assinar Mensal
+               <button 
+                 onClick={() => handleCheckout(plan.stripePriceId, plan.days)}
+                 disabled={loading !== null}
+                 className={`mt-4 w-full py-4 font-black text-xs uppercase tracking-widest rounded-xl transition-all ${
+                   plan.recommended 
+                    ? 'bg-[#00c83a] hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(0,200,58,0.3)] hover:scale-105' 
+                    : 'bg-white/5 hover:bg-white/10 border border-white/10 text-white hover:border-white/20'
+                 } disabled:opacity-50`}
+               >
+                 {loading === plan.stripePriceId ? 'Processando...' : 'Garantir Acesso'}
                </button>
             </div>
-
-            {/* Plan 2 (Main) */}
-            <div className="bg-[#12141c] border-2 border-[#eab308]/50 rounded-2xl p-10 flex flex-col gap-6 transform md:-translate-y-4 shadow-[0_20px_50px_rgba(234,179,8,0.1)] relative">
-               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#eab308] text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
-                 Mais Escolhido
-               </div>
-               <div className="flex flex-col gap-1">
-                 <h4 className="text-xl font-black uppercase text-[#eab308] tracking-widest">Acesso Semestral</h4>
-                 <p className="text-xs text-gray-400">Profissionalize suas operações.</p>
-               </div>
-               <div className="flex items-end gap-1">
-                 <span className="text-sm font-bold text-gray-400 mb-2">R$</span>
-                 <span className="text-5xl font-black text-white">497</span>
-                 <span className="text-xs font-bold text-gray-500 mb-2">/6 meses</span>
-               </div>
-               <ul className="flex flex-col gap-4 text-sm font-bold text-gray-200 mt-4 border-t border-white/10 pt-6">
-                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Acesso Irrestrito à Apex</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Simulador Time-Machine Real-time</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Radar REC Inteligente</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Sala Secreta de Confluências</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Suporte Prioritário</li>
-               </ul>
-               <button className="mt-8 w-full py-5 bg-[#eab308] hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
-                 Assinar Semestral
-               </button>
-            </div>
-
-            {/* Plan 3 */}
-            <div className="bg-[#0a0a0f] border border-white/10 rounded-2xl p-8 flex flex-col gap-6 hover:border-white/30 transition-all">
-               <div className="flex flex-col gap-1">
-                 <h4 className="text-lg font-black uppercase text-white tracking-widest">Acesso Vitalício</h4>
-                 <p className="text-xs text-gray-500">Pague uma vez. Use para sempre.</p>
-               </div>
-               <div className="flex items-end gap-1">
-                 <span className="text-sm font-bold text-gray-400 mb-2">R$</span>
-                 <span className="text-4xl font-black text-white">997</span>
-                 <span className="text-xs font-bold text-gray-500 mb-2">/único</span>
-               </div>
-               <ul className="flex flex-col gap-4 text-sm font-medium text-gray-300 mt-4 border-t border-white/5 pt-6">
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Tudo do plano Semestral</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Sem mensalidades</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Atualizações vitalícias da IA</li>
-               </ul>
-               <button className="mt-8 w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all">
-                 Garantir Vitalício
-               </button>
-            </div>
-          </div>
+          ))}
+        </div>
         </div>
       </section>
 
