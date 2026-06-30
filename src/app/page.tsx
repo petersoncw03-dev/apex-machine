@@ -187,43 +187,67 @@ export default function VendasPage() {
           <div className="absolute -inset-1 bg-gradient-to-r from-[#00c83a]/30 via-[#f12c4c]/30 to-[#eab308]/30 blur-2xl opacity-20"></div>
           <div className="relative bg-[#0a0a0f] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden aspect-video flex flex-col">
             {/* Fake Header do Terminal */}
-            <div className="h-10 bg-[#050507] border-b border-white/5 flex items-center px-4 gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-              <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
-              <div className="ml-4 flex gap-4 text-[10px] uppercase font-black text-gray-600 tracking-widest">
-                <span>Radar Avançado</span>
-                <span className="text-[#00c83a]">Conectado: 14ms</span>
+            <div className="h-12 bg-[#050507] border-b border-white/5 flex items-center px-6 gap-6">
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
+              </div>
+              <div className="flex gap-4 text-sm font-black text-white tracking-widest uppercase">
+                Estratégias Ao Vivo
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#00c83a] animate-pulse"></div>
+                <span className="text-[10px] uppercase font-bold text-[#00c83a] tracking-widest">WebSocket 14ms</span>
               </div>
             </div>
-            {/* Fake Body */}
-            <div className="flex-1 p-6 flex gap-6 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
-              <div className="w-64 bg-[#12141c]/80 border border-white/5 rounded-xl flex flex-col p-4 gap-4">
-                <div className="h-8 bg-white/5 rounded w-full"></div>
-                <div className="h-20 bg-white/5 rounded w-full"></div>
-                <div className="h-20 bg-[#00c83a]/10 border border-[#00c83a]/20 rounded w-full"></div>
-                <div className="h-20 bg-white/5 rounded w-full"></div>
+            
+            {/* Fake Body - High Fidelity Table Replica */}
+            <div className="flex-1 bg-[#0a0a0f] flex flex-col">
+              {/* Table Header */}
+              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr] text-[10px] font-black text-gray-400 uppercase tracking-widest py-4 px-6 border-b border-white/5 bg-[#12141c]/50">
+                <div className="text-center">Padrão</div>
+                <div className="text-center">TX % ↓</div>
+                <div className="text-center">WIN</div>
+                <div className="text-center">LOSS</div>
+                <div className="text-center">PNL</div>
+                <div className="text-center">SM</div>
+                <div className="text-center">SA</div>
               </div>
-              <div className="flex-1 flex flex-col gap-6">
-                <div className="flex gap-6 h-32">
-                  <div className="flex-1 bg-gradient-to-br from-[#12141c]/80 to-[#12141c]/40 border border-white/5 rounded-xl p-4 flex flex-col justify-between">
-                     <span className="text-[10px] text-gray-500 uppercase font-black">Performance Global</span>
-                     <span className="text-3xl font-black text-[#4ade80]">+R$ 2.450,00</span>
+              
+              {/* Table Rows */}
+              <div className="flex flex-col py-2">
+                {[
+                  { pattern: [null, {c:'red', v:2}, null], tx: '100.0%', w: 1, l: 0, pnl: '13' },
+                  { pattern: [null, {c:'red', v:14}, {c:'black', v:14}], tx: '100.0%', w: 1, l: 0, pnl: '13' },
+                  { pattern: [{c:'black', v:13}, {c:'red', v:14}, null], tx: '100.0%', w: 1, l: 0, pnl: '13' },
+                  { pattern: [{c:'black', v:8}, null, {c:'red', v:null}], tx: '100.0%', w: 1, l: 0, pnl: '13' },
+                  { pattern: [null, {c:'black', v:9}, null, {c:'red', v:null}], tx: '100.0%', w: 2, l: 0, pnl: '26' },
+                  { pattern: [null, {c:'black', v:9}, {c:'red', v:14}], tx: '100.0%', w: 1, l: 0, pnl: '13' },
+                ].map((row, idx) => (
+                  <div key={idx} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr] items-center text-xs font-bold py-3 px-6 hover:bg-white/[0.02] transition-colors border-b border-white/[0.02]">
+                    <div className="flex gap-1.5 justify-center">
+                      {row.pattern.map((p, pIdx) => (
+                        <div key={pIdx} className={`w-7 h-7 rounded flex items-center justify-center text-[10px] shadow-sm ${
+                          p === null ? 'bg-[#1a1b26] border border-white/5' : 
+                          p.c === 'red' ? 'bg-[#f12c4c] text-white shadow-[0_0_10px_rgba(241,44,76,0.3)]' : 
+                          'bg-[#262831] text-white border border-white/10'
+                        }`}>
+                          {p?.v || ''}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[#00c83a] text-center">{row.tx}</div>
+                    <div className="text-white text-center">{row.w}</div>
+                    <div className="text-gray-500 text-center">{row.l}</div>
+                    <div className="text-[#00c83a] text-center font-black">R$ {row.pnl}</div>
+                    <div className="text-gray-400 text-center">0</div>
+                    <div className="text-gray-400 text-center">0</div>
                   </div>
-                  <div className="flex-1 bg-gradient-to-br from-[#12141c]/80 to-[#12141c]/40 border border-[#f12c4c]/20 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden">
-                     <div className="absolute top-0 right-0 w-16 h-16 bg-[#f12c4c]/10 rounded-bl-full"></div>
-                     <span className="text-[10px] text-gray-500 uppercase font-black">Status da Mesa</span>
-                     <span className="text-xl font-black text-[#f12c4c] flex items-center gap-2"><Flame size={20} /> REC IDENTIFICADA</span>
-                  </div>
-                </div>
-                <div className="flex-1 bg-[#12141c]/80 border border-white/5 rounded-xl p-4 flex gap-2 overflow-hidden flex-wrap content-start">
-                   {Array.from({length: 48}).map((_, i) => (
-                     <div key={i} className={`w-10 h-10 rounded ${i % 7 === 0 ? 'bg-white text-black' : i % 2 === 0 ? 'bg-[#f12c4c] text-white' : 'bg-[#262831] text-white'} flex items-center justify-center font-black text-xs border border-black/50 shadow-sm`}>
-                       {i % 7 === 0 ? '0' : (i % 14) + 1}
-                     </div>
-                   ))}
-                </div>
+                ))}
               </div>
+              
+              <div className="mt-auto bg-gradient-to-t from-[#050507] to-transparent h-16 w-full absolute bottom-0 pointer-events-none"></div>
             </div>
           </div>
         </motion.div>
