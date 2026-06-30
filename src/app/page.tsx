@@ -2,9 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Play, Target, BrainCircuit, Activity, Zap, Cpu, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { 
+  ChevronRight, 
+  Target, 
+  Activity, 
+  Cpu, 
+  ShieldCheck, 
+  Radio, 
+  Flame, 
+  BarChart2, 
+  Zap,
+  Lock,
+  ArrowRight
+} from 'lucide-react';
 
-export default function LandingPage() {
+export default function VendasPage() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -15,163 +28,381 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToPresentation = () => {
-    const el = document.getElementById('presentation');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
-    <main className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#00ff41]/30 relative overflow-hidden">
+    <main className="min-h-screen bg-[#050507] text-gray-200 font-sans selection:bg-[#00c83a]/30 relative overflow-hidden">
+      {/* Background Matrix/Cyber Vibe */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 z-0 pointer-events-none"></div>
+      
       {/* Luzes de fundo globais */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#00ff41]/[0.05] blur-[120px] rounded-full pointer-events-none z-0"></div>
-      <div className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-[#e51e3e]/[0.02] blur-[150px] rounded-full pointer-events-none z-0"></div>
+      <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[#00c83a]/[0.03] blur-[150px] rounded-full pointer-events-none z-0"></div>
+      <div className="absolute top-[40%] right-[-10%] w-[600px] h-[600px] bg-[#f12c4c]/[0.02] blur-[150px] rounded-full pointer-events-none z-0"></div>
+      <div className="absolute bottom-[-10%] left-[-10%] w-[800px] h-[800px] bg-[#eab308]/[0.02] blur-[150px] rounded-full pointer-events-none z-0"></div>
 
       {/* HEADER FIXO */}
-      <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#050505]/80 backdrop-blur-md border-b border-white/5 py-4' : 'bg-transparent py-6'}`}>
-        <div className="max-w-6xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8">
-              <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-                <path d="M50 15 L80 65 L70 65 L50 30 L30 65 L20 65 Z" fill="#00ff41" />
-                <path d="M45 45 L75 60 L45 75 L45 65 L60 60 L45 55 Z" fill="#e51e3e" />
-              </svg>
+      <header className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-[#050507]/90 backdrop-blur-xl border-b border-white/5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.8)]' : 'bg-transparent py-6'}`}>
+        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+          <div className="flex items-center gap-3 group cursor-pointer">
+            <div className="w-8 h-8 rounded bg-[#12141c] border border-white/10 flex items-center justify-center group-hover:border-[#00c83a]/50 transition-colors">
+              <Cpu size={16} className="text-[#00c83a]" />
             </div>
-            <h1 className="text-xl font-mono tracking-[0.2em] font-light flex gap-2">
-              <span className="text-[#00ff41]">APEX</span>
-              <span className="text-[#e51e3e]">MACHINE</span>
+            <h1 className="text-xl font-black tracking-tighter flex gap-1 uppercase">
+              <span className="text-white">APEX</span>
+              <span className="text-gray-500 font-light">MACHINE</span>
             </h1>
           </div>
-          <Link href="/login" className="px-5 py-2 text-xs font-mono font-bold tracking-widest text-white/70 hover:text-white uppercase transition-colors">
-            Login
-          </Link>
-        </div>
-      </header>
-
-      {/* HERO SECTION (ATTENTION) */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 z-10">
-        <div className="text-center max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-10 duration-1000 fill-mode-both">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-mono tracking-widest text-[#00ff41] mb-8">
-            <Cpu size={14} />
-            <span>O FUTURO DA ANÁLISE PREDITIVA</span>
-          </div>
-          
-          <h2 className="text-5xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6">
-            Domine o mercado com <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff41] to-emerald-500 drop-shadow-[0_0_30px_rgba(0,255,65,0.4)]">Inteligência Artificial</span>
-          </h2>
-          
-          <p className="text-lg md:text-xl text-white/50 font-medium max-w-2xl mx-auto mb-12">
-            O ecossistema definitivo para análises precisas, rastreamento de padrões em tempo real e algoritmos que trabalham enquanto você dorme.
-          </p>
-
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto">
-            <button 
-              onClick={scrollToPresentation}
-              className="w-full px-8 py-4 bg-[#00ff41] hover:bg-emerald-400 text-black font-mono font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(0,255,65,0.4)] flex items-center justify-center gap-2"
-            >
-              Quero conhecer o Apex
-              <ChevronDown size={18} />
-            </button>
-            <Link 
-              href="/login"
-              className="w-full px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-mono font-bold text-sm uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2"
-            >
-              Já sou cliente
+          <div className="flex items-center gap-6">
+            <Link href="#funcionalidades" className="hidden md:block text-xs font-bold tracking-widest text-gray-400 hover:text-white uppercase transition-colors">
+              Tecnologia
+            </Link>
+            <Link href="/login" className="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-xs font-bold tracking-widest text-white uppercase rounded-lg transition-all flex items-center gap-2">
+              <Lock size={14} className="text-gray-400" />
+              Acesso ao Terminal
             </Link>
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* VIDEO / INTEREST SECTION */}
-      <section id="presentation" className="relative py-24 px-6 z-10 bg-black/40 border-y border-white/5 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h3 className="text-3xl md:text-5xl font-black mb-4">Veja o Apex Machine em Ação</h3>
-            <p className="text-white/50 text-lg">Descubra exatamente como nossa IA encontra as melhores oportunidades do mercado, segundo a segundo.</p>
-          </div>
+      {/* HERO SECTION */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-32 pb-20 z-10">
+        <div className="text-center max-w-4xl mx-auto flex flex-col items-center">
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#eab308]/10 border border-[#eab308]/30 text-[10px] font-black uppercase tracking-widest text-[#eab308] mb-8 shadow-[0_0_20px_rgba(234,179,8,0.15)]"
+          >
+            <Activity size={14} />
+            <span>Terminal Institucional de Alta Frequência</span>
+          </motion.div>
+          
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-5xl md:text-7xl font-black tracking-tighter leading-[1.1] mb-6 text-white uppercase"
+          >
+            Pare de jogar. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00c83a] to-emerald-600 drop-shadow-[0_0_30px_rgba(0,200,58,0.3)]">
+              Comece a operar.
+            </span>
+          </motion.h2>
+          
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-lg md:text-xl text-gray-400 font-medium max-w-2xl mx-auto mb-12"
+          >
+            O Apex Machine não é um "robô de sinais". É o primeiro Terminal Analítico projetado para monitorar ciclos invisíveis e calcular confluências matemáticas em tempo real na Roleta.
+          </motion.p>
 
-          {/* VSL (Video Sales Letter) Placeholder */}
-          <div className="relative aspect-video w-full rounded-2xl border border-white/10 bg-black/60 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden group cursor-pointer">
-            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-30 group-hover:opacity-40 transition-opacity"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-            
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-24 h-24 rounded-full bg-[#00ff41]/20 border border-[#00ff41]/50 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 group-hover:bg-[#00ff41]/30 transition-all duration-300">
-                <Play fill="#00ff41" size={32} className="text-[#00ff41] ml-2" />
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto"
+          >
+            <Link 
+              href="#planos"
+              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#00c83a] to-emerald-600 hover:from-[#00e044] hover:to-emerald-500 text-black font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(0,200,58,0.4)] flex items-center justify-center gap-2"
+            >
+              Ver Licenças Disponíveis
+              <ChevronRight size={18} />
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* HERO MOCKUP (DASHBOARD PREVIEW) */}
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="w-full max-w-6xl mx-auto mt-20 relative"
+        >
+          <div className="absolute -inset-1 bg-gradient-to-r from-[#00c83a]/30 via-[#f12c4c]/30 to-[#eab308]/30 blur-2xl opacity-20"></div>
+          <div className="relative bg-[#0a0a0f] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden aspect-video flex flex-col">
+            {/* Fake Header do Terminal */}
+            <div className="h-10 bg-[#050507] border-b border-white/5 flex items-center px-4 gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+              <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
+              <div className="ml-4 flex gap-4 text-[10px] uppercase font-black text-gray-600 tracking-widest">
+                <span>Radar Avançado</span>
+                <span className="text-[#00c83a]">Conectado: 14ms</span>
               </div>
             </div>
+            {/* Fake Body */}
+            <div className="flex-1 p-6 flex gap-6 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
+              <div className="w-64 bg-[#12141c]/80 border border-white/5 rounded-xl flex flex-col p-4 gap-4">
+                <div className="h-8 bg-white/5 rounded w-full"></div>
+                <div className="h-20 bg-white/5 rounded w-full"></div>
+                <div className="h-20 bg-[#00c83a]/10 border border-[#00c83a]/20 rounded w-full"></div>
+                <div className="h-20 bg-white/5 rounded w-full"></div>
+              </div>
+              <div className="flex-1 flex flex-col gap-6">
+                <div className="flex gap-6 h-32">
+                  <div className="flex-1 bg-gradient-to-br from-[#12141c]/80 to-[#12141c]/40 border border-white/5 rounded-xl p-4 flex flex-col justify-between">
+                     <span className="text-[10px] text-gray-500 uppercase font-black">Performance Global</span>
+                     <span className="text-3xl font-black text-[#4ade80]">+R$ 2.450,00</span>
+                  </div>
+                  <div className="flex-1 bg-gradient-to-br from-[#12141c]/80 to-[#12141c]/40 border border-[#f12c4c]/20 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-16 h-16 bg-[#f12c4c]/10 rounded-bl-full"></div>
+                     <span className="text-[10px] text-gray-500 uppercase font-black">Status da Mesa</span>
+                     <span className="text-xl font-black text-[#f12c4c] flex items-center gap-2"><Flame size={20} /> REC IDENTIFICADA</span>
+                  </div>
+                </div>
+                <div className="flex-1 bg-[#12141c]/80 border border-white/5 rounded-xl p-4 flex gap-2 overflow-hidden flex-wrap content-start">
+                   {Array.from({length: 48}).map((_, i) => (
+                     <div key={i} className={`w-10 h-10 rounded ${i % 7 === 0 ? 'bg-white text-black' : i % 2 === 0 ? 'bg-[#f12c4c] text-white' : 'bg-[#262831] text-white'} flex items-center justify-center font-black text-xs border border-black/50 shadow-sm`}>
+                       {i % 7 === 0 ? '0' : (i % 14) + 1}
+                     </div>
+                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
 
-            <div className="absolute bottom-6 left-6 right-6">
-              <div className="text-sm font-mono tracking-widest text-[#00ff41] mb-2 uppercase">Apresentação Oficial</div>
-              <div className="text-xl font-bold">Como funciona a engrenagem por trás do Apex</div>
+      {/* PAIN & SOLUTION */}
+      <section className="py-24 px-6 relative z-10 bg-[#020203]">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+          <div className="flex flex-col gap-6">
+            <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white leading-tight">
+              A maioria opera <span className="text-[#f12c4c]">no escuro</span>.
+            </h3>
+            <p className="text-gray-400 text-lg leading-relaxed">
+              Você usa robôs de Telegram gratuitos que mandam o mesmo sinal para milhares de pessoas com atraso? Você anota padrões no papel?
+            </p>
+            <p className="text-gray-400 text-lg leading-relaxed">
+              Enquanto o mercado amador joga contando com a sorte, os institucionais operam baseados em ingestão de dados massiva, latência zero e processamento simultâneo.
+            </p>
+            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-lg bg-[#00c83a]/10 border border-[#00c83a]/20 text-[#00c83a] font-bold text-sm uppercase tracking-widest w-fit mt-4">
+              <ShieldCheck size={20} />
+              Nós trouxemos a luz.
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
+              <Radio className="text-[#00c83a]" size={32} />
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Latência < 150ms</h4>
+              <p className="text-xs text-gray-500">Conexão WebSocket direta com os servidores. O sinal pisca na tela milissegundos após a pedra girar.</p>
+            </div>
+            <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
+              <Cpu className="text-[#eab308]" size={32} />
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Processamento IA</h4>
+              <p className="text-xs text-gray-500">Avaliamos mais de 50 variáveis por segundo para encontrar o exato momento de ruptura.</p>
+            </div>
+            <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
+              <BarChart2 className="text-purple-500" size={32} />
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Confluências</h4>
+              <p className="text-xs text-gray-500">O sistema só emite alerta quando +5 estratégias profissionais concordam simultaneamente.</p>
+            </div>
+            <div className="bg-[#0a0a0f] border border-[#f12c4c]/20 p-6 rounded-xl flex flex-col gap-3 hover:border-[#f12c4c]/40 transition-all shadow-[0_0_15px_rgba(241,44,76,0.05)]">
+              <Flame className="text-[#f12c4c]" size={32} />
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Radar REC</h4>
+              <p className="text-xs text-gray-500">Nossa IA avisa exatamente quando a mesa entra em fase de recuperação, evitando que você devolva o lucro.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FEATURES / DESIRE SECTION */}
-      <section className="relative py-32 px-6 z-10">
+      {/* DEEP DIVE FEATURES */}
+      <section id="funcionalidades" className="py-32 px-6 relative z-10 border-t border-white/5 bg-gradient-to-b from-[#050507] to-[#0a0a0f]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
-            <h3 className="text-3xl md:text-5xl font-black mb-4">Tecnologia Institucional</h3>
-            <p className="text-white/50 text-lg">Tudo o que você precisa para sair do escuro e operar com visão raio-x.</p>
+            <h3 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tighter mb-4">
+              Módulos de <span className="text-[#00c83a]">Alta Performance</span>
+            </h3>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Cada módulo do Apex Machine substitui dezenas de ferramentas avulsas, unificando tudo em um terminal de comando hiper-rápido.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Feature 1 */}
-            <div className="bg-white/[0.02] border border-white/5 hover:border-[#00ff41]/30 rounded-2xl p-8 transition-colors group">
-              <div className="w-14 h-14 rounded-xl bg-[#00ff41]/10 flex items-center justify-center mb-6 group-hover:bg-[#00ff41]/20 transition-colors">
-                <Activity className="text-[#00ff41]" size={28} />
+          <div className="flex flex-col gap-24">
+            
+            {/* Mod 1 */}
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              <div className="flex-1 flex flex-col gap-4 order-2 md:order-1">
+                <div className="px-3 py-1 bg-[#8b008b]/10 border border-[#8b008b]/30 text-[#d8b4e2] text-[10px] font-black uppercase tracking-widest rounded-md w-fit">Radar Avançado</div>
+                <h4 className="text-3xl font-black uppercase text-white tracking-tight">O Fim das "Entradas no Achismo"</h4>
+                <p className="text-gray-400">O Radar Avançado cruza padrões ao vivo, calculando o TX (Taxa de Acerto), o SA (Streak Atual) e o SM (Streak Máxima) de cada estratégia, disparando um alerta visual e sonoro apenas quando a probabilidade matemática está a seu favor.</p>
+                <ul className="flex flex-col gap-3 mt-4">
+                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Histórico infinito real-time.</li>
+                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Filtragem de Confluências Máximas.</li>
+                </ul>
               </div>
-              <h4 className="text-xl font-bold mb-3">Scanner BCO em Tempo Real</h4>
-              <p className="text-white/50 leading-relaxed">Mapeie 100% das pedras com nosso radar avançado. Histórico infinito sem travamentos, com alertas sonoros nativos e painéis de dominância.</p>
+              <div className="flex-1 w-full aspect-video bg-[#12141c] border border-white/10 rounded-2xl p-6 shadow-2xl relative order-1 md:order-2 overflow-hidden flex items-center justify-center">
+                 <div className="absolute inset-0 bg-gradient-to-tr from-[#8b008b]/10 to-transparent"></div>
+                 <div className="text-center">
+                    <Radio size={64} className="text-[#8b008b] opacity-50 mb-4 mx-auto" />
+                    <span className="font-mono text-gray-500 uppercase tracking-widest text-xs">Visualização do Radar</span>
+                 </div>
+              </div>
             </div>
 
-            {/* Feature 2 */}
-            <div className="bg-white/[0.02] border border-white/5 hover:border-[#00ff41]/30 rounded-2xl p-8 transition-colors group">
-              <div className="w-14 h-14 rounded-xl bg-[#00ff41]/10 flex items-center justify-center mb-6 group-hover:bg-[#00ff41]/20 transition-colors">
-                <BrainCircuit className="text-[#00ff41]" size={28} />
+            {/* Mod 2 */}
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              <div className="flex-1 w-full aspect-video bg-[#12141c] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden flex items-center justify-center">
+                 <div className="absolute inset-0 bg-gradient-to-tr from-[#00c83a]/10 to-transparent"></div>
+                 <div className="text-center">
+                    <Activity size={64} className="text-[#00c83a] opacity-50 mb-4 mx-auto" />
+                    <span className="font-mono text-gray-500 uppercase tracking-widest text-xs">Simulador Time-Machine</span>
+                 </div>
               </div>
-              <h4 className="text-xl font-bold mb-3">Analista IA Avançado</h4>
-              <p className="text-white/50 leading-relaxed">Deixe que nossa inteligência identifique as zonas de calor, máximas do dia e probabilidade estatística exata antes de você fazer qualquer movimento.</p>
+              <div className="flex-1 flex flex-col gap-4">
+                <div className="px-3 py-1 bg-[#00c83a]/10 border border-[#00c83a]/30 text-[#4ade80] text-[10px] font-black uppercase tracking-widest rounded-md w-fit">Time-Machine Backtester</div>
+                <h4 className="text-3xl font-black uppercase text-white tracking-tight">Viagem no Tempo Matemática</h4>
+                <p className="text-gray-400">Desenvolveu uma estratégia nova? Não teste com seu dinheiro real. Jogue ela na nossa Máquina do Tempo. O sistema simula o comportamento do seu robô pelas últimas 43.200 rodadas em questão de segundos e te entrega o PNL final exato.</p>
+                <ul className="flex flex-col gap-3 mt-4">
+                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Validação Imediata.</li>
+                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Relatórios precisos de drawndown.</li>
+                </ul>
+              </div>
             </div>
 
-            {/* Feature 3 */}
-            <div className="bg-white/[0.02] border border-white/5 hover:border-[#00ff41]/30 rounded-2xl p-8 transition-colors group">
-              <div className="w-14 h-14 rounded-xl bg-[#00ff41]/10 flex items-center justify-center mb-6 group-hover:bg-[#00ff41]/20 transition-colors">
-                <Target className="text-[#00ff41]" size={28} />
-              </div>
-              <h4 className="text-xl font-bold mb-3">Simuladores Profissionais</h4>
-              <p className="text-white/50 leading-relaxed">Crie, teste e valide estratégias nos Simuladores de Casa Exata e Dupla Exata. Descubra padrões ocultos sem arriscar seu capital.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ESTATÍSTICAS / SOCIAL PROOF */}
+      <section className="py-16 px-6 border-y border-[#00c83a]/20 bg-[#00c83a]/5 relative z-10">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-around gap-8 text-center">
+          <div className="flex flex-col items-center gap-2">
+             <span className="text-5xl font-black text-white">+43.200</span>
+             <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Rodadas Analisadas / Dia</span>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+             <span className="text-5xl font-black text-white">99.9%</span>
+             <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Uptime dos Servidores</span>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+             <span className="text-5xl font-black text-white">&lt;150ms</span>
+             <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Latência de Ingestão</span>
+          </div>
+        </div>
+      </section>
+
+      {/* PLANOS */}
+      <section id="planos" className="py-32 px-6 relative z-10 bg-[#050507]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-20">
+            <h3 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tighter mb-4">
+              Escolha seu <span className="text-[#eab308]">Arsenal</span>
+            </h3>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Selecione o nível de acesso ao terminal que mais se adequa ao seu volume operacional. Vagas estritamente limitadas para garantir a estabilidade do WebSocket.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center max-w-5xl mx-auto">
+            {/* Plan 1 */}
+            <div className="bg-[#0a0a0f] border border-white/10 rounded-2xl p-8 flex flex-col gap-6 hover:border-white/30 transition-all">
+               <div className="flex flex-col gap-1">
+                 <h4 className="text-lg font-black uppercase text-white tracking-widest">Acesso Mensal</h4>
+                 <p className="text-xs text-gray-500">Para operadores casuais.</p>
+               </div>
+               <div className="flex items-end gap-1">
+                 <span className="text-sm font-bold text-gray-400 mb-2">R$</span>
+                 <span className="text-4xl font-black text-white">147</span>
+                 <span className="text-xs font-bold text-gray-500 mb-2">/mês</span>
+               </div>
+               <ul className="flex flex-col gap-4 text-sm font-medium text-gray-300 mt-4 border-t border-white/5 pt-6">
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Todos os Painéis Liberados</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Radares Avançados</li>
+                 <li className="flex items-center gap-3 opacity-50"><ShieldCheck size={16} className="text-gray-600" /> Suporte VIP Priority</li>
+               </ul>
+               <button className="mt-8 w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all">
+                 Assinar Mensal
+               </button>
+            </div>
+
+            {/* Plan 2 (Main) */}
+            <div className="bg-[#12141c] border-2 border-[#eab308]/50 rounded-2xl p-10 flex flex-col gap-6 transform md:-translate-y-4 shadow-[0_20px_50px_rgba(234,179,8,0.1)] relative">
+               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#eab308] text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
+                 Mais Escolhido
+               </div>
+               <div className="flex flex-col gap-1">
+                 <h4 className="text-xl font-black uppercase text-[#eab308] tracking-widest">Acesso Semestral</h4>
+                 <p className="text-xs text-gray-400">Profissionalize suas operações.</p>
+               </div>
+               <div className="flex items-end gap-1">
+                 <span className="text-sm font-bold text-gray-400 mb-2">R$</span>
+                 <span className="text-5xl font-black text-white">497</span>
+                 <span className="text-xs font-bold text-gray-500 mb-2">/6 meses</span>
+               </div>
+               <ul className="flex flex-col gap-4 text-sm font-bold text-gray-200 mt-4 border-t border-white/10 pt-6">
+                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Acesso Irrestrito à Apex</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Simulador Time-Machine Real-time</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Radar REC Inteligente</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Sala Secreta de Confluências</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={18} className="text-[#eab308]" /> Suporte Prioritário</li>
+               </ul>
+               <button className="mt-8 w-full py-5 bg-[#eab308] hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+                 Assinar Semestral
+               </button>
+            </div>
+
+            {/* Plan 3 */}
+            <div className="bg-[#0a0a0f] border border-white/10 rounded-2xl p-8 flex flex-col gap-6 hover:border-white/30 transition-all">
+               <div className="flex flex-col gap-1">
+                 <h4 className="text-lg font-black uppercase text-white tracking-widest">Acesso Vitalício</h4>
+                 <p className="text-xs text-gray-500">Pague uma vez. Use para sempre.</p>
+               </div>
+               <div className="flex items-end gap-1">
+                 <span className="text-sm font-bold text-gray-400 mb-2">R$</span>
+                 <span className="text-4xl font-black text-white">997</span>
+                 <span className="text-xs font-bold text-gray-500 mb-2">/único</span>
+               </div>
+               <ul className="flex flex-col gap-4 text-sm font-medium text-gray-300 mt-4 border-t border-white/5 pt-6">
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Tudo do plano Semestral</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Sem mensalidades</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Atualizações vitalícias da IA</li>
+               </ul>
+               <button className="mt-8 w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all">
+                 Garantir Vitalício
+               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA / ACTION SECTION */}
-      <section className="relative py-32 px-6 z-10 bg-gradient-to-b from-transparent to-[#00ff41]/5 border-t border-white/5">
-        <div className="max-w-4xl mx-auto text-center">
-          <h3 className="text-4xl md:text-6xl font-black mb-6">Pronto para a evolução?</h3>
-          <p className="text-xl text-white/50 mb-10 max-w-2xl mx-auto">Junte-se à elite que utiliza o Apex Machine para dominar as probabilidades. Chega de apostas cegas.</p>
-          
-          <button className="px-10 py-5 bg-[#00ff41] hover:bg-emerald-400 text-black font-mono font-black text-lg uppercase tracking-widest rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_50px_rgba(0,255,65,0.4)] flex items-center justify-center gap-3 mx-auto">
-            <ShieldCheck size={24} />
-            Assinar Agora
-          </button>
-          
-          <div className="mt-8 flex items-center justify-center gap-4 text-xs font-mono text-white/30 uppercase tracking-widest">
-            <span>Acesso Imediato</span>
-            <span>•</span>
-            <span>Suporte 24/7</span>
-            <span>•</span>
-            <span>Garantia de 7 dias</span>
-          </div>
+      {/* CTA FINAL */}
+      <section className="py-24 px-6 relative z-10 border-t border-white/5">
+        <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
+          <Cpu size={48} className="text-[#00c83a] mb-6 opacity-50" />
+          <h3 className="text-4xl md:text-5xl font-black uppercase text-white tracking-tighter mb-6">
+            O terminal está <span className="text-[#00c83a]">pronto</span>.
+          </h3>
+          <p className="text-gray-400 text-lg mb-10 max-w-xl">
+            Pare de depender da sorte e coloque a matemática institucional para trabalhar a seu favor agora mesmo.
+          </p>
+          <Link 
+            href="#planos"
+            className="px-10 py-5 bg-white text-black font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)] flex items-center gap-3"
+          >
+            Quero fazer parte da Elite
+            <ArrowRight size={18} />
+          </Link>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="py-8 border-t border-white/5 bg-black text-center text-xs font-mono text-white/30 tracking-widest uppercase relative z-10">
-        <p>© {new Date().getFullYear()} APEX MACHINE. TODOS OS DIREITOS RESERVADOS.</p>
+      <footer className="py-12 border-t border-white/5 bg-[#020203] text-center relative z-10">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col items-center gap-6">
+          <div className="flex items-center gap-2 opacity-50">
+            <Cpu size={14} className="text-white" />
+            <span className="text-sm font-black tracking-widest text-white uppercase">APEX MACHINE</span>
+          </div>
+          <p className="text-xs text-gray-600 max-w-2xl mx-auto">
+            Apex Machine é um terminal analítico focado em estatística e probabilidade. Não garantimos ganhos financeiros. Operações financeiras envolvem riscos. 
+          </p>
+          <div className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mt-4">
+            © {new Date().getFullYear()} APEX MACHINE. TODOS OS DIREITOS RESERVADOS.
+          </div>
+        </div>
       </footer>
     </main>
   );
