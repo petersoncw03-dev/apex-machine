@@ -493,7 +493,7 @@ export default function FinanceiroPage() {
         {/* History Strip */}
         <div className="bg-[#0a0a0f] border-b border-t border-white/5 p-4 shrink-0 shadow-lg z-10 flex flex-col gap-2 w-full">
            <h2 className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Histórico Ao Vivo</h2>
-           <LiveHistoryCard data={dataRef.current} maxItems={100} />
+           <LiveHistoryCard data={dataRef.current.map(d => ({ ...d, roll: d.roll || 0, timestamp: d.timestamp || new Date().toISOString() })) as any[]} maxItems={100} />
         </div>
 
       {/* Bottom legend */}
