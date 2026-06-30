@@ -20,7 +20,7 @@ interface SimulationResult {
 
 function LineChart({ data, markers, color }: { data: {x: number, y: number}[], markers: {x: number, y: number, type: 'win' | 'loss'}[], color: string }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
+  const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
   const markersRef = useRef(markers);
   const [renderedMarkers, setRenderedMarkers] = useState<{x: number, y: number, type: 'win' | 'loss'}[]>([]);
