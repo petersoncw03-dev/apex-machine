@@ -193,8 +193,9 @@ function NumberTable({pats,data,requireHours}:{pats:number[][];data:TickerData[]
 }
 
 
-type Tab='cores'|'numeros';
+type Tab='cores'|'numeros'|'construtor';
 const TABS:{id:Tab;label:string;icon:string}[]=[
+  {id:'construtor',label:'Construtor Visual',icon:'🔨'},
   {id:'cores',label:'Padrões de Cores',icon:'🎨'},
   {id:'numeros',label:'Padrões Numéricos',icon:'🔢'}
 ];

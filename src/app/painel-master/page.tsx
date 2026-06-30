@@ -439,7 +439,7 @@ export default function RadarAvancado() {
 
     for (let i = 1; i < globalData.length; i++) {
       const roll = globalData[i];
-      if (roll.roll !== 0 && roll.roll !== '0') continue;
+      if (roll.roll !== 0) continue;
 
       const timeW = new Date(roll.timestamp).getTime();
       const m = new Date(roll.timestamp).getMinutes();
@@ -540,7 +540,7 @@ export default function RadarAvancado() {
 
     for (let i = 0; i < globalData.length; i++) {
       const roll = globalData[i];
-      if (roll.roll === 0 || roll.roll === '0') {
+      if (roll.roll === 0) {
         const timeW = new Date(roll.timestamp).getTime();
         const idx = getMinuteStamp(timeW) - startStamp;
         if (idx >= 0 && idx <= totalMinutes) whiteMinutes[idx] = 1;
@@ -549,7 +549,7 @@ export default function RadarAvancado() {
 
     for (let i = 1; i < globalData.length; i++) {
       const roll = globalData[i];
-      if (roll.roll !== 0 && roll.roll !== '0') continue;
+      if (roll.roll !== 0) continue;
 
       const timeW = new Date(roll.timestamp).getTime();
       const prev = globalData[i - 1] ? Number(globalData[i - 1].roll) : 0;
@@ -590,20 +590,20 @@ export default function RadarAvancado() {
 
       while (p6_tail < globalData.length && new Date(globalData[p6_tail].timestamp).getTime() < cut6h) {
         const r = globalData[p6_tail];
-        if (r.roll === 0 || r.roll === '0') minCount6h[new Date(r.timestamp).getMinutes()]--;
+        if (r.roll === 0) minCount6h[new Date(r.timestamp).getMinutes()]--;
         p6_tail++;
       }
       while (p6_head < globalData.length && new Date(globalData[p6_head].timestamp).getTime() <= cut10m) {
         if (p6_head >= p6_tail) {
             const r = globalData[p6_head];
-            if (r.roll === 0 || r.roll === '0') minCount6h[new Date(r.timestamp).getMinutes()]++;
+            if (r.roll === 0) minCount6h[new Date(r.timestamp).getMinutes()]++;
         }
         p6_head++;
       }
 
       while (p3_tail < globalData.length && new Date(globalData[p3_tail].timestamp).getTime() < cut3h) {
         const r = globalData[p3_tail];
-        if (r.roll === 0 || r.roll === '0') {
+        if (r.roll === 0) {
           const m = new Date(r.timestamp).getMinutes();
           rowCount[Math.floor(m/10)]--;
           colCount[m%10]--;
@@ -613,7 +613,7 @@ export default function RadarAvancado() {
       while (p3_head < globalData.length && new Date(globalData[p3_head].timestamp).getTime() <= cut10m) {
         if (p3_head >= p3_tail) {
             const r = globalData[p3_head];
-            if (r.roll === 0 || r.roll === '0') {
+            if (r.roll === 0) {
               const m = new Date(r.timestamp).getMinutes();
               rowCount[Math.floor(m/10)]++;
               colCount[m%10]++;
