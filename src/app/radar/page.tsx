@@ -841,7 +841,7 @@ export default function RadarPage() {
                       <div key={idx} className="flex flex-col gap-1">
                         <span className="text-[7px] text-gray-500 uppercase font-black">Padrão {idx + 1}</span>
                         <div className="flex gap-1">
-                          {parts.map((v, vIdx) => {
+                          {parts.map((v: string, vIdx: number) => {
                              const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
                              const isColorElement = v === 'V' || v === 'P' || v === 'B';
                              if (isColorElement) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }
@@ -882,7 +882,7 @@ export default function RadarPage() {
                       <div key={idx} className="flex flex-col gap-1">
                         <span className="text-[7px] text-gray-500 uppercase font-black">Padrão {idx + 1}</span>
                         <div className="flex gap-1">
-                          {parts.map((v, vIdx) => {
+                          {parts.map((v: string, vIdx: number) => {
                              const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
                              const isColor = v === 'V' || v === 'P' || v === 'B';
                              if (isColor) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }

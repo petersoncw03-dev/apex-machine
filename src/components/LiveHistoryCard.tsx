@@ -13,6 +13,7 @@ interface RollData {
 interface LiveHistoryCardProps {
   data: RollData[];
   maxItems?: number;
+  title?: string;
 }
 
 function RealTimeClock() {

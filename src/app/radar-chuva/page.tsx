@@ -292,7 +292,7 @@ export default function RadarChuvaPage() {
   const [confluenceStats, setConfluenceStats] = useState<Record<number, { w: number; l: number }>>({});
   const confluenceStatsRef = useRef<Record<number, { w: number; l: number }>>({});
   const lastProcessedId = useRef<string | null>(null);
-  const activeTrackersRef = useRef<{ size: number; startIdx: number; entriesLeft: number; }[]>([]);
+  const activeTrackersRef = useRef<{ size: number; startIdx: number; entriesLeft: number; distance: number }[]>([]);
   const lastDataLength = useRef<number>(0);
 
   useEffect(() => {
@@ -584,7 +584,7 @@ export default function RadarChuvaPage() {
                          {rainStats.activePatterns.slice(0, 3).map((p, idx) => (
                             <div key={idx} className="flex justify-between items-center bg-black/40 p-2 rounded border border-white/5">
                                <div className="flex gap-1">
-                                 {p.patternArray.map((v, vIdx) => {
+                                 {p.patternArray.map((v: string, vIdx: number) => {
                                    const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
                                    const isColor = v === 'V' || v === 'P' || v === 'B';
                                    if (isColor) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }
@@ -729,7 +729,7 @@ export default function RadarChuvaPage() {
                            <tr key={idx} className={`hover:bg-white/5 transition-colors ${idx < rainStats.numConfluences && isInRain ? 'bg-[#00f0ff]/10' : ''}`}>
                               <td className="p-4">
                                  <div className="flex gap-1">
-                                    {p.patternArray.map((v, vIdx) => {
+                                    {p.patternArray.map((v: string, vIdx: number) => {
                                        const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
                                        const isColor = v === 'V' || v === 'P' || v === 'B';
                                        if (isColor) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }

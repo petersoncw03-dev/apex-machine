@@ -489,7 +489,7 @@ export default function RadarRecPage() {
                            {recStats.activePatterns.slice(0, 5).map((p, idx) => (
                               <div key={idx} className="flex justify-between items-center bg-black/20 p-2 rounded border border-white/5">
                                  <div className="flex gap-1">
-                                   {p.patternArray.map((v, vIdx) => {
+                                   {p.patternArray.map((v: string, vIdx: number) => {
                                      const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
                                      const isColor = v === 'V' || v === 'P' || v === 'B';
                                      if (isColor) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }
@@ -617,7 +617,7 @@ export default function RadarRecPage() {
                            <tr key={idx} className={`hover:bg-white/5 transition-colors ${idx < recStats.numConfluences && isInRec ? 'bg-[#f12c4c]/10' : ''}`}>
                               <td className="p-4">
                                  <div className="flex gap-1">
-                                    {p.patternArray.map((v, vIdx) => {
+                                    {p.patternArray.map((v: string, vIdx: number) => {
                                        const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
                                        const isColor = v === 'V' || v === 'P' || v === 'B';
                                        if (isColor) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }
