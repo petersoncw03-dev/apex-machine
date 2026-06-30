@@ -11,9 +11,9 @@ interface ResumoDiarioPanelProps {
   globalData: Roll[];
 }
 
-const CARD = 'bg-[#0f141e]/80 backdrop-blur-xl border border-[#0062ff]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300';
-const HEAD = 'px-5 py-3 bg-gradient-to-b from-[#0062ff]/10 to-transparent border-b border-[#0062ff]/20 flex justify-between items-center border-t-[3px] border-t-[#0062ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
-const SEL = 'bg-[#0b0e14] border border-white/10 text-white text-[10px] px-3 py-1.5 rounded-lg outline-none focus:border-[#0062ff] uppercase font-black tracking-widest hover:border-white/20 transition-colors cursor-pointer';
+const CARD = 'bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300';
+const HEAD = 'px-5 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
+const SEL = 'bg-[#0b0e14] border border-white/10 text-white text-[10px] px-3 py-1.5 rounded-lg outline-none focus:border-[#00c83a] uppercase font-black tracking-widest hover:border-white/20 transition-colors cursor-pointer';
 
 export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps) {
   const [period, setPeriod] = useState<'hoje' | 'ontem' | '6h' | '12h'>('hoje');
@@ -167,8 +167,8 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
     <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-[1600px] mx-auto w-full pb-32">
       {/* Header */}
       <div className={`${CARD} p-5 flex flex-row items-center gap-4`}>
-         <div className="w-12 h-12 rounded-xl bg-[#0062ff]/20 border border-[#0062ff]/40 flex items-center justify-center shadow-[0_0_15px_rgba(0,98,255,0.3)] shrink-0">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-[#0062ff]"><path d="M12 2a2 2 0 0 1 2 2c-.08.64-.17 1.25-.27 1.83.67.24 1.32.55 1.94.92l1.6-1.07a2 2 0 0 1 2.83.82l1.24 2.14a2 2 0 0 1-.5 2.6l-1.46 1.28c.12.63.18 1.27.18 1.93s-.06 1.3-.18 1.93l1.46 1.28a2 2 0 0 1 .5 2.6l-1.24 2.14a2 2 0 0 1-2.83.82l-1.6-1.07c-.62.37-1.27.68-1.94.92.1.58.19 1.19.27 1.83a2 2 0 0 1-2 2h-2.48a2 2 0 0 1-2-2c.08-.64.17-1.25.27-1.83-.67-.24-1.32-.55-1.94-.92l-1.6 1.07a2 2 0 0 1-2.83-.82L2.7 17.5a2 2 0 0 1 .5-2.6l1.46-1.28A9.87 9.87 0 0 1 4.48 12c0-.66.06-1.3.18-1.93L3.2 8.78a2 2 0 0 1-.5-2.6l1.24-2.14a2 2 0 0 1 2.83-.82l1.6 1.07c.62-.37 1.27-.68 1.94-.92-.1-.58-.19-1.19-.27-1.83a2 2 0 0 1 2-2h2.48Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+         <div className="w-12 h-12 rounded-xl bg-[#00c83a]/20 border border-[#00c83a]/40 flex items-center justify-center shadow-[0_0_15px_rgba(0,98,255,0.3)] shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-[#00c83a]"><path d="M12 2a2 2 0 0 1 2 2c-.08.64-.17 1.25-.27 1.83.67.24 1.32.55 1.94.92l1.6-1.07a2 2 0 0 1 2.83.82l1.24 2.14a2 2 0 0 1-.5 2.6l-1.46 1.28c.12.63.18 1.27.18 1.93s-.06 1.3-.18 1.93l1.46 1.28a2 2 0 0 1 .5 2.6l-1.24 2.14a2 2 0 0 1-2.83.82l-1.6-1.07c-.62.37-1.27.68-1.94.92.1.58.19 1.19.27 1.83a2 2 0 0 1-2 2h-2.48a2 2 0 0 1-2-2c.08-.64.17-1.25.27-1.83-.67-.24-1.32-.55-1.94-.92l-1.6 1.07a2 2 0 0 1-2.83-.82L2.7 17.5a2 2 0 0 1 .5-2.6l1.46-1.28A9.87 9.87 0 0 1 4.48 12c0-.66.06-1.3.18-1.93L3.2 8.78a2 2 0 0 1-.5-2.6l1.24-2.14a2 2 0 0 1 2.83-.82l1.6 1.07c.62-.37 1.27-.68 1.94-.92-.1-.58-.19-1.19-.27-1.83a2 2 0 0 1 2-2h2.48Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
          </div>
          <div className="flex flex-col flex-1">
             <h1 className="text-xl font-black text-white tracking-wide">Resumo.AI Inteligente</h1>
@@ -200,7 +200,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                </div>
                <div className="p-5 flex flex-col gap-3">
                   <p className="text-[13px] text-slate-300 flex items-start gap-3">
-                     <span className="text-blue-500 font-black mt-0.5">→</span>
+                     <span className="text-[#00c83a] font-black mt-0.5">→</span>
                      <span>Tivemos <strong className="text-white">{stats.brancos} brancos</strong> em <strong className="text-white">{stats.totalRodadas} rodadas</strong>, com distância média de <strong className="text-white">{stats.mediaBrancos} rodadas</strong> entre cada.</span>
                   </p>
                   <p className="text-[13px] text-slate-300 flex items-start gap-3">
@@ -208,7 +208,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                      <span>Ocorreram <strong className="text-amber-400">{stats.recuperacoesCount} recuperações</strong> (períodos de 20+ rodadas sem branco). A mais longa durou {stats.maxWhiteDelay} rodadas.</span>
                   </p>
                   <p className="text-[13px] text-slate-300 flex items-start gap-3">
-                     <span className="text-blue-500 font-black mt-0.5">→</span>
+                     <span className="text-[#00c83a] font-black mt-0.5">→</span>
                      <span>A cor dominante é o <strong className="text-white">{stats.domColor}</strong> com {stats.domPct}%. Há uma {stats.tendText.toLowerCase()}.</span>
                   </p>
                   <p className="text-[13px] text-slate-300 flex items-start gap-3">
@@ -226,7 +226,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
             <div className={CARD}>
                <div className={HEAD}>
                   <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
-                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-500"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[#00c83a]"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                      Maiores Sequências ({getPeriodLabel()})
                   </span>
                </div>
@@ -267,7 +267,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
             )}
 
             <div className={`${CARD} p-4 flex flex-col gap-1`}>
-               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Dist. Média</span>
+               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#00c83a]"></div> Dist. Média</span>
                <span className="text-2xl font-black text-white mt-1">{stats.mediaBrancos}</span>
                <span className="text-[10px] text-slate-500 font-bold">Máx {stats.maxWhiteDelay} rodadas</span>
             </div>
@@ -288,7 +288,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
          <div className={CARD}>
             <div className={HEAD}>
                <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-500"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[#00c83a]"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
                   Análise do Branco
                </span>
             </div>
@@ -318,7 +318,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
          <div className={CARD}>
             <div className={HEAD}>
                <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-500"><path d="M12 20v-6M6 20V10M18 20V4"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[#00c83a]"><path d="M12 20v-6M6 20V10M18 20V4"></path></svg>
                   Dominância do Período
                </span>
             </div>
@@ -362,17 +362,17 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
          <div className={CARD}>
             <div className={HEAD}>
                <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-500"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[#00c83a]"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                   Minutos Quentes P/ Branco
                </span>
             </div>
             <div className="p-5 flex flex-col gap-4 h-full">
                {stats.topBrancos.map((m, i) => (
                   <div key={i} className="flex items-center gap-4">
-                     <div className="w-5 h-5 rounded-full bg-[#0062ff]/20 text-[#0062ff] text-[10px] font-black flex items-center justify-center shrink-0 border border-[#0062ff]/30">{i+1}</div>
+                     <div className="w-5 h-5 rounded-full bg-[#00c83a]/20 text-[#00c83a] text-[10px] font-black flex items-center justify-center shrink-0 border border-[#00c83a]/30">{i+1}</div>
                      <span className="text-[12px] font-black text-white w-6 shrink-0">:{m.min.toString().padStart(2,'0')}</span>
                      <div className="flex-1 h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 rounded-full" style={{width: `${(m.hits / (stats.topBrancos[0]?.hits || 1)) * 100}%`}}></div>
+                        <div className="h-full bg-[#00c83a] rounded-full" style={{width: `${(m.hits / (stats.topBrancos[0]?.hits || 1)) * 100}%`}}></div>
                      </div>
                      <span className="text-[10px] font-bold text-slate-400 w-24 text-right shrink-0">{m.hits} ({m.pct.toFixed(1)}%)</span>
                   </div>

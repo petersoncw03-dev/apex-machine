@@ -54,7 +54,7 @@ export default function MaxSoroPage2() {
 
   return (
     <div className="min-h-screen bg-[#050507] text-white flex flex-col relative">
-      <div className="bg-[#0a0a0f] border-b border-white/5 p-4 flex items-center justify-between shadow-2xl z-40">
+      <div className="bg-[#0a0a0f] border-b border-white/5 h-[72px] px-6 flex items-center justify-between shadow-2xl shrink-0 z-50">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-4 border-r border-white/10 pr-6">
 

@@ -227,7 +227,8 @@ export default function DuplaExataPage() {
   }, [data, casasLimit, targetMode, scanSortBy, minSaFilter, minSmFilter, minPercFilter]);
 
   return (
-    <main className="min-h-screen p-4 md:p-8 max-w-[1400px] mx-auto flex flex-col gap-6 w-full">
+    <main className="min-h-screen p-4 md:p-8 max-w-full w-full mx-auto flex flex-col gap-6 bg-[#030303]">
+      <div className="max-w-[1400px] mx-auto flex flex-col gap-6 w-full">
       <section className="flex flex-wrap justify-between items-center bg-[#0a0a0f] p-4 rounded-lg border border-white/5 gap-4">
         <div className="flex flex-col">
           <div className="flex items-center gap-3">
@@ -282,7 +283,7 @@ export default function DuplaExataPage() {
                    onChange={(e) => setPeriodHours(Number(e.target.value))}
                    className="bg-[#0a0a0f] text-white px-2 py-1 rounded border border-white/10 text-xs font-bold outline-none focus:border-red-500"
                 >
-                   {[1, 2, 3, 4, 5, 6, 9, 12, 18, 24, 36, 48, 72, 120, 168].map(h => (
+                   {[1, 2, 3, 4, 5, 6, 9, 12, 18, 24, 36, 48, 72, 120, 168, 336].map(h => (
                        <option key={h} value={h}>{h}H</option>
                    ))}
                 </select>
@@ -450,6 +451,7 @@ export default function DuplaExataPage() {
         </div>
       )}
 
+      </div>
     </main>
   );
 }

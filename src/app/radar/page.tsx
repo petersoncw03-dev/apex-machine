@@ -6,6 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 import { LiveHistoryCard } from '@/components/LiveHistoryCard';
+import { Radio } from 'lucide-react';
+
+// ─── Design tokens (Apex Green) ──────────────────────────────────────
+const CARD = 'bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300';
+const HEAD = 'px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
+const SEL = 'bg-[#0b0e14] border border-white/10 text-white text-[10px] px-3 py-1.5 rounded-lg outline-none focus:border-[#00c83a] uppercase font-black tracking-widest hover:border-white/20 transition-colors cursor-pointer';
 
 // --- Types ---
 interface PatternStat {
@@ -64,7 +70,7 @@ export default function RadarPage() {
   const [maxFetchedHours, setMaxFetchedHours] = useState(60);
   
   const [warRoomPeriodHours, setWarRoomPeriodHours] = useState(2);
-  const [sortColumn, setSortColumn] = useState<'TX' | 'SA' | 'PNL'>('PNL');
+  const [sortColumn, setSortColumn] = useState<'TX' | 'SA' | 'PNL' | 'SM'>('PNL');
   const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
   const [showSidebar, setShowSidebar] = useState(true);
 
@@ -351,6 +357,7 @@ export default function RadarPage() {
     setLiveOpportunities(stats.filter(s => s.win >= minWin).sort((a, b) => {
       if (sortColumn === 'PNL') return sortDirection === 'desc' ? b.pnl - a.pnl : a.pnl - b.pnl;
       if (sortColumn === 'SA') return sortDirection === 'desc' ? b.sa - a.sa : a.sa - b.sa;
+      if (sortColumn === 'SM') return sortDirection === 'desc' ? b.sm - a.sm : a.sm - b.sm;
       return sortDirection === 'desc' ? parseFloat(b.winRate) - parseFloat(a.winRate) : parseFloat(a.winRate) - parseFloat(b.winRate);
     }));
 
@@ -506,7 +513,7 @@ export default function RadarPage() {
     }
   }, [data, casasLimit, minWin, periodHoursOportunidades, periodHoursConfluencias, warRoomPeriodHours, sortColumn, sortDirection, confMinOcorrencias, confMinWinRate, confMaxWinRate, confMinSa, confSortMode, audioEnabledFor, initialStake, playAlert]);
 
-  const handleSort = (col: 'TX' | 'SA' | 'PNL') => {
+  const handleSort = (col: 'TX' | 'SA' | 'PNL' | 'SM') => {
     if (sortColumn === col) setSortDirection(d => d === 'desc' ? 'asc' : 'desc');
     else { setSortColumn(col); setSortDirection('desc'); }
   };
@@ -518,10 +525,10 @@ export default function RadarPage() {
 
   return (
     <main className="min-h-screen bg-[#050507] text-gray-200 flex flex-col overflow-hidden">
-      <div className="bg-[#0a0a0f] border-b border-white/5 p-4 flex items-center justify-between shadow-2xl z-50">
+      <div className="bg-[#0a0a0f] border-b border-white/5 h-[72px] px-6 flex items-center justify-between shadow-2xl shrink-0 z-50">
         <h1 className="text-xl font-black uppercase tracking-tighter text-white flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-          RADAR IA AO VIVO
+          <Radio size={24} className="text-[#00c83a]" />
+          RADAR AVANÇADO
         </h1>
         <div className="flex items-center gap-3">
           <button 
@@ -541,11 +548,11 @@ export default function RadarPage() {
           
           <LiveHistoryCard data={data} maxItems={35} />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#0a0a0f] p-4 rounded-lg border border-white/5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 p-4 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Limites de Casas (Gale)</label>
+              <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Quantidade de entradas</label>
               <select className="bg-[#12141c] border border-white/10 text-white px-3 py-1.5 rounded-md outline-none focus:border-[#e51e3e]" value={casasLimit} onChange={(e) => setCasasLimit(Number(e.target.value))}>
-                {[3,4,5,6,7,8,9,10,11,12].map(num => <option key={num} value={num}>{num} Casas</option>)}
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(num => <option key={num} value={num}>{num} {num === 1 ? 'Entrada' : 'Entradas'}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1">
@@ -565,7 +572,7 @@ export default function RadarPage() {
           {/* SOMATÓRIO DAS APOSTAS & PLACAR GERAL (MOVIDO PARA CIMA) */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {/* Placar Geral */}
-            <div className="bg-gradient-to-r from-[#12141c] via-[#0a0a0f] to-[#12141c] border border-white/10 rounded-xl p-4 shadow-xl relative overflow-hidden flex flex-col justify-center">
+            <div className={`${CARD} p-4 justify-center`}>
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
               <div className="flex justify-between items-start mb-2">
                  <div className="flex flex-col gap-0">
@@ -592,7 +599,7 @@ export default function RadarPage() {
             </div>
 
             {/* Exposição Financeira */}
-            <div className="bg-gradient-to-r from-[#12141c] via-[#0a0a0f] to-[#12141c] border border-white/10 rounded-xl p-4 shadow-xl relative overflow-hidden flex flex-col justify-center">
+            <div className={`${CARD} p-4 justify-center`}>
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#4ade80] to-transparent"></div>
               <div className="flex justify-between items-start mb-2">
                 <div className="flex flex-col gap-0">
@@ -637,41 +644,43 @@ export default function RadarPage() {
 
           <div className="flex flex-col gap-2">
             <h2 className="text-sm font-black uppercase text-white tracking-widest">ESTRATÉGIAS AO VIVO</h2>
-            <div className="bg-[#0a0a0f] rounded-lg border border-white/5 overflow-auto shadow-2xl max-h-[500px] custom-scrollbar">
-              <table className="w-full text-left border-collapse min-w-max">
-                <thead className="sticky top-0 z-20 shadow-xl">
-                  <tr className="bg-[#789bde] text-white">
-                    <th className="p-3 border-r border-white/20 text-center font-medium">PADRÃO</th>
-                    <th className="p-3 border-r border-white/20 text-center font-medium cursor-pointer" onClick={() => handleSort('TX')}>TX % {sortColumn === 'TX' ? (sortDirection === 'desc' ? '↓' : '↑') : ''}</th>
-                    <th className="p-3 border-r border-white/20 text-center font-medium">WIN</th>
-                    <th className="p-3 border-r border-white/20 text-center font-medium">LOSS</th>
-                    <th className="p-3 border-r border-white/20 text-center font-medium cursor-pointer" onClick={() => handleSort('PNL')}>PNL {sortColumn === 'PNL' ? (sortDirection === 'desc' ? '↓' : '↑') : ''}</th>
-                    <th className="p-3 border-r border-white/20 text-center font-medium">SM</th>
-                    <th className="p-3 border-r border-white/20 text-center font-medium cursor-pointer" onClick={() => handleSort('SA')}>SA {sortColumn === 'SA' ? (sortDirection === 'desc' ? '↓' : '↑') : ''}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {liveOpportunities.map((stat) => (
-                    <motion.tr layout key={stat.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                      <td className="p-2 border-r border-white/5 flex gap-1 justify-center">
-                        {stat.patternArray.map((v, i) => {
-                          const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
-                          const isColor = v === 'V' || v === 'P' || v === 'B';
-                          if (isColor) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }
-                          else { if (n === 0) { bg = 'bg-white'; text = 'text-black'; } else if (n >= 1 && n <= 7) bg = 'bg-[#f12c4c]'; }
-                          return <div key={i} className={`w-8 h-8 rounded-sm border border-black/30 flex items-center justify-center text-[10px] font-black ${bg} ${text}`}>{isColor ? '' : v}</div>;
-                        })}
-                      </td>
-                      <td className="p-3 border-r border-white/5 text-center text-[#4ade80] font-bold">{stat.winRate}%</td>
-                      <td className="p-3 border-r border-white/5 text-center text-gray-300 font-semibold">{stat.win}</td>
-                      <td className="p-3 border-r border-white/5 text-center text-gray-300 font-semibold">{stat.loss}</td>
-                      <td className={`p-3 border-r border-white/5 text-center font-bold ${stat.pnl >= 0 ? 'text-[#4ade80]' : 'text-[#f12c4c]'}`}>R$ {stat.pnl.toFixed(0)}</td>
-                      <td className={`p-3 border-r border-white/5 text-center text-white font-bold ${stat.sa >= stat.sm - 1 && stat.sa > 0 ? 'bg-[#8b008b]' : ''}`}>{stat.sm}</td>
-                      <td className={`p-3 border-r border-white/5 text-center text-white font-bold ${stat.sa >= stat.sm - 1 && stat.sa > 0 ? 'bg-[#8b008b]' : ''}`}>{stat.sa}</td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className={`${CARD}`}>
+              <div className="overflow-auto max-h-[500px] custom-scrollbar w-full">
+                <table className="w-full text-left border-collapse min-w-max">
+                  <thead className="sticky top-0 z-20 shadow-xl">
+                    <tr className="bg-gradient-to-b from-[#00c83a]/20 to-transparent border-b border-[#00c83a]/30 text-white">
+                      <th className="p-3 border-r border-white/20 text-center font-medium">PADRÃO</th>
+                      <th className="p-3 border-r border-white/20 text-center font-medium cursor-pointer" onClick={() => handleSort('TX')}>TX % {sortColumn === 'TX' ? (sortDirection === 'desc' ? '↓' : '↑') : ''}</th>
+                      <th className="p-3 border-r border-white/20 text-center font-medium">WIN</th>
+                      <th className="p-3 border-r border-white/20 text-center font-medium">LOSS</th>
+                      <th className="p-3 border-r border-white/20 text-center font-medium cursor-pointer" onClick={() => handleSort('PNL')}>PNL {sortColumn === 'PNL' ? (sortDirection === 'desc' ? '↓' : '↑') : ''}</th>
+                      <th className="p-3 border-r border-white/20 text-center font-medium cursor-pointer" onClick={() => handleSort('SM')}>SM {sortColumn === 'SM' ? (sortDirection === 'desc' ? '↓' : '↑') : ''}</th>
+                      <th className="p-3 border-r border-white/20 text-center font-medium cursor-pointer" onClick={() => handleSort('SA')}>SA {sortColumn === 'SA' ? (sortDirection === 'desc' ? '↓' : '↑') : ''}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveOpportunities.map((stat) => (
+                      <motion.tr layout key={stat.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                        <td className="p-2 border-r border-white/5 flex gap-1 justify-center">
+                          {stat.patternArray.map((v, i) => {
+                            const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
+                            const isColor = v === 'V' || v === 'P' || v === 'B';
+                            if (isColor) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }
+                            else { if (n === 0) { bg = 'bg-white'; text = 'text-black'; } else if (n >= 1 && n <= 7) bg = 'bg-[#f12c4c]'; }
+                            return <div key={i} className={`w-8 h-8 rounded-sm border border-black/30 flex items-center justify-center text-[10px] font-black ${bg} ${text}`}>{isColor ? '' : v}</div>;
+                          })}
+                        </td>
+                        <td className="p-3 border-r border-white/5 text-center text-[#4ade80] font-bold">{stat.winRate}%</td>
+                        <td className="p-3 border-r border-white/5 text-center text-gray-300 font-semibold">{stat.win}</td>
+                        <td className="p-3 border-r border-white/5 text-center text-gray-300 font-semibold">{stat.loss}</td>
+                        <td className={`p-3 border-r border-white/5 text-center font-bold ${stat.pnl >= 0 ? 'text-[#4ade80]' : 'text-[#f12c4c]'}`}>R$ {stat.pnl.toFixed(0)}</td>
+                        <td className={`p-3 border-r border-white/5 text-center text-white font-bold ${stat.sa >= stat.sm - 1 && stat.sa > 0 ? 'bg-[#8b008b]' : ''}`}>{stat.sm}</td>
+                        <td className={`p-3 border-r border-white/5 text-center text-white font-bold ${stat.sa >= stat.sm - 1 && stat.sa > 0 ? 'bg-[#8b008b]' : ''}`}>{stat.sa}</td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -707,8 +716,8 @@ export default function RadarPage() {
                 const currentActive = activeCycles.filter(c => c.size === size).length;
                 const highlight = s.sa >= s.sm - 1 && s.sa > 0;
                 return (
-                  <motion.div key={size} whileHover={{ y: -5 }} className="bg-[#0a0a0f] border border-white/5 rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden group shadow-lg">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#eab308]/20 to-transparent"></div>
+                  <motion.div key={size} whileHover={{ y: -5 }} className={`${CARD} p-5 gap-4 group`}>
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00c83a]/40 to-transparent"></div>
                     <div className="flex justify-between items-start">
                       <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-black uppercase tracking-tighter">Confluência</span><h3 className="text-xl font-black text-white">{size}{size === 14 ? '+' : ''} Estrat.</h3></div>
                       <div className={`p-2 rounded-xl border ${currentActive > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-white/5 border-white/10'}`}><span className={`text-[9px] font-black ${currentActive > 0 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`}>{currentActive > 0 ? `${currentActive} ATIVOS` : 'EM ESPERA'}</span></div>
@@ -753,8 +762,8 @@ export default function RadarPage() {
         </section>
 
         {showSidebar && (
-        <aside className="w-96 bg-[#0a0a0f] border-l border-white/5 flex flex-col shadow-2xl overflow-hidden">
-          <div className="p-6 border-b border-white/5 flex flex-col gap-4 shrink-0">
+        <aside className="w-96 bg-[#0f141e]/95 backdrop-blur-xl border-l border-[#00c83a]/30 flex flex-col shadow-[-8px_0_32px_rgba(0,0,0,0.5)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#00c83a]/20 bg-gradient-to-b from-[#00c83a]/10 to-transparent flex flex-col gap-4 shrink-0">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-black uppercase text-white tracking-widest">Confluências Reais ({periodHoursConfluencias}H)</h2>
               <span className="text-[10px] text-gray-500">{confluences.length} Combos</span>

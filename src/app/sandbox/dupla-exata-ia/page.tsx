@@ -45,6 +45,229 @@ export default function DuplaExataSimulador() {
 
   const [report, setReport] = useState<Scoreboard | null>(null);
 
+  // IA Otimizadora
+  const [aiRunning, setAiRunning] = useState(false);
+  const [aiProgress, setAiProgress] = useState({ currentLoop: 0, totalLoops: 3, percent: 0 });
+  const [aiRanking, setAiRanking] = useState<any[]>([]);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiMinWrTarget, setAiMinWrTarget] = useState(8);
+  const [aiMinSignalsTarget, setAiMinSignalsTarget] = useState(50);
+  const [aiDaysToFetch, setAiDaysToFetch] = useState(5);
+
+  const startAIOptimizer = async () => {
+    setLoading(true);
+    setAiRunning(true);
+    setShowAiPanel(true);
+    setAiRanking([]);
+    shouldStopRef.current = false;
+
+    try {
+        const fetchRes = await fetch(`/api/results/period?hours=${aiDaysToFetch * 24}`); // Usa os dias definidos na IA
+        const json = await fetchRes.json();
+        if (!json.data || json.data.length === 0) throw new Error('Sem dados no DB para a IA.');
+        
+        const fullData = json.data.map((r: any) => ({
+            ...r,
+            color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
+            roll: r.roll?.toString()
+        }));
+
+        let allResults: any[] = [];
+        let totalTests = 0;
+
+        // Monta a Fila de Cenários a testar
+        const queue: any[] = [];
+        for (let lb of [24, 72, 120]) {
+            for (let casas of [5, 10]) {
+                for (let minPerc of [5, 8, 12, 20]) {
+                    for (let minSa of [0, 5, 10]) {
+                        queue.push({ lookback: lb, casas, minPerc, minSa, minSm: 0 });
+                    }
+                }
+            }
+        }
+
+        for (let i = 0; i < queue.length; i++) {
+            if (shouldStopRef.current) break;
+            const cfg = queue[i];
+
+            // 1. Atualização Visual do Macro (Fisicamente na tela)
+            setLookbackHours(cfg.lookback);
+            setCasasLimit(cfg.casas);
+            setMinHitsFilter(cfg.minPerc);
+            setMinSaFilter(cfg.minSa);
+            totalTests++;
+
+            setAiProgress({ currentLoop: i + 1, totalLoops: queue.length, percent: 0 });
+            await new Promise(r => setTimeout(r, 50)); // Pausa pro humano ver a tela mudando
+
+            // === MOTOR DE TESTE INDIVIDUAL (Roda 1 cenário por completo) ===
+            let wins = 0;
+            let losses = 0;
+            let signals = 0;
+            let maxLossStreak = 0;
+            let currentLossStreak = 0;
+            const pendingPreds: Record<number, boolean> = {};
+            const lookbackRecords = cfg.lookback * 120;
+
+            for (let T = lookbackRecords; T < fullData.length; T++) {
+                if (shouldStopRef.current) break;
+
+                const latestStone = fullData[T];
+                const isBranco = latestStone.color.includes('Branco') || latestStone.roll === '0';
+
+                if (pendingPreds[T]) {
+                    signals++;
+                    if (isBranco) {
+                        wins++;
+                        currentLossStreak = 0;
+                    } else {
+                        losses++;
+                        currentLossStreak++;
+                        if (currentLossStreak > maxLossStreak) maxLossStreak = currentLossStreak;
+                    }
+                }
+
+                // Cria matriz limitando o cálculo para manter o navegador 100% liso
+                const analysisData = fullData.slice(T - lookbackRecords, T + 1);
+                const totalsGrid = Array(15).fill(0).map(() => Array(15).fill(0).map(() => Array(cfg.casas).fill(0)));
+                const brancoSaGrid = Array(15).fill(0).map(() => Array(15).fill(0).map(() => Array(cfg.casas).fill(0)));
+                const brancoSmGrid = Array(15).fill(0).map(() => Array(15).fill(0).map(() => Array(cfg.casas).fill(0)));
+                const brancoHitsGrid = Array(15).fill(0).map(() => Array(15).fill(0).map(() => Array(cfg.casas).fill(0)));
+
+                for (let k = 1; k < analysisData.length; k++) {
+                    const currentRoll = analysisData[k];
+                    const prevRoll = analysisData[k - 1];
+                    const p1 = parseInt(prevRoll.roll as string);
+                    const p2 = parseInt(currentRoll.roll as string);
+                    if (isNaN(p1) || isNaN(p2)) continue;
+                    const isBrancoLocal = currentRoll.color.includes('Branco') || currentRoll.roll === '0';
+
+                    for (let cCasa = 1; cCasa <= cfg.casas; cCasa++) {
+                        const pairIndex2 = k - cCasa;
+                        const pairIndex1 = pairIndex2 - 1;
+                        if (pairIndex1 >= 0) {
+                            const trig1 = parseInt(analysisData[pairIndex1].roll as string);
+                            const trig2 = parseInt(analysisData[pairIndex2].roll as string);
+                            if (!isNaN(trig1) && !isNaN(trig2) && trig1 >= 0 && trig1 <= 14 && trig2 >= 0 && trig2 <= 14) {
+                                totalsGrid[trig1][trig2][cCasa - 1]++;
+                                if (isBrancoLocal) {
+                                    brancoSaGrid[trig1][trig2][cCasa - 1] = 0;
+                                    brancoHitsGrid[trig1][trig2][cCasa - 1]++;
+                                } else {
+                                    brancoSaGrid[trig1][trig2][cCasa - 1]++;
+                                    if (brancoSaGrid[trig1][trig2][cCasa - 1] > brancoSmGrid[trig1][trig2][cCasa - 1]) {
+                                        brancoSmGrid[trig1][trig2][cCasa - 1] = brancoSaGrid[trig1][trig2][cCasa - 1];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                const p1Target = parseInt(fullData[T - 1]?.roll as string);
+                const p2Target = parseInt(latestStone?.roll as string);
+                
+                if (!isNaN(p1Target) && !isNaN(p2Target)) {
+                    for (let cCasa = 0; cCasa < cfg.casas; cCasa++) {
+                        const total = totalsGrid[p1Target][p2Target][cCasa];
+                        if (total > 0) {
+                            const hits = brancoHitsGrid[p1Target][p2Target][cCasa];
+                            const sa = brancoSaGrid[p1Target][p2Target][cCasa];
+                            const sm = brancoSmGrid[p1Target][p2Target][cCasa];
+                            const perc = (hits / total) * 100;
+                            
+                            if (perc >= cfg.minPerc && sa >= cfg.minSa && sm >= cfg.minSm) {
+                                pendingPreds[T + cCasa + 1] = true;
+                            }
+                        }
+                    }
+                }
+
+                // Libera a Thread do navegador para ele não "engasgar"
+                if (T % 50 === 0) {
+                    setAiProgress(prev => ({ ...prev, percent: Math.round(((T - lookbackRecords) / (fullData.length - lookbackRecords)) * 100) }));
+                    await new Promise(r => setTimeout(r, 0));
+                }
+            } // Fim da viagem no tempo desse cenário
+
+            // 3. Avaliação de Risco do Cenário
+            const wr = signals > 0 ? (wins / signals) * 100 : 0;
+            
+            // Salva TODAS as configurações que deram algum sinal para sempre termos um Top 5
+            if (signals > 0) {
+                // Pontuação baseada no WinRate, mas priorizando quem bate a meta
+                let score = wr - (maxLossStreak * 2);
+                if (wins >= aiMinSignalsTarget && wr >= aiMinWrTarget) {
+                    score += 1000; // Bônus massivo para quem atinge a meta do usuário
+                }
+                
+                allResults.push({
+                    ...cfg,
+                    signals, wins, maxLossStreak,
+                    winRate: wr,
+                    score: score
+                });
+                
+                const sorted = [...allResults].sort((a, b) => b.score - a.score);
+                setAiRanking(sorted.slice(0, 5));
+            }
+        } // Fim da Fila
+
+        if (!shouldStopRef.current) {
+            const sortedFinal = [...allResults].sort((a, b) => b.score - a.score);
+            setAiRanking(sortedFinal.slice(0, 5));
+            
+            // Gera Relatório Automático em .txt
+            if (sortedFinal.length > 0) {
+                let txtContent = `=== RELATÓRIO IA GENÉTICA - DUPLA EXATA ===\n`;
+                txtContent += `Gerado em: ${new Date().toLocaleString()}\n`;
+                txtContent += `Meta do Usuário: ${aiMinWrTarget}% WinRate Mínimo | ${aiMinSignalsTarget} Wins Mínimos\n\n`;
+                
+                sortedFinal.slice(0, 20).forEach((rk, idx) => {
+                    txtContent += `[ #${idx + 1} ] =====================\n`;
+                    const bateuMeta = (rk.wins >= aiMinSignalsTarget && rk.winRate >= aiMinWrTarget) ? "⭐ BATEU A META ⭐" : "Não atingiu a meta.";
+                    txtContent += `Status: ${bateuMeta}\n`;
+                    txtContent += `Configuração: Memória ${rk.lookback}h | Casas ${rk.casas} | Assertividade ${rk.minPerc}% a 100% | SA ${rk.minSa} a 999\n`;
+                    txtContent += `Performance: ${rk.wins} Wins / ${rk.signals} Sinais (WinRate: ${rk.winRate.toFixed(1)}%)\n`;
+                    txtContent += `Pior Quebra de Banca: ${rk.maxLossStreak} seguidas\n\n`;
+                });
+
+                const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `ia_ranking_dupla_exata_${new Date().getTime()}.txt`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            
+            alert(`Auto-Piloto IA Finalizado!\nAvaliados: ${totalTests} padrões complexos.\nO relatório .txt foi baixado no seu computador!`);
+        }
+
+    } catch (err: any) {
+        alert(err.message || "Erro no otimizador.");
+    } finally {
+        setLoading(false);
+        setAiRunning(false);
+    }
+  };
+
+  const applyAiConfig = (rk: any) => {
+      setDaysToFetch(aiDaysToFetch);
+      setLookbackHours(rk.lookback);
+      setCasasLimit(rk.casas);
+      setTargetMode('branco');
+      setMinHitsFilter(rk.minPerc);
+      setMaxHitsFilter(100);
+      setMinSaFilter(rk.minSa);
+      setMaxSaFilter(999);
+      setMinSmFilter(rk.minSm);
+      
+      alert("Parâmetros Genéticos aplicados com sucesso nas caixas do painel! Role para baixo e clique em 'Iniciar Backtest Padrão' para ver o gráfico de ciclos completos.");
+  };
+
   const startSimulation = async () => {
     setLoading(true);
     setSimulating(true);
@@ -486,24 +709,121 @@ Gerado em: ${new Date().toLocaleString()}
                />
             </div>
          </div>
+
       </div>
 
+      {/* PAINEL DA INTELIGÊNCIA ARTIFICIAL */}
+      {showAiPanel && (
+         <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 p-6 rounded-xl shadow-[0_0_30px_rgba(168,85,247,0.15)] flex flex-col gap-4">
+            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+               <div>
+                 <h3 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 flex items-center gap-2">
+                    🧬 IA Genética: Buscador de Filtros Ocultos
+                 </h3>
+                 <p className="text-xs text-gray-400 font-bold mt-1">
+                    Defina sua meta e a IA fará centenas de simulações para achar a fórmula mágica.
+                 </p>
+               </div>
+               <button onClick={() => setShowAiPanel(false)} className="text-gray-500 hover:text-white uppercase text-[10px] font-black tracking-widest">Fechar IA</button>
+            </div>
+
+            {!aiRunning && aiRanking.length === 0 && (
+               <div className="flex flex-col gap-4 bg-[#0a0a0f] p-4 rounded-lg border border-white/5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Base de Dados</label>
+                        <select value={aiDaysToFetch} onChange={e => setAiDaysToFetch(Number(e.target.value))} className="bg-[#12141c] text-white border border-white/10 rounded p-2 font-black outline-none focus:border-purple-500 cursor-pointer">
+                            {[1, 2, 3, 5, 7, 10, 15].map(d => <option key={d} value={d}>Últimos {d} Dias</option>)}
+                        </select>
+                     </div>
+                     <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Meta: Win Rate Mínimo (%)</label>
+                        <input type="number" value={aiMinWrTarget} onChange={e => setAiMinWrTarget(Number(e.target.value))} className="bg-[#12141c] text-green-400 border border-white/10 rounded p-2 font-black outline-none focus:border-purple-500" />
+                     </div>
+                     <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Meta: Qtd Mínima de Wins (Acertos)</label>
+                        <input type="number" value={aiMinSignalsTarget} onChange={e => setAiMinSignalsTarget(Number(e.target.value))} className="bg-[#12141c] text-white border border-white/10 rounded p-2 font-black outline-none focus:border-purple-500" />
+                     </div>
+                  </div>
+                  <button onClick={startAIOptimizer} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black px-4 py-3 rounded-lg text-sm transition-colors uppercase tracking-widest mt-2">
+                     Iniciar Busca por IA
+                  </button>
+               </div>
+            )}
+
+            {aiRunning && (
+                <div className="flex flex-col gap-2 bg-[#0a0a0f] p-4 rounded-lg border border-white/5">
+                   <div className="flex justify-between items-center text-[10px] font-black text-purple-300 uppercase tracking-widest">
+                      <span>Memória {aiProgress.currentLoop} de {aiProgress.totalLoops}</span>
+                      <span className="text-white">{aiProgress.percent}% processado</span>
+                   </div>
+                   <div className="w-full bg-gray-900 h-2 rounded-full overflow-hidden shadow-inner">
+                      <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-full transition-all duration-300 ease-out" style={{ width: `${aiProgress.percent}%` }} />
+                   </div>
+                   <span className="text-[9px] text-gray-500 uppercase tracking-widest text-center animate-pulse">Testando matrizes na Nuvem... Pulando (Pruning) cenários fracos.</span>
+                </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+               <h4 className="text-xs font-bold text-white uppercase tracking-widest mb-1">👑 Top 5 Configurações Encontradas (Score)</h4>
+               {aiRanking.length === 0 ? (
+                  <div className="text-sm font-bold text-gray-500 text-center py-6">Nenhum padrão robusto encontrado ainda. Aguarde a IA calcular...</div>
+               ) : (
+                  <div className="grid grid-cols-1 gap-2">
+                     {aiRanking.map((rk, idx) => (
+                        <div key={idx} className="bg-[#12141c] border border-white/10 rounded-lg p-3 flex justify-between items-center">
+                           <div className="flex flex-col">
+                              <span className="text-sm font-black text-green-400">WIN RATE: {rk.winRate.toFixed(1)}%</span>
+                              <span className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">
+                                 Sinais: {rk.signals} | Wins: {rk.wins} | Pior Quebra: {rk.maxLossStreak}
+                              </span>
+                           </div>
+                           <div className="flex flex-col md:flex-row items-end gap-2 text-right">
+                              <div className="flex flex-col items-end">
+                                 <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1">Cópia Rápida (Filtros):</span>
+                                 <span className="text-[11px] font-medium text-white bg-[#0a0a0f] px-2 py-1 rounded border border-white/5 whitespace-nowrap">
+                                    Memória: {rk.lookback}h | Casas: {rk.casas} | Assert: {rk.minPerc}% a 100% | SA: {rk.minSa} a 999 | SM Min: {rk.minSm}
+                                 </span>
+                              </div>
+                              <button onClick={() => applyAiConfig(rk)} className="bg-green-600/20 hover:bg-green-500/40 text-green-400 border border-green-500/50 font-black text-[10px] px-3 py-1.5 rounded uppercase tracking-widest transition-colors h-fit">
+                                 Aplicar Filtros
+                              </button>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               )}
+            </div>
+         </div>
+      )}
+
+      {/* BOTÃO DA IA E BOTÃO MANUAL (MODIFICADOS) */}
       <div className="mt-4 flex gap-4">
          {!simulating ? (
-            <button 
-               onClick={startSimulation} disabled={loading}
-               className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white font-black uppercase tracking-widest text-sm py-4 rounded-xl shadow-[0_0_20px_rgba(229,30,62,0.3)] transition-all flex justify-center items-center gap-2 disabled:opacity-50"
-            >
-               {loading ? <RefreshCw size={20} className="animate-spin" /> : <Play size={20} />}
-               {loading ? 'Preparando Dados...' : 'Iniciar Backtest Time-Machine'}
-            </button>
+            <>
+               <button 
+                  onClick={startSimulation} disabled={loading}
+                  className="flex-1 bg-[#1a1b26] border border-white/10 hover:border-red-500/50 text-white font-black uppercase tracking-widest text-sm py-4 rounded-xl transition-all flex justify-center items-center gap-2"
+               >
+                  {loading && !aiRunning ? <RefreshCw size={20} className="animate-spin" /> : <Play size={20} />}
+                  Iniciar Backtest Padrão
+               </button>
+               <button 
+                  onClick={() => setShowAiPanel(true)} disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-purple-700 to-blue-700 hover:from-purple-600 hover:to-blue-600 text-white font-black uppercase tracking-widest text-sm py-4 rounded-xl shadow-[0_0_20px_rgba(147,51,234,0.4)] transition-all flex justify-center items-center gap-2 relative overflow-hidden"
+               >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse pointer-events-none" style={{ mixBlendMode: 'overlay' }}></div>
+                  <Target size={20} />
+                  IA: Descobrir Melhor Padrão
+               </button>
+            </>
          ) : (
             <button 
                onClick={stopSimulation}
-               className="flex-1 bg-gray-800 text-white border border-gray-600 hover:bg-gray-700 font-black uppercase tracking-widest text-sm py-4 rounded-xl transition-all flex justify-center items-center gap-2"
+               className="w-full bg-red-900/50 text-red-200 border border-red-500/50 hover:bg-red-800 font-black uppercase tracking-widest text-sm py-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(220,38,38,0.3)]"
             >
                <StopCircle size={20} />
-               Parar Simulação
+               Abortar Operação
             </button>
          )}
       </div>

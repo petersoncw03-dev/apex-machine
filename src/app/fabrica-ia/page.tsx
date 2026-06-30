@@ -517,12 +517,7 @@ function GeradorSaaSPageInner() {
             <CloudUpload className="text-purple-500" />
             FÁBRICA IA
           </h1>
-          <button 
-            onClick={() => setShowTrendModal(true)}
-            className="flex items-center gap-2 bg-[#eab308]/10 hover:bg-[#eab308]/20 border border-[#eab308]/30 px-3 py-1.5 rounded-lg transition-all text-[#eab308] font-bold text-[10px] uppercase tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.1)]"
-          >
-            <Zap size={14} /> TENDÊNCIA RÁPIDA
-          </button>
+          {/* TENDENCIA RAPIDA REMOVIDO */}
         </div>
         <div className="flex items-center gap-3">
           {discovered.length > 0 && <span className="text-xs text-gray-400 font-bold">{discovered.length} padrões</span>}

@@ -7,7 +7,7 @@ import {
   Radio, BrainCircuit, BarChart3, FlaskConical, Bot, Zap,
   LineChart, TrendingUp, Clock, ChevronLeft, ChevronRight,
   Database, Grid3X3, PlaySquare, Target, SlidersHorizontal,
-  Pickaxe, LogOut, RefreshCcw, Home, BarChart2, Activity
+  Pickaxe, LogOut, RefreshCcw, Home, BarChart2, Activity, Droplets
 } from 'lucide-react';
 
 interface NavItem {
@@ -27,8 +27,9 @@ const sections: NavSection[] = [
     title: 'Ao Vivo',
     items: [
       { href: '/painel-master', label: 'Painel Master', icon: <Home size={18} />, badge: 'Live' },
-      { href: '/grafico', label: 'Gráfico Financeiro', icon: <LineChart size={18} /> },
       { href: '/radar', label: 'Radar Avançado', icon: <Radio size={18} /> },
+      // { href: '/radar-rec', label: 'Radar na REC', icon: <Zap size={18} />, badge: 'Novo' },
+      // { href: '/radar-chuva', label: 'Radar de Chuva', icon: <Droplets size={18} />, badge: 'Novo' },
     ]
   },
   {
@@ -44,8 +45,8 @@ const sections: NavSection[] = [
       { href: '/laboratorio', label: 'Laboratório de Padrões', icon: <FlaskConical size={18} /> },
       { href: '/casa-exata', label: 'Casa Exata', icon: <TrendingUp size={18} /> },
       { href: '/dupla-exata', label: 'Dupla Exata', icon: <Target size={18} />, badge: 'Novo' },
+      { href: '/analise-pnl', label: 'Stress Test', icon: <LineChart size={18} />, badge: 'Novo' },
       { href: '/analysis', label: 'Análise Avançada', icon: <Grid3X3 size={18} />, badge: 'Beta' },
-      { href: '/sinais', label: 'Sinais', icon: <BarChart2 size={18} />, badge: 'Novo' },
     ]
   }
 ];

@@ -1,205 +1,178 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff, Send, Cpu, UserPlus } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { ChevronDown, Play, Target, BrainCircuit, Activity, Zap, Cpu, ShieldCheck } from 'lucide-react';
 
-export default function LoginPage() {
-  const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+export default function LandingPage() {
+  const [scrolled, setScrolled] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      router.push('/painel-master');
-    }, 1200);
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToPresentation = () => {
+    const el = document.getElementById('presentation');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <main className="min-h-screen w-full flex flex-col items-center justify-center bg-[#050505] p-4 font-sans selection:bg-[#00ff41]/30 relative overflow-hidden">
-      
-      {/* Luz ambiente de fundo (Glow) */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#00ff41]/[0.06] blur-[100px] rounded-full pointer-events-none z-0"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-[#e51e3e]/[0.03] blur-[80px] rounded-full pointer-events-none z-0 translate-x-[30%] -translate-y-[30%]"></div>
+    <main className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#00ff41]/30 relative overflow-hidden">
+      {/* Luzes de fundo globais */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#00ff41]/[0.05] blur-[120px] rounded-full pointer-events-none z-0"></div>
+      <div className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-[#e51e3e]/[0.02] blur-[150px] rounded-full pointer-events-none z-0"></div>
 
-      {/* Container Principal (Card Premium Glassmorphism com Aura Verde) */}
-      <div className="w-full max-w-[400px] bg-black/40 backdrop-blur-2xl border border-[#00ff41]/10 rounded-[24px] p-8 flex flex-col items-center shadow-[0_0_80px_rgba(0,255,65,0.12),inset_0_0_20px_rgba(0,255,65,0.05)] relative z-10 transition-all duration-500 hover:shadow-[0_0_100px_rgba(0,255,65,0.18),inset_0_0_20px_rgba(0,255,65,0.05)]">
-        
-        {/* Logotipo SVG Apex Machine */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="flex items-center justify-center relative w-20 h-20 mb-1">
-            <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-              <defs>
-                <filter id="glow-green" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-                <filter id="glow-red" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
-              {/* Seta Verde */}
-              <path d="M50 15 L80 65 L70 65 L50 30 L30 65 L20 65 Z" fill="#00ff41" filter="url(#glow-green)" />
-              {/* Seta Vermelha */}
-              <path d="M45 45 L75 60 L45 75 L45 65 L60 60 L45 55 Z" fill="#e51e3e" filter="url(#glow-red)" />
-            </svg>
+      {/* HEADER FIXO */}
+      <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#050505]/80 backdrop-blur-md border-b border-white/5 py-4' : 'bg-transparent py-6'}`}>
+        <div className="max-w-6xl mx-auto px-6 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8">
+              <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+                <path d="M50 15 L80 65 L70 65 L50 30 L30 65 L20 65 Z" fill="#00ff41" />
+                <path d="M45 45 L75 60 L45 75 L45 65 L60 60 L45 55 Z" fill="#e51e3e" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-mono tracking-[0.2em] font-light flex gap-2">
+              <span className="text-[#00ff41]">APEX</span>
+              <span className="text-[#e51e3e]">MACHINE</span>
+            </h1>
           </div>
-          <h1 className="text-xl font-mono tracking-[0.2em] text-white font-light drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] flex gap-2">
-            <span className="text-[#00ff41]">APEX</span>
-            <span className="text-[#e51e3e]">MACHINE</span>
-          </h1>
+          <Link href="/login" className="px-5 py-2 text-xs font-mono font-bold tracking-widest text-white/70 hover:text-white uppercase transition-colors">
+            Login
+          </Link>
         </div>
+      </header>
 
-        {/* Subtítulo com Ícone */}
-        <div className="flex items-center gap-2 text-white/40 text-xs font-mono tracking-widest mb-8">
-          <Cpu size={14} className="text-[#00ff41]" />
-          <span>SISTEMA DE ANÁLISES</span>
-        </div>
-
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-5">
+      {/* HERO SECTION (ATTENTION) */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 z-10">
+        <div className="text-center max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-10 duration-1000 fill-mode-both">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-mono tracking-widest text-[#00ff41] mb-8">
+            <Cpu size={14} />
+            <span>O FUTURO DA ANÁLISE PREDITIVA</span>
+          </div>
           
-          {/* Input Email */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Email</label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#00ff41] transition-colors">
-                <Mail size={16} />
-              </div>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Digite seu email"
-                className="w-full bg-black/50 border border-white/10 hover:border-white/20 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#00ff41]/50 focus:bg-[#00ff41]/[0.02] transition-all duration-300 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]"
-              />
-            </div>
+          <h2 className="text-5xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6">
+            Domine o mercado com <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff41] to-emerald-500 drop-shadow-[0_0_30px_rgba(0,255,65,0.4)]">Inteligência Artificial</span>
+          </h2>
+          
+          <p className="text-lg md:text-xl text-white/50 font-medium max-w-2xl mx-auto mb-12">
+            O ecossistema definitivo para análises precisas, rastreamento de padrões em tempo real e algoritmos que trabalham enquanto você dorme.
+          </p>
+
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto">
+            <button 
+              onClick={scrollToPresentation}
+              className="w-full px-8 py-4 bg-[#00ff41] hover:bg-emerald-400 text-black font-mono font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(0,255,65,0.4)] flex items-center justify-center gap-2"
+            >
+              Quero conhecer o Apex
+              <ChevronDown size={18} />
+            </button>
+            <Link 
+              href="/login"
+              className="w-full px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-mono font-bold text-sm uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2"
+            >
+              Já sou cliente
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* VIDEO / INTEREST SECTION */}
+      <section id="presentation" className="relative py-24 px-6 z-10 bg-black/40 border-y border-white/5 backdrop-blur-md">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl md:text-5xl font-black mb-4">Veja o Apex Machine em Ação</h3>
+            <p className="text-white/50 text-lg">Descubra exatamente como nossa IA encontra as melhores oportunidades do mercado, segundo a segundo.</p>
           </div>
 
-          {/* Input Senha */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Senha</label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#00ff41] transition-colors">
-                <Lock size={16} />
+          {/* VSL (Video Sales Letter) Placeholder */}
+          <div className="relative aspect-video w-full rounded-2xl border border-white/10 bg-black/60 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden group cursor-pointer">
+            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-30 group-hover:opacity-40 transition-opacity"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+            
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-[#00ff41]/20 border border-[#00ff41]/50 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 group-hover:bg-[#00ff41]/30 transition-all duration-300">
+                <Play fill="#00ff41" size={32} className="text-[#00ff41] ml-2" />
               </div>
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Digite sua senha"
-                className="w-full bg-black/50 border border-white/10 hover:border-white/20 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#00ff41]/50 focus:bg-[#00ff41]/[0.02] transition-all duration-300 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]"
-              />
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-white/30 hover:text-white transition-colors"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+            </div>
+
+            <div className="absolute bottom-6 left-6 right-6">
+              <div className="text-sm font-mono tracking-widest text-[#00ff41] mb-2 uppercase">Apresentação Oficial</div>
+              <div className="text-xl font-bold">Como funciona a engrenagem por trás do Apex</div>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Input Confirmar Senha */}
-          {isRegister && (
-            <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-              <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Confirmar Senha</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#00ff41] transition-colors">
-                  <Lock size={16} />
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repita sua senha"
-                  className="w-full bg-black/50 border border-white/10 hover:border-white/20 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#00ff41]/50 focus:bg-[#00ff41]/[0.02] transition-all duration-300 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]"
-                />
+      {/* FEATURES / DESIRE SECTION */}
+      <section className="relative py-32 px-6 z-10">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-20">
+            <h3 className="text-3xl md:text-5xl font-black mb-4">Tecnologia Institucional</h3>
+            <p className="text-white/50 text-lg">Tudo o que você precisa para sair do escuro e operar com visão raio-x.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Feature 1 */}
+            <div className="bg-white/[0.02] border border-white/5 hover:border-[#00ff41]/30 rounded-2xl p-8 transition-colors group">
+              <div className="w-14 h-14 rounded-xl bg-[#00ff41]/10 flex items-center justify-center mb-6 group-hover:bg-[#00ff41]/20 transition-colors">
+                <Activity className="text-[#00ff41]" size={28} />
               </div>
+              <h4 className="text-xl font-bold mb-3">Scanner BCO em Tempo Real</h4>
+              <p className="text-white/50 leading-relaxed">Mapeie 100% das pedras com nosso radar avançado. Histórico infinito sem travamentos, com alertas sonoros nativos e painéis de dominância.</p>
             </div>
-          )}
 
-          {/* Links e Termos */}
-          {!isRegister ? (
-            <div className="flex justify-end -mt-1">
-              <a href="#" className="text-xs font-mono text-white/40 hover:underline hover:text-[#00ff41] transition-colors">
-                Esqueci minha senha
-              </a>
+            {/* Feature 2 */}
+            <div className="bg-white/[0.02] border border-white/5 hover:border-[#00ff41]/30 rounded-2xl p-8 transition-colors group">
+              <div className="w-14 h-14 rounded-xl bg-[#00ff41]/10 flex items-center justify-center mb-6 group-hover:bg-[#00ff41]/20 transition-colors">
+                <BrainCircuit className="text-[#00ff41]" size={28} />
+              </div>
+              <h4 className="text-xl font-bold mb-3">Analista IA Avançado</h4>
+              <p className="text-white/50 leading-relaxed">Deixe que nossa inteligência identifique as zonas de calor, máximas do dia e probabilidade estatística exata antes de você fazer qualquer movimento.</p>
             </div>
-          ) : (
-            <div className="flex items-center gap-2 mt-1">
-              <input type="checkbox" required className="accent-[#00ff41] w-3 h-3 cursor-pointer" />
-              <span className="text-[10px] font-mono text-white/40">
-                Li e concordo com os <a href="/termos" className="text-white hover:text-[#00ff41] underline underline-offset-2">Termos</a> e <a href="/privacidade" className="text-white hover:text-[#00ff41] underline underline-offset-2">Privacidade</a>
-              </span>
-            </div>
-          )}
 
-          {/* Botão Principal */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="relative w-full bg-[#00ff41]/10 border border-[#00ff41]/50 hover:bg-[#00ff41]/20 hover:border-[#00ff41] text-[#00ff41] font-mono tracking-widest font-bold text-xs py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,65,0.1)] hover:shadow-[0_0_25px_rgba(0,255,65,0.25)] disabled:opacity-70 flex justify-center items-center mt-2 overflow-hidden group uppercase"
-          >
-            <div className="absolute inset-0 bg-[#00ff41]/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-            <span className="relative z-10 drop-shadow-[0_0_8px_rgba(0,255,65,0.5)]">
-              {loading ? 'Processando...' : (isRegister ? 'Criar minha conta' : 'Entrar')}
-            </span>
+            {/* Feature 3 */}
+            <div className="bg-white/[0.02] border border-white/5 hover:border-[#00ff41]/30 rounded-2xl p-8 transition-colors group">
+              <div className="w-14 h-14 rounded-xl bg-[#00ff41]/10 flex items-center justify-center mb-6 group-hover:bg-[#00ff41]/20 transition-colors">
+                <Target className="text-[#00ff41]" size={28} />
+              </div>
+              <h4 className="text-xl font-bold mb-3">Simuladores Profissionais</h4>
+              <p className="text-white/50 leading-relaxed">Crie, teste e valide estratégias nos Simuladores de Casa Exata e Dupla Exata. Descubra padrões ocultos sem arriscar seu capital.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA / ACTION SECTION */}
+      <section className="relative py-32 px-6 z-10 bg-gradient-to-b from-transparent to-[#00ff41]/5 border-t border-white/5">
+        <div className="max-w-4xl mx-auto text-center">
+          <h3 className="text-4xl md:text-6xl font-black mb-6">Pronto para a evolução?</h3>
+          <p className="text-xl text-white/50 mb-10 max-w-2xl mx-auto">Junte-se à elite que utiliza o Apex Machine para dominar as probabilidades. Chega de apostas cegas.</p>
+          
+          <button className="px-10 py-5 bg-[#00ff41] hover:bg-emerald-400 text-black font-mono font-black text-lg uppercase tracking-widest rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_50px_rgba(0,255,65,0.4)] flex items-center justify-center gap-3 mx-auto">
+            <ShieldCheck size={24} />
+            Assinar Agora
           </button>
-
-          {/* Divisor OU */}
-          <div className="flex items-center gap-3 my-1 opacity-60">
-            <div className="flex-1 h-px bg-white/10"></div>
-            <span className="text-white/30 font-mono text-[9px] uppercase font-bold tracking-widest">ou</span>
-            <div className="flex-1 h-px bg-white/10"></div>
+          
+          <div className="mt-8 flex items-center justify-center gap-4 text-xs font-mono text-white/30 uppercase tracking-widest">
+            <span>Acesso Imediato</span>
+            <span>•</span>
+            <span>Suporte 24/7</span>
+            <span>•</span>
+            <span>Garantia de 7 dias</span>
           </div>
+        </div>
+      </section>
 
-          {/* Botão Secundário (Toggle) */}
-          <button
-            type="button"
-            onClick={() => setIsRegister(!isRegister)}
-            className="w-full bg-black/30 hover:bg-white/5 border border-white/5 hover:border-white/10 text-white/70 font-mono tracking-widest font-bold text-xs py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 uppercase"
-          >
-            {isRegister ? (
-              'Já tenho uma conta'
-            ) : (
-              <>
-                <UserPlus size={14} className="text-white/40" />
-                Criar conta gratuita
-              </>
-            )}
-          </button>
-
-        </form>
-      </div>
-
-      {/* Botão de Suporte Flutuante (Abaixo do Card) */}
-      <a 
-        href="https://t.me/seusuporte" 
-        target="_blank" 
-        rel="noreferrer" 
-        className="mt-8 relative z-10 flex items-center gap-2 px-5 py-2.5 bg-black/40 backdrop-blur-md border border-white/5 hover:border-[#00ff41]/50 hover:bg-white/5 text-white/50 hover:text-[#00ff41] rounded-full text-xs font-mono tracking-widest font-bold transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] group uppercase"
-      >
-        <Send size={14} className="mb-[1px] opacity-70 group-hover:opacity-100 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all" />
-        Fale com nosso suporte
-      </a>
-
-      {/* Rodapé Invisível (Apenas para fechar o layout) */}
-      <div className="mt-6 text-[10px] text-[#4A5468] font-medium flex gap-1">
-        Versão 1.0.0
-      </div>
-
+      {/* FOOTER */}
+      <footer className="py-8 border-t border-white/5 bg-black text-center text-xs font-mono text-white/30 tracking-widest uppercase relative z-10">
+        <p>© {new Date().getFullYear()} APEX MACHINE. TODOS OS DIREITOS RESERVADOS.</p>
+      </footer>
     </main>
   );
 }

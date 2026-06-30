@@ -331,11 +331,12 @@ export default function CasaExataPage() {
   const isConflicting = showRedGlow && showBlackGlow;
 
   return (
-    <main className="min-h-screen p-4 md:p-8 max-w-[1400px] mx-auto flex flex-col gap-6">
+    <main className="min-h-screen p-4 md:p-8 max-w-full w-full mx-auto flex flex-col gap-6 bg-[#030303]">
+      <div className="max-w-[1400px] mx-auto flex flex-col gap-6 w-full">
 
 
       {/* CONTROLES */}
-      <section className="flex flex-wrap justify-between items-center bg-[#0a0a0f] p-4 rounded-lg border border-white/5">
+      <section className="flex flex-wrap justify-between items-center bg-[#0a0a0f] p-4 rounded-lg border border-white/5 gap-4">
         <div className="flex flex-col">
           <div className="flex items-center gap-3">
              <h2 className="text-2xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-500 flex items-center gap-2">
@@ -349,23 +350,23 @@ export default function CasaExataPage() {
           <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Laboratório Temporal</span>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-4 bg-[#12141c] p-3 rounded-lg border border-white/5">
            <div className="flex flex-col gap-1">
-             <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Modo Alvo</label>
+             <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Modo Alvo</label>
              <select 
-               className="bg-[#12141c] border border-white/10 text-white px-3 py-1.5 rounded-md outline-none focus:border-[#86a8e7] font-bold"
+               className="bg-[#0a0a0f] text-white px-2 py-1 rounded border border-white/10 text-xs font-bold outline-none focus:border-red-500"
                value={targetMode}
                onChange={(e) => setTargetMode(e.target.value as 'branco' | 'cores')}
              >
-               <option value="branco">Brancos (Padrão)</option>
-               <option value="cores">Cores (V/P)</option>
+               <option value="branco">BRANCOS</option>
+               <option value="cores">CORES</option>
              </select>
            </div>
 
            <div className="flex flex-col gap-1">
-             <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Limites de Casas</label>
+             <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Casas</label>
              <select 
-               className="bg-[#12141c] border border-white/10 text-white px-3 py-1.5 rounded-md outline-none focus:border-[#e51e3e]"
+               className="bg-[#0a0a0f] text-white px-2 py-1 rounded border border-white/10 text-xs font-bold outline-none focus:border-red-500"
                value={casasLimit}
                onChange={(e) => setCasasLimit(Number(e.target.value))}
              >
@@ -376,14 +377,14 @@ export default function CasaExataPage() {
            </div>
 
            <div className="flex flex-col gap-1">
-             <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Período de Análise</label>
+             <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Histórico</label>
              <select 
-               className="bg-[#12141c] border border-white/10 text-white px-3 py-1.5 rounded-md outline-none focus:border-[#e51e3e]"
+               className="bg-[#0a0a0f] text-white px-2 py-1 rounded border border-white/10 text-xs font-bold outline-none focus:border-red-500"
                value={periodHours}
                onChange={(e) => setPeriodHours(Number(e.target.value))}
              >
                {[1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48,60,72,84,96,120].map(h => (
-                 <option key={h} value={h}>{h} Horas (~{h * 120} giros)</option>
+                 <option key={h} value={h}>{h}H</option>
                ))}
              </select>
            </div>
@@ -760,6 +761,7 @@ export default function CasaExataPage() {
           </div>
         </div>
       )}
+      </div>
     </main>
   );
 }

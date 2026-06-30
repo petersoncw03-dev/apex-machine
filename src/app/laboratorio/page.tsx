@@ -5,7 +5,7 @@ import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 import { LiveHistoryCard } from '@/components/LiveHistoryCard';
 import { TickerData } from '@/components/Ticker';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FlaskConical, ArrowUpDown, Sigma, Hammer, TrendingUp, PlaySquare } from 'lucide-react';
+import { FlaskConical, ArrowUpDown, Sigma, Hammer, TrendingUp, PlaySquare, Copy } from 'lucide-react';
 import PatternBuilder from '@/components/lab/PatternBuilder';
 import LeiGrandesNumeros from '@/components/lab/LeiGrandesNumeros';
 
@@ -23,6 +23,14 @@ function ColorTable({pats,data,requireHours}:{pats:string[][];data:TickerData[];
   const[sc,setSc]=useState<SortCol>('TX');const[sd,setSd]=useState<'desc'|'asc'>('desc');
   const[snapshot,setSnapshot]=useState<TickerData[]>([]);
   const[isProcessing, setIsProcessing] = useState(false);
+  const [copiedId, setCopiedId] = useState<string|null>(null);
+  
+  const handleCopy = (pat: string[], id: string) => {
+    const formula = `${pat.join(' ')} = branco g${casas - 1}`;
+    navigator.clipboard.writeText(formula);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
   const hs=(c:SortCol)=>{if(sc===c)setSd(d=>d==='desc'?'asc':'desc');else{setSc(c);setSd('desc');}};
   const proc=useMemo(()=>snapshot.map(r=>{const n=parseInt(r.roll as string);let c='B';if(r.color.includes('Vermelho')||(n>=1&&n<=7))c='V';if(r.color.includes('Preto')||(n>=8&&n<=14))c='P';return{isBranco:r.color.includes('Branco')||r.roll==='0',colorCode:c};}),[snapshot]);
   const stats=useMemo(()=>{
@@ -71,12 +79,18 @@ function ColorTable({pats,data,requireHours}:{pats:string[][];data:TickerData[];
     ) : (
         <div className="overflow-x-auto rounded-2xl border border-white/5"><table className="w-full text-left border-collapse min-w-max">
           <thead><tr className="bg-gradient-to-r from-blue-900/40 to-indigo-900/30 text-white border-b border-white/10">
+            <th className="p-3 text-center w-12"></th>
             <th className="p-3 text-center text-xs font-bold uppercase">Padrão</th>
             {(['TX','WIN','LOSS','SM','SA'] as const).map(c=><th key={c} onClick={c==='WIN'||c==='LOSS'?undefined:()=>hs(c as SortCol)} className={`p-3 text-center text-xs font-bold uppercase ${c==='WIN'||c==='LOSS'?'':'cursor-pointer hover:bg-white/10'} transition-colors`}><span className="flex items-center justify-center gap-1">{c}{(c==='TX'||c==='SM'||c==='SA')&&sc===c&&<ArrowUpDown size={10}/>}</span></th>)}
             {Array.from({length:casas}).map((_,i)=><th key={i} className="p-3 text-center text-xs font-bold uppercase text-blue-400">C{i+1}</th>)}
           </tr></thead>
           <tbody>{stats.map(s=>{const wr=((s.win/(s.win+s.loss||1))*100).toFixed(1);const al=s.sm>0&&s.sa>0&&s.sm-s.sa<=2;return(
             <motion.tr layout key={s.id} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.025] transition-colors">
+              <td className="p-2 text-center">
+                <button onClick={() => handleCopy(s.pat, s.id)} className="bg-white/5 hover:bg-white/10 p-1.5 rounded transition-colors text-gray-400 hover:text-white" title="Copiar fórmula">
+                  {copiedId === s.id ? <span className="text-[9px] font-black text-green-400">OK</span> : <Copy size={14}/>}
+                </button>
+              </td>
               <td className="p-2"><div className="flex gap-1 justify-center">{s.pat.map((c:string,i:number)=><div key={i} className={`w-6 h-6 rounded-md border ${c==='V'?'bg-red-600/80 border-red-500/50':'bg-zinc-800/80 border-zinc-600/50'}`}/>)}</div></td>
               <td className="p-3 text-center font-bold text-green-400">{wr}%</td>
               <td className="p-3 text-center text-blue-400">{s.win}</td>
@@ -96,6 +110,14 @@ function NumberTable({pats,data,requireHours}:{pats:number[][];data:TickerData[]
   const[sc,setSc]=useState<SortCol>('TX');const[sd,setSd]=useState<'desc'|'asc'>('desc');
   const[snapshot,setSnapshot]=useState<TickerData[]>([]);
   const[isProcessing, setIsProcessing] = useState(false);
+  const [copiedId, setCopiedId] = useState<string|null>(null);
+  
+  const handleCopy = (pat: number[], id: string) => {
+    const formula = `${pat.join(' ')} = branco g${casas - 1}`;
+    navigator.clipboard.writeText(formula);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
   const hs=(c:SortCol)=>{if(sc===c)setSd(d=>d==='desc'?'asc':'desc');else{setSc(c);setSd('desc');}};
   const stats=useMemo(()=>{
     if(!snapshot.length)return[];
@@ -145,12 +167,18 @@ function NumberTable({pats,data,requireHours}:{pats:number[][];data:TickerData[]
     ) : (
         <div className="overflow-x-auto rounded-2xl border border-white/5"><table className="w-full text-left border-collapse min-w-max">
           <thead><tr className="bg-gradient-to-r from-blue-900/40 to-indigo-900/30 text-white border-b border-white/10">
+            <th className="p-3 text-center w-12"></th>
             <th className="p-3 text-center text-xs font-bold uppercase">Padrão</th>
             {(['TX','WIN','LOSS','SM','SA'] as const).map(c=><th key={c} onClick={c==='WIN'||c==='LOSS'?undefined:()=>hs(c as SortCol)} className={`p-3 text-center text-xs font-bold uppercase ${c==='WIN'||c==='LOSS'?'':'cursor-pointer hover:bg-white/10'} transition-colors`}><span className="flex items-center justify-center gap-1">{c}{(c==='TX'||c==='SM'||c==='SA')&&sc===c&&<ArrowUpDown size={10}/>}</span></th>)}
             {Array.from({length:casas}).map((_,i)=><th key={i} className="p-3 text-center text-xs font-bold uppercase text-blue-400">C{i+1}</th>)}
           </tr></thead>
           <tbody>{stats.map(s=>{const wr=((s.win/(s.win+s.loss||1))*100).toFixed(1);const al=s.sm>0&&s.sa>0&&s.sm-s.sa<=2;return(
             <motion.tr layout key={s.id} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.025] transition-colors">
+              <td className="p-2 text-center">
+                <button onClick={() => handleCopy(s.pat, s.id)} className="bg-white/5 hover:bg-white/10 p-1.5 rounded transition-colors text-gray-400 hover:text-white" title="Copiar fórmula">
+                  {copiedId === s.id ? <span className="text-[9px] font-black text-green-400">OK</span> : <Copy size={14}/>}
+                </button>
+              </td>
               <td className="p-2"><div className="flex gap-1 justify-center">{s.pat.map((n:number,i:number)=><div key={i} className={`w-7 h-7 rounded-md flex items-center justify-center font-bold text-xs ${nc(n)}`}>{n}</div>)}</div></td>
               <td className="p-3 text-center font-bold text-green-400">{wr}%</td>
               <td className="p-3 text-center text-blue-400">{s.win}</td>
@@ -222,7 +250,7 @@ export default function LaboratorioPage(){
   return(
     <main className="min-h-screen bg-[#050507] text-white flex flex-col">
       {/* Header */}
-      <div className="bg-[#0a0a0f] border-b border-white/5 p-4 flex items-center justify-between shadow-2xl">
+      <div className="bg-[#0a0a0f] border-b border-white/5 h-[72px] px-6 flex items-center justify-between shadow-2xl shrink-0 z-50">
         <div className="flex items-center gap-4">
            <h1 className="text-xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center gap-2">
              <FlaskConical className="text-blue-500" size={22}/>Laboratório de Padrões

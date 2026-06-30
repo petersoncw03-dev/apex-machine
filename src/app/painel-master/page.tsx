@@ -29,6 +29,7 @@ export default function RadarAvancado() {
   const [histShowSeconds, setHistShowSeconds] = useState(false);
   const [globalData, setGlobalData] = useState<Roll[]>([]);
   const [loading, setLoading] = useState(true);
+  const [maxDataHours, setMaxDataHours] = useState(168);
 
 
   // ── NOVAS ESTATÍSTICAS (BRANCOS, DUPLOS, TRIPLOS, HORAS) ──────────────
@@ -823,12 +824,12 @@ export default function RadarAvancado() {
   }, []);
 
   const dataRef = useRef<Roll[]>([]);
-  const MAX_DATA_HOURS = 168; // Carrega 7 dias uma única vez para outras áreas
-  const MAX_ROWS = 15000;     // Limite de linhas em memória para não travar o browser
+  const MAX_ROWS = maxDataHours === 360 ? 45000 : 15000;
 
-  const fetchFullData = useCallback(async () => {
+  const fetchGlobalDataPeriod = useCallback(async (hours: number) => {
+    setLoading(true);
     try {
-      const r = await fetch(`/api/results/period?hours=${MAX_DATA_HOURS}`);
+      const r = await fetch(`/api/results/period?hours=${hours}`);
       if (r.ok) {
         const res = await r.json();
         const arr = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
@@ -837,6 +838,12 @@ export default function RadarAvancado() {
       }
     } catch { } finally { setLoading(false); }
   }, []);
+
+  const handleSetMaxDataHours = (hours: number) => {
+    if (hours === maxDataHours) return;
+    setMaxDataHours(hours);
+    fetchGlobalDataPeriod(hours);
+  };
 
   const fetchScannerData = useCallback(async (days: number) => {
     setLoadingScanner(true);
@@ -883,7 +890,7 @@ export default function RadarAvancado() {
         if (isMounted) setLoadingScanner(true); // Animação discreta no botão do scanner
         
         const [r1Full, r2Full] = await Promise.all([
-          fetch(`/api/results/period?hours=${MAX_DATA_HOURS}`),
+          fetch(`/api/results/period?hours=${maxDataHours}`),
           fetch(`/api/results/period?hours=${scanDays * 24}&onlyWhites=true`)
         ]);
         
@@ -1825,9 +1832,20 @@ export default function RadarAvancado() {
                     <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
                       Sequência de Cores
                     </span>
-                    <select className={SEL} value={seqColorLen} onChange={e => setSeqColorLen(+e.target.value)}>
-                      {[5, 6, 7, 8, 9].map(v => <option key={v} value={v}>{v} Cores</option>)}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select 
+                        className={SEL} 
+                        value={maxDataHours} 
+                        onChange={e => handleSetMaxDataHours(+e.target.value)}
+                        title="Período de Histórico"
+                      >
+                        <option value={168}>7 Dias</option>
+                        <option value={360}>15 Dias</option>
+                      </select>
+                      <select className={SEL} value={seqColorLen} onChange={e => setSeqColorLen(+e.target.value)}>
+                        {[5, 6, 7, 8, 9].map(v => <option key={v} value={v}>{v} Cores</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div className="p-4 flex flex-col gap-4">
                     {/* Preto/Vermelho (Ambos) */}
@@ -2262,7 +2280,7 @@ export default function RadarAvancado() {
 
                 </>
               ) : activeTab === 'history' ? (
-                <HistoryPanel 
+                <HistoryPanel playAlert={playAlert} 
                   globalData={globalData} 
                   histRealTime={histRealTime} setHistRealTime={setHistRealTime}
                   histFixedCols={histFixedCols} setHistFixedCols={setHistFixedCols}
@@ -2491,7 +2509,7 @@ function RealTimeClock() {
    return <>{time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</>;
 }
 
-function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols, setHistFixedCols, histReverse, setHistReverse, histShowSeconds, setHistShowSeconds }: any) {
+function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, histFixedCols, setHistFixedCols, histReverse, setHistReverse, histShowSeconds, setHistShowSeconds }: any) {
   const [frozenData, setFrozenData] = useState<any[]>([]);
   const [activeTool, setActiveTool] = useState<'filtros' | 'notificador' | 'validador'>('filtros');
   
@@ -2499,7 +2517,229 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
   const [notifActiveId, setNotifActiveId] = useState(1);
   const [editingPatternId, setEditingPatternId] = useState<number | null>(null);
   const [draggedBlock, setDraggedBlock] = useState<{start: number, end: number} | null>(null);
-  const [validadorMode, setValidadorMode] = useState<'basico' | 'analitico'>('basico');
+    const [validadorMode, setValidadorMode] = useState<'basico' | 'analitico'>('basico');
+  const [validadorResult, setValidadorResult] = useState<any>(null);
+  const [notificadorActive, setNotificadorActive] = useState(false);
+  const [notificadorStats, setNotificadorStats] = useState({ wins: 0, losses: 0, currentSa: 0, maxSa: 0 });
+  const lastScoreboardRollId = useRef<number | null>(null);
+
+  const handleToggleNotificador = () => {
+     setNotificadorActive(!notificadorActive);
+     if (!notificadorActive) {
+         setNotificadorStats({ wins: 0, losses: 0, currentSa: 0, maxSa: 0 });
+     }
+  };
+
+  useEffect(() => {
+     if (!notificadorActive || globalData.length === 0) return;
+     
+     const latestRoll = globalData[0];
+     if (lastScoreboardRollId.current === latestRoll.id) return;
+     
+     const activePattern = notifPatterns.find(p => p.id === notifActiveId);
+     if (!activePattern || !activePattern.sequence || activePattern.sequence.length === 0) return;
+     
+     const seq = activePattern.sequence;
+     const target = activePattern.target || 'Branco';
+     const gales = activePattern.gales || 0;
+     
+     let triggerFound = false;
+     let hit = false;
+     let betFinished = false; // Se a bet já foi ganha ou chegou no limite de gales
+     
+     // 1. Verificar se a rodada ATUAL é o resultado final de uma entrada em andamento (vitória ou red final)
+     for (let g = 0; g <= gales; g++) {
+         const triggerIndex = 1 + g; 
+         if (globalData.length <= triggerIndex + seq.length - 1) continue;
+         
+         let isMatch = true;
+         for (let p = 0; p < seq.length; p++) {
+             const dataRoll = globalData[triggerIndex + seq.length - 1 - p];
+             const patternStone = seq[p];
+             let col = 'P';
+             if (dataRoll.color?.toUpperCase() === 'B' || dataRoll.color?.toUpperCase() === 'BRANCO' || String(dataRoll.roll) === '0') col = 'B';
+             else if (dataRoll.color?.toUpperCase() === 'V' || dataRoll.color?.toUpperCase() === 'VERMELHO' || ['1','2','3','4','5','6','7'].includes(String(dataRoll.roll))) col = 'V';
+             
+             if (patternStone.type === 'color') {
+                 if (patternStone.val !== 'ANY' && patternStone.val !== col) { isMatch = false; break; }
+             } else if (patternStone.type === 'dual') {
+                 if (patternStone.val === 'VP' && col === 'B') { isMatch = false; break; }
+                 if (patternStone.val === 'BP' && col === 'V') { isMatch = false; break; }
+                 if (patternStone.val === 'BV' && col === 'P') { isMatch = false; break; }
+             } else {
+                 if (String(dataRoll.roll) !== String(patternStone.val)) { isMatch = false; break; }
+             }
+         }
+         
+         if (isMatch) {
+             // O padrão disparou exatamente `g` rodadas atrás.
+             triggerFound = true;
+             
+             // Verificar se JÁ GANHOU em algum gale anterior (entre 0 e g-1)
+             // O resultado dos gales passados estão em globalData[1] até globalData[g]
+             let wonInPreviousGale = false;
+             for (let past = 1; past <= g; past++) {
+                 const pastRoll = globalData[past];
+                 let pastCol = 'P';
+                 if (pastRoll.color?.toUpperCase() === 'B' || pastRoll.color?.toUpperCase() === 'BRANCO' || String(pastRoll.roll) === '0') pastCol = 'B';
+                 else if (pastRoll.color?.toUpperCase() === 'V' || pastRoll.color?.toUpperCase() === 'VERMELHO' || ['1','2','3','4','5','6','7'].includes(String(pastRoll.roll))) pastCol = 'V';
+                 
+                 if (target === 'Branco' && pastCol === 'B') wonInPreviousGale = true;
+                 if (target === 'Vermelho' && (pastCol === 'V' || pastCol === 'B')) wonInPreviousGale = true; 
+                 if (target === 'Preto' && (pastCol === 'P' || pastCol === 'B')) wonInPreviousGale = true;
+                 if (wonInPreviousGale) break;
+             }
+             
+             if (!wonInPreviousGale) {
+                 // A bet ainda está valendo. Vamos verificar a rodada atual
+                 let col = 'P';
+                 if (latestRoll.color?.toUpperCase() === 'B' || latestRoll.color?.toUpperCase() === 'BRANCO' || String(latestRoll.roll) === '0') col = 'B';
+                 else if (latestRoll.color?.toUpperCase() === 'V' || latestRoll.color?.toUpperCase() === 'VERMELHO' || ['1','2','3','4','5','6','7'].includes(String(latestRoll.roll))) col = 'V';
+                 
+                 let wonNow = false;
+                 if (target === 'Branco' && col === 'B') wonNow = true;
+                 if (target === 'Vermelho' && (col === 'V' || col === 'B')) wonNow = true; 
+                 if (target === 'Preto' && (col === 'P' || col === 'B')) wonNow = true;
+                 
+                 if (wonNow) {
+                     hit = true;
+                     betFinished = true; // Win
+                 } else if (g === gales) {
+                     hit = false;
+                     betFinished = true; // Loss (max gales reached)
+                 }
+             } else {
+                 // Já tinha ganhado no passado
+                 betFinished = false; 
+             }
+             break; 
+         }
+     }
+     
+     if (triggerFound && betFinished) {
+         setNotificadorStats(prev => {
+             const wins = prev.wins + (hit ? 1 : 0);
+             const losses = prev.losses + (hit ? 0 : 1);
+             const currentSa = hit ? 0 : prev.currentSa + 1;
+             const maxSa = Math.max(prev.maxSa, currentSa);
+             return { wins, losses, currentSa, maxSa };
+         });
+     }
+     
+     // 2. Verificar se o padrão ACABOU DE FORMAR na rodada atual (para tocar o alerta de "Estratégia Confirmada")
+     let isMatchNow = true;
+     if (globalData.length > seq.length - 1) {
+         for (let p = 0; p < seq.length; p++) {
+             const dataRoll = globalData[seq.length - 1 - p];
+             const patternStone = seq[p];
+             let col = 'P';
+             if (dataRoll.color?.toUpperCase() === 'B' || dataRoll.color?.toUpperCase() === 'BRANCO' || String(dataRoll.roll) === '0') col = 'B';
+             else if (dataRoll.color?.toUpperCase() === 'V' || dataRoll.color?.toUpperCase() === 'VERMELHO' || ['1','2','3','4','5','6','7'].includes(String(dataRoll.roll))) col = 'V';
+             
+             if (patternStone.type === 'color') {
+                 if (patternStone.val !== 'ANY' && patternStone.val !== col) { isMatchNow = false; break; }
+             } else if (patternStone.type === 'dual') {
+                 if (patternStone.val === 'VP' && col === 'B') { isMatchNow = false; break; }
+                 if (patternStone.val === 'BP' && col === 'V') { isMatchNow = false; break; }
+                 if (patternStone.val === 'BV' && col === 'P') { isMatchNow = false; break; }
+             } else {
+                 if (String(dataRoll.roll) !== String(patternStone.val)) { isMatchNow = false; break; }
+             }
+         }
+         
+         if (isMatchNow) {
+             playAlert();
+         }
+     }
+     
+     lastScoreboardRollId.current = latestRoll.id;
+  }, [globalData, notificadorActive, notifActiveId, notifPatterns, playAlert]);
+  const handleValidarPadrao = () => {
+      const activePattern = notifPatterns.find(p => p.id === notifActiveId);
+      if (!activePattern || !activePattern.sequence || activePattern.sequence.length === 0) {
+         setValidadorResult(null);
+         return;
+      }
+      
+      const seq = activePattern.sequence;
+      const target = activePattern.target || 'Branco';
+      const gales = activePattern.gales || 0;
+      
+      let wins = 0;
+      let losses = 0;
+      let winsNoGale = 0;
+      let currentSa = 0;
+      let maxSa = 0;
+      let currentWinStreak = 0;
+      let maxWinStreak = 0;
+
+      for (let i = globalData.length - seq.length; i > gales; i--) {
+          let isMatch = true;
+          for (let p = 0; p < seq.length; p++) {
+             const dataRoll = globalData[i + seq.length - 1 - p];
+             const patternStone = seq[p];
+             let col = 'P';
+             if (dataRoll.color?.toUpperCase() === 'B' || dataRoll.color?.toUpperCase() === 'BRANCO' || String(dataRoll.roll) === '0') col = 'B';
+             else if (dataRoll.color?.toUpperCase() === 'V' || dataRoll.color?.toUpperCase() === 'VERMELHO' || ['1','2','3','4','5','6','7'].includes(String(dataRoll.roll))) col = 'V';
+             
+             if (patternStone.type === 'color') {
+                 if (patternStone.val !== 'ANY' && patternStone.val !== col) { isMatch = false; break; }
+             } else if (patternStone.type === 'dual') {
+                 if (patternStone.val === 'VP' && col === 'B') { isMatch = false; break; }
+                 if (patternStone.val === 'BP' && col === 'V') { isMatch = false; break; }
+                 if (patternStone.val === 'BV' && col === 'P') { isMatch = false; break; }
+             } else {
+                 if (String(dataRoll.roll) !== String(patternStone.val)) { isMatch = false; break; }
+             }
+          }
+
+          if (isMatch) {
+             let hit = false;
+             let hitOnGale0 = false;
+             
+             for (let g = 0; g <= gales; g++) {
+                const betRoll = globalData[i - 1 - g];
+                let col = 'P';
+                if (betRoll.color?.toUpperCase() === 'B' || betRoll.color?.toUpperCase() === 'BRANCO' || String(betRoll.roll) === '0') col = 'B';
+                else if (betRoll.color?.toUpperCase() === 'V' || betRoll.color?.toUpperCase() === 'VERMELHO' || ['1','2','3','4','5','6','7'].includes(String(betRoll.roll))) col = 'V';
+                
+                let won = false;
+                if (target === 'Branco' && col === 'B') won = true;
+                if (target === 'Vermelho' && (col === 'V' || col === 'B')) won = true; 
+                if (target === 'Preto' && (col === 'P' || col === 'B')) won = true;
+                
+                if (won) {
+                   hit = true;
+                   if (g === 0) hitOnGale0 = true;
+                   break;
+                }
+             }
+
+             if (hit) {
+                wins++;
+                if (hitOnGale0) winsNoGale++;
+                currentSa = 0;
+                currentWinStreak++;
+                if (currentWinStreak > maxWinStreak) maxWinStreak = currentWinStreak;
+             } else {
+                losses++;
+                currentSa++;
+                if (currentSa > maxSa) maxSa = currentSa;
+                currentWinStreak = 0;
+             }
+          }
+      }
+      
+      const total = wins + losses;
+      const winRate = total > 0 ? ((wins / total) * 100).toFixed(2) + '%' : '0.00%';
+      const noGaleRate = total > 0 ? ((winsNoGale / total) * 100).toFixed(2) + '%' : '0.00%';
+      
+      setValidadorResult({
+         wins, losses, winRate, maxSa, winsNoGale, noGaleRate, maxWinStreak,
+         frequencyText: total > 0 ? `A cada ${Math.round((globalData.length / total))} rodadas` : '--',
+         freqPercent: total > 0 ? Math.min(100, Math.round(100 * (1 - (maxSa / total)))) : 0
+      });
+  };
   
   const cycleScrollRef = useRef<HTMLDivElement>(null);
   const scrollState = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
@@ -2526,7 +2766,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
   };
 
   // Mock de resultados (substituiremos depois pela lógica real)
-  const hasValidationResults = false;
+  const hasValidationResults = validadorResult !== null;
 
   const handleAddPattern = () => {
      const newId = Date.now();
@@ -3214,16 +3454,16 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                      {/* Actions: Notificador / Validador */}
                      {activeTool === 'notificador' && (
                         <div className="flex pt-4 mt-2 border-t border-[#2a2a35]">
-                           <button className="bg-[#00c83a] hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                              Ativar Notificador
+                           <button onClick={handleToggleNotificador} className={`${notificadorActive ? 'bg-red-500 hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-[#00c83a] hover:bg-blue-600 shadow-lg'} text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2`}>
+                              {notificadorActive ? <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>}
+                              {notificadorActive ? 'Parar Notificador' : 'Ativar Notificador'}
                            </button>
                         </div>
                      )}
                      
                      {activeTool === 'validador' && (
                         <div className="flex flex-col pt-4 mt-2 border-t border-[#2a2a35]">
-                           <button className="bg-[#00c83a] hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg w-max">
+                           <button onClick={handleValidarPadrao} className="bg-[#00c83a] hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg w-max">
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                               Validar Padrão
                            </button>
@@ -3238,7 +3478,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                               <span className="text-[12px] font-black uppercase tracking-widest text-slate-400">Resultados</span>
                               <div className="flex items-center bg-black/40 rounded-lg p-0.5 border border-white/5">
                                  <button onClick={() => setValidadorMode('basico')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${validadorMode === 'basico' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>Básico</button>
-                                 <button onClick={() => setValidadorMode('analitico')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all flex items-center gap-1.5 ${validadorMode === 'analitico' ? 'bg-[#00c83a]/20 text-blue-400 shadow-sm border border-blue-500/30' : 'text-slate-500 hover:text-slate-300'}`}>
+                                 <button onClick={() => alert('Em breve!')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all flex items-center gap-1.5 ${validadorMode === 'analitico' ? 'bg-[#00c83a]/20 text-blue-400 shadow-sm border border-blue-500/30' : 'text-slate-500 hover:text-slate-300'}`}>
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                                     Premium
                                  </button>
@@ -3251,21 +3491,21 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                                  <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-md px-3 py-2.5 shadow-sm">
                                     <span className="text-[11px] font-bold text-slate-300">Vitórias:</span>
                                     <div className="flex items-center gap-1.5">
-                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0' : '--'}</span>
+                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? validadorResult.wins : '--'}</span>
                                        <span className="text-slate-500 text-[10px]">•</span>
-                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0.00%' : '--%'}</span>
+                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? validadorResult.winRate : '--%'}</span>
                                     </div>
                                  </div>
                                  <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-md px-3 py-2.5 shadow-sm">
                                     <span className="text-[11px] font-bold text-slate-300">Sequência de vitórias:</span>
-                                    <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0' : '--'}</span>
+                                    <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? validadorResult.maxWinStreak : '--'}</span>
                                  </div>
                                  <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-md px-3 py-2.5 shadow-sm mt-1">
                                     <span className="text-[11px] font-bold text-slate-300">Vitória (sem gale):</span>
                                     <div className="flex items-center gap-1.5">
-                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0' : '--'}</span>
+                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? validadorResult.winsNoGale : '--'}</span>
                                        <span className="text-slate-500 text-[10px]">•</span>
-                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0.00%' : '--%'}</span>
+                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? validadorResult.noGaleRate : '--%'}</span>
                                     </div>
                                  </div>
                                  
@@ -3273,7 +3513,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                                     <div key={i} className="flex justify-between items-center bg-white/5 border border-white/10 rounded-md px-3 py-2.5 shadow-sm">
                                        <span className="text-[11px] font-bold text-slate-300">Vitória (gale {i + 1}):</span>
                                        <div className="flex items-center gap-1.5">
-                                          <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0' : '--'}</span>
+                                          <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? validadorResult.losses : '--'}</span>
                                           <span className="text-slate-500 text-[10px]">•</span>
                                           <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0.00%' : '--%'}</span>
                                        </div>
@@ -3283,14 +3523,14 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                                  <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-md px-3 py-2.5 shadow-sm mt-1">
                                     <span className="text-[11px] font-bold text-slate-300">Derrotas:</span>
                                     <div className="flex items-center gap-1.5">
-                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0' : '--'}</span>
+                                       <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? validadorResult.losses : '--'}</span>
                                        <span className="text-slate-500 text-[10px]">•</span>
                                        <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0.00%' : '--%'}</span>
                                     </div>
                                  </div>
                                  <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-md px-3 py-2.5 shadow-sm">
-                                    <span className="text-[11px] font-bold text-slate-300">Sequência de derrotas:</span>
-                                    <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? '0' : '--'}</span>
+                                    <span className="text-[11px] font-bold text-slate-300">Sequência de derrotas (Máx SA):</span>
+                                    <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{hasValidationResults ? validadorResult.maxSa : '--'}</span>
                                  </div>
                               </div>
                            ) : (
@@ -3306,7 +3546,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                                           <path className="text-white/5" strokeWidth="3" stroke="currentColor" fill="none" strokeDasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                                           {hasValidationResults && <path className="text-[#00c83a] drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]" strokeWidth="3" strokeLinecap="round" stroke="currentColor" fill="none" strokeDasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />}
                                        </svg>
-                                       <span className="absolute text-[11px] font-black text-white">{hasValidationResults ? '85%' : '--%'}</span>
+                                       <span className="absolute text-[11px] font-black text-white">{hasValidationResults ? validadorResult.freqPercent + '%' : '--%'}</span>
                                     </div>
                                  </div>
 
@@ -3431,10 +3671,10 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tempo de Espera (Delay)</span>
                                     <div className="flex items-center justify-between text-[10px] font-bold mb-1">
                                        <span className="text-slate-400">Média:</span>
-                                       <span className="text-yellow-400">{hasValidationResults ? 'A cada 45 min' : '--'}</span>
+                                       <span className="text-yellow-400">{hasValidationResults ? validadorResult.frequencyText : '--'}</span>
                                     </div>
                                     <div className="w-full bg-black/50 h-1.5 rounded-full overflow-hidden">
-                                       <div className={`bg-gradient-to-r from-yellow-500 to-orange-500 h-full ${hasValidationResults ? 'w-[70%]' : 'w-0'}`}></div>
+                                       <div className={`bg-gradient-to-r from-yellow-500 to-orange-500 h-full ${hasValidationResults ? `w-[${validadorResult.freqPercent}%]` : 'w-0'}`}></div>
                                     </div>
                                     <p className="text-[9px] font-bold text-slate-500 mt-1 leading-tight">{hasValidationResults ? 'Após 60 minutos sem aparecer, a probabilidade de acerto sobe para 98%.' : 'Construa e valide um padrão para ver a frequência.'}</p>
                                  </div>
@@ -3455,7 +3695,7 @@ function HistoryPanel({ globalData, histRealTime, setHistRealTime, histFixedCols
                               <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-md px-3 py-2.5 shadow-sm">
                                  <span className="text-[11px] font-bold text-slate-300">Vitórias:</span>
                                  <div className="flex items-center gap-1.5">
-                                    <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">0</span>
+                                    <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">{notificadorStats.wins}</span>
                                     <span className="text-slate-500 text-[10px]">•</span>
                                     <span className="bg-black text-white text-[10px] font-mono px-2 py-0.5 rounded font-bold border border-white/10 shadow-inner">0.00%</span>
                                  </div>

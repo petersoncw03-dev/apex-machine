@@ -1437,7 +1437,7 @@ const runFullDiscovery = (config: any, currentData: Roll[], isAuto: boolean, old
 
   return (
     <div className="min-h-screen bg-[#050507] text-white flex flex-col relative">
-      <div className="bg-[#0a0a0f] border-b border-white/5 p-4 flex items-center justify-between shadow-2xl z-40">
+      <div className="bg-[#0a0a0f] border-b border-white/5 h-[72px] px-6 flex items-center justify-between shadow-2xl shrink-0 z-50">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-4 border-r border-white/10 pr-6">
             <Link href="/analista" className="text-xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center gap-2 hover:scale-105 transition-transform">
@@ -1446,12 +1446,7 @@ const runFullDiscovery = (config: any, currentData: Roll[], isAuto: boolean, old
             </Link>
           </div>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowTrendModal(true)}
-              className="flex items-center gap-2 bg-[#eab308]/10 hover:bg-[#eab308]/20 border border-[#eab308]/30 px-3 py-1.5 rounded-lg transition-all text-[#eab308] font-bold text-[10px] uppercase tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.1)]"
-            >
-              <Zap size={14} /> TENDÊNCIA RÁPIDA
-            </button>
+            {/* TENDENCIA RAPIDA REMOVIDO */}
             <button 
               onClick={() => fetchData()}
               disabled={loading}
@@ -1735,7 +1730,7 @@ const runFullDiscovery = (config: any, currentData: Roll[], isAuto: boolean, old
           {/* Tendência da Mesa ao Vivo */}
           {data.length > 0 && (
             <div className="mb-6">
-              <LiveHistoryCard data={data} maxItems={35} />
+              <LiveHistoryCard data={data.map(d => ({ ...d, timestamp: d.timestamp || new Date().toISOString() }))} maxItems={35} />
             </div>
           )}
 

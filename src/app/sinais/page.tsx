@@ -64,16 +64,26 @@ const STRATEGIES: { name: string; color: string; fn: StrategyFn }[] = [
         new Date(d.getTime() + 20 * 60000)
       ];
     }
+  },
+  {
+    name: '60M LAPADA',
+    color: '#00c83a', // Green
+    fn: (parsed, i, d) => {
+      return [
+        new Date(d.getTime() + 60 * 60000)
+      ];
+    }
   }
 ];
 
 export default function SinaisPage() {
   const [data, setData] = useState<TickerData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hours, setHours] = useState(24);
 
-  const fetchData = async () => {
+  const fetchData = async (h: number) => {
     try {
-      const res = await fetch('/api/results/period?hours=48');
+      const res = await fetch(`/api/results/period?hours=${h}`);
       const json = await res.json();
       if (json.data) {
         setData([...json.data].reverse()); // oldest to newest
@@ -86,10 +96,10 @@ export default function SinaisPage() {
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
+    fetchData(hours);
+    const interval = setInterval(() => fetchData(hours), 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [hours]);
 
   const engine = useMemo(() => {
     if (!data.length) return null;
@@ -178,7 +188,7 @@ export default function SinaisPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-white p-6 overflow-x-hidden font-sans">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        <header className="flex items-center justify-between">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
               <BarChart2 className="w-8 h-8 text-[#6d8bcf]" />
@@ -187,6 +197,21 @@ export default function SinaisPage() {
             <p className="text-gray-400 mt-1 text-sm max-w-2xl">
               Validação de estratégias em tempo real. Os horários projetados são avaliados cronologicamente e deduplicados.
             </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 items-center bg-[#0a0a0f] p-2 rounded-xl border border-white/5">
+             <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase px-2">Histórico:</span>
+             {[3, 6, 12, 24, 72, 168, 336, 720, 1440].map(h => (
+               <button 
+                 key={h}
+                 onClick={() => { setHours(h); setLoading(true); }}
+                 className={`px-3 py-1.5 text-[10px] font-black tracking-widest uppercase rounded-lg border transition-all ${
+                   hours === h ? 'bg-[#00c83a]/20 border-[#00c83a] text-[#00c83a] shadow-lg' : 'bg-black/40 border-white/5 text-slate-400 hover:text-white hover:bg-white/5'
+                 }`}
+               >
+                 {h < 24 ? `${h}h` : `${h/24} dias`}
+               </button>
+             ))}
           </div>
         </header>
 

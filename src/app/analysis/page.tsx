@@ -23,7 +23,9 @@ export default function AnalysisPage() {
   // Data for previous day and current day
   const [prevData, setPrevData] = useState<TickerData[]>([]);
   const [currData, setCurrData] = useState<TickerData[]>([]);
+  const [weekGroups, setWeekGroups] = useState<TickerData[][]>([]);
   const [loading, setLoading] = useState(true);
+  const [manualHouse, setManualHouse] = useState<number | null>(null);
 
   // ---------------------------------------------------------------------
   // Fetch data – for now we simply request the last 48 hours (24 h each) and
@@ -32,7 +34,7 @@ export default function AnalysisPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/results/period?hours=48');
+      const res = await fetch('/api/results/period?hours=192');
       const json = await res.json();
       if (json.data) {
         const parsed: TickerData[] = json.data.map((r: any) => ({
@@ -44,19 +46,37 @@ export default function AnalysisPage() {
         const now = new Date();
         const yesterday = new Date(now);
         yesterday.setDate(now.getDate() - 1);
+        
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - 7);
+        startOfWeek.setHours(0,0,0,0);
+
         const isSameDay = (date: Date, day: Date) =>
           date.getFullYear() === day.getFullYear() &&
           date.getMonth() === day.getMonth() &&
           date.getDate() === day.getDate();
+          
         const prev: TickerData[] = [];
         const curr: TickerData[] = [];
+        const weekMap = new Map<string, TickerData[]>();
+        
         parsed.forEach((r) => {
           const d = new Date(r.timestamp);
-          if (isSameDay(d, yesterday)) prev.push(r);
-          else if (isSameDay(d, now)) curr.push(r);
+          if (isSameDay(d, now)) {
+             curr.push(r);
+          } else {
+             if (isSameDay(d, yesterday)) prev.push(r);
+             
+             if (d >= startOfWeek) {
+                const dateKey = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+                if (!weekMap.has(dateKey)) weekMap.set(dateKey, []);
+                weekMap.get(dateKey)!.push(r);
+             }
+          }
         });
         setPrevData(prev);
         setCurrData(curr);
+        setWeekGroups(Array.from(weekMap.values()));
       }
     } catch (e) {
       console.error(e);
@@ -117,6 +137,7 @@ export default function AnalysisPage() {
   // ---------------------------------------------------------------------
   const computeGapsAndScores = (targetMatrix: boolean[][], prevMatrixForLookback: boolean[][] | null, isToday: boolean) => {
     const counts = Array(24).fill(0);
+    const losses = Array(24).fill(0);
     const sm = Array(24).fill(0);
     const sa = Array(24).fill(0);
 
@@ -149,6 +170,7 @@ export default function AnalysisPage() {
               currentMisses[gap - 1] = 0; // Reset SA for this Casa
             } else {
               // Miss!
+              losses[gap - 1]++;
               currentMisses[gap - 1]++;
               if (currentMisses[gap - 1] > sm[gap - 1]) {
                 sm[gap - 1] = currentMisses[gap - 1]; // Update Max Sequencia (SM)
@@ -168,16 +190,40 @@ export default function AnalysisPage() {
       sa[i] = currentMisses[i];
     }
 
-    return { counts, sm, sa };
+    return { counts, losses, sm, sa };
   };
 
-  const { counts: houseCountsPrev, sm: smPrev, sa: saPrev } = useMemo(() => {
+  const { counts: houseCountsPrev, losses: lossesPrev, sm: smPrev, sa: saPrev } = useMemo(() => {
     return computeGapsAndScores(prevMatrix, null, false);
   }, [prevMatrix]);
 
-  const { counts: houseCountsCurr, sm: smCurr, sa: saCurr } = useMemo(() => {
+  const { counts: houseCountsCurr, losses: lossesCurr, sm: smCurr, sa: saCurr } = useMemo(() => {
     return computeGapsAndScores(currMatrix, prevMatrix, true);
   }, [currMatrix, prevMatrix]);
+
+  const weekScores = useMemo(() => {
+    const aggCounts = Array(24).fill(0);
+    const aggLosses = Array(24).fill(0);
+    const aggSm = Array(24).fill(0);
+    
+    weekGroups.forEach(group => {
+       const matrix = buildMatrix(group);
+       const scores = computeGapsAndScores(matrix, null, false);
+       for(let i=0; i<24; i++) {
+          aggCounts[i] += scores.counts[i];
+          aggLosses[i] += scores.losses[i];
+          if (scores.sm[i] > aggSm[i]) aggSm[i] = scores.sm[i];
+       }
+    });
+    
+    return { counts: aggCounts, losses: aggLosses, sm: aggSm, sa: saPrev }; // sa uses prev day's SA since it's the last closed day
+  }, [weekGroups, saPrev]);
+  
+  const bestHousesWeek = useMemo(() => {
+    const paired = weekScores.counts.map((c, i) => ({ houseIndex: i, count: c }));
+    paired.sort((a, b) => b.count - a.count);
+    return paired.slice(0, 3).map((p) => p.houseIndex);
+  }, [weekScores.counts]);
 
   const bestHousesCurr = useMemo(() => {
     const paired = houseCountsCurr.map((c, i) => ({ houseIndex: i, count: c }));
@@ -233,24 +279,81 @@ export default function AnalysisPage() {
     return pMatrix;
   }, [currMatrix, prevMatrix, bestHousesCurr]);
 
+  const manualPredictionsMatrix = useMemo(() => {
+    if (manualHouse === null) return null;
+    const pMatrix = Array.from({ length: 24 }, () => Array(60).fill(false));
+    const now = new Date();
+    const currH = now.getHours();
+    const currM = now.getMinutes();
+
+    for (let m = 0; m < 60; m++) {
+      let lastHour: number | null = null;
+      for (let h = 23; h >= 0; h--) {
+        if (currMatrix[h][m]) {
+          lastHour = h;
+          break;
+        }
+      }
+      if (lastHour === null && prevMatrix) {
+        for (let h = 23; h >= 0; h--) {
+          if (prevMatrix[h][m]) {
+            lastHour = h - 24;
+            break;
+          }
+        }
+      }
+
+      if (lastHour !== null) {
+        const gap = manualHouse + 1;
+        const expectedHour = lastHour + gap;
+        if (expectedHour >= 0 && expectedHour < 24) {
+          if (expectedHour > currH || (expectedHour === currH && m >= currM)) {
+            pMatrix[expectedHour][m] = true;
+          }
+        }
+      }
+    }
+    return pMatrix;
+  }, [currMatrix, prevMatrix, manualHouse]);
+
   // ---------------------------------------------------------------------
   // Rendering helpers
   // ---------------------------------------------------------------------
-  const renderHouseSummary = (title: string, counts: number[], smArray: number[], saArray: number[], bestHouses: number[]) => {
+  const renderHouseSummary = (title: string, counts: number[], losses: number[], smArray: number[], saArray: number[], bestHouses: number[], isInteractive: boolean = false) => {
     return (
       <div className="flex flex-col mb-4">
         <h3 className="text-xs font-bold mb-2 uppercase text-gray-400 tracking-wider">{title}</h3>
         <div className="flex w-full border border-white/20 rounded overflow-hidden">
           {Array.from({ length: 24 }, (_, i) => {
             const isBest = bestHouses.includes(i);
-            const styleClass = isBest ? { backgroundColor: '#800080', color: '#fff' } : { backgroundColor: '#7a9be3', color: '#000' };
+            const isManual = isInteractive && manualHouse === i;
+            
+            let styleClass = { backgroundColor: '#7a9be3', color: '#000' };
+            if (isManual) styleClass = { backgroundColor: '#FFCC00', color: '#000' };
+            else if (isBest) styleClass = { backgroundColor: '#800080', color: '#fff' };
+            
+            const total = counts[i] + losses[i];
+            const assertivity = total === 0 ? '--%' : ((counts[i] / total) * 100).toFixed(1) + '%';
+            
             return (
               <div key={i} className="flex-1 flex flex-col border-r border-white/20 last:border-r-0">
-                <div className="py-1 text-center text-[11px] font-black border-b border-white/20" style={styleClass}>
+                <div className="py-1 text-center text-[11px] font-black border-b border-white/20 flex justify-center items-center gap-1" style={styleClass}>
                   {i + 1}
+                  {isInteractive && (
+                    <button 
+                      onClick={() => setManualHouse(manualHouse === i ? null : i)}
+                      className={`w-2 h-2 rounded-full border transition-all cursor-pointer shadow-sm ${
+                        manualHouse === i ? 'border-black bg-black/60 scale-125' : 'border-black/30 hover:border-black/60 bg-white/20'
+                      }`}
+                      title={manualHouse === i ? 'Remover seleção manual' : 'Destacar previsões desta casa'}
+                    />
+                  )}
                 </div>
                 <div className="py-1 text-center text-[12px] font-bold border-b border-white/20" style={styleClass}>
                   {counts[i]}
+                </div>
+                <div className="py-0.5 text-center text-[9px] font-bold bg-[#1a1a24] text-green-400 border-b border-white/10" title={`Assertividade (Win: ${counts[i]} / Loss: ${losses[i]})`}>
+                  {assertivity}
                 </div>
                 <div className="py-0.5 text-center text-[9px] font-bold bg-[#1a1a24] text-red-400">
                   SM {smArray[i]}
@@ -265,9 +368,9 @@ export default function AnalysisPage() {
       </div>
     );
   };
-  const renderGrid = (matrix: boolean[][], minuteTotals: number[], predictionsMatrix?: boolean[][]) => {
+  const renderGrid = (matrix: boolean[][], minuteTotals: number[], predictionsMatrix?: boolean[][], manualPredMatrix?: boolean[][] | null) => {
     const maxTotal = Math.max(...minuteTotals);
-    const rows = [] as JSX.Element[];
+    const rows: React.ReactNode[] = [];
     for (let m = 0; m < 60; m++) {
       const total = minuteTotals[m];
       
@@ -282,7 +385,13 @@ export default function AnalysisPage() {
           {Array.from({ length: 24 }, (_, h) => {
             const isWhite = matrix[h][m];
             const isPrediction = predictionsMatrix ? predictionsMatrix[h][m] : false;
-            const bgColor = isWhite ? '#22c55e' : (isPrediction ? '#800080' : '#262626');
+            const isManualPrediction = manualPredMatrix ? manualPredMatrix[h][m] : false;
+            
+            let bgColor = '#262626';
+            if (isWhite) bgColor = '#22c55e';
+            else if (isManualPrediction) bgColor = '#FFCC00';
+            else if (isPrediction) bgColor = '#800080';
+            
             return (
               <td 
                 key={h} 
@@ -297,8 +406,20 @@ export default function AnalysisPage() {
     return rows;
   };
 
+  if (loading && !currData.length) {
+    return (
+      <div className="flex h-screen items-center justify-center text-white bg-[#030303]">
+        <div className="animate-pulse flex flex-col items-center">
+          <Target className="w-12 h-12 text-blue-500 mb-4 animate-spin" />
+          <p className="text-xl font-bold tracking-widest text-gray-400">ANALISANDO...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <main className="min-h-screen p-4 md:p-8 max-w-[1400px] mx-auto flex flex-col gap-6 bg-[#050507] text-white">
+    <main className="min-h-screen p-4 md:p-8 max-w-full w-full mx-auto flex flex-col gap-6 bg-[#030303] text-white">
+      <div className="max-w-[1600px] mx-auto flex flex-col gap-6 w-full">
       {/* Top card – same style as painel‑master */}
       <section className="bg-[#0a0a0f] border border-white/5 rounded-lg p-4 shadow-2xl mb-4">
         <LiveHistoryCard data={currData} maxItems={20} />
@@ -306,8 +427,9 @@ export default function AnalysisPage() {
 
       {/* Houses summary – current day & previous day */}
       <section className="flex flex-col gap-4 bg-[#0a0a0f] border border-white/5 rounded-lg p-4 shadow-xl">
-        {renderHouseSummary('Hoje', houseCountsCurr, smCurr, saCurr, bestHousesCurr)}
-        {renderHouseSummary('Dia Anterior', houseCountsPrev, smPrev, saPrev, bestHousesPrev)}
+        {renderHouseSummary('Hoje', houseCountsCurr, lossesCurr, smCurr, saCurr, bestHousesCurr, true)}
+        {renderHouseSummary('Dia Anterior', houseCountsPrev, lossesPrev, smPrev, saPrev, bestHousesPrev)}
+        {renderHouseSummary('Última Semana (Dias Fechados)', weekScores.counts, weekScores.losses, weekScores.sm, weekScores.sa, bestHousesWeek)}
       </section>
 
       {/* Excel‑style grid – current day */}
@@ -325,7 +447,7 @@ export default function AnalysisPage() {
               ))}
             </tr>
           </thead>
-          <tbody>{renderGrid(currMatrix, minuteTotalsCurr, currPredictionsMatrix)}</tbody>
+          <tbody>{renderGrid(currMatrix, minuteTotalsCurr, currPredictionsMatrix, manualPredictionsMatrix)}</tbody>
         </table>
       </section>
 
@@ -349,6 +471,7 @@ export default function AnalysisPage() {
       </section>
 
 
+      </div>
     </main>
   );
 }
