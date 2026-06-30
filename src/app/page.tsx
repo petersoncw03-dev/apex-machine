@@ -187,7 +187,7 @@ export default function VendasPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
               <Radio className="text-[#00c83a]" size={32} />
-              <h4 className="font-black text-white uppercase tracking-widest text-sm">Latência < 150ms</h4>
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Latência &lt; 150ms</h4>
               <p className="text-xs text-gray-500">Conexão WebSocket direta com os servidores. O sinal pisca na tela milissegundos após a pedra girar.</p>
             </div>
             <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
