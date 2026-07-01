@@ -102,6 +102,36 @@ export default function VendasPage() {
       {/* Background Matrix/Cyber Vibe */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 z-0 pointer-events-none"></div>
       
+      {/* Floating Branco Stones */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-20">
+        {[
+          { top: '15%', left: '10%', scale: 1, duration: 25 },
+          { top: '45%', left: '85%', scale: 1.5, duration: 30 },
+          { top: '75%', left: '15%', scale: 0.8, duration: 20 },
+          { top: '25%', left: '75%', scale: 1.2, duration: 28 },
+          { top: '85%', left: '80%', scale: 1.1, duration: 22 },
+        ].map((stone, i) => (
+          <motion.img 
+            key={i}
+            src="/blaze-white.png" 
+            alt="Branco"
+            style={{ top: stone.top, left: stone.left, transform: `scale(${stone.scale})` }}
+            className="absolute w-12 h-12 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+            animate={{
+              y: [0, -40, 0],
+              x: [0, 20, 0],
+              rotate: [0, 360],
+            }}
+            transition={{
+              duration: stone.duration,
+              repeat: Infinity,
+              repeatType: 'reverse',
+              ease: "linear"
+            }}
+          />
+        ))}
+      </div>
+      
       {/* Luzes de fundo globais */}
       <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[#00c83a]/[0.03] blur-[150px] rounded-full pointer-events-none z-0"></div>
       <div className="absolute top-[40%] right-[-10%] w-[600px] h-[600px] bg-[#f12c4c]/[0.02] blur-[150px] rounded-full pointer-events-none z-0"></div>
@@ -137,7 +167,7 @@ export default function VendasPage() {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#eab308]/10 border border-[#eab308]/30 text-[10px] font-black uppercase tracking-widest text-[#eab308] mb-8 shadow-[0_0_20px_rgba(234,179,8,0.15)]"
           >
             <Activity size={14} />
-            <span>Terminal Institucional de Alta Frequência</span>
+            <span>O Único Raio-X Oficial para Roletas</span>
           </motion.div>
           
           <motion.h2 
@@ -160,21 +190,6 @@ export default function VendasPage() {
           >
             O Terminal Analítico que funciona como o "Raio-X" da roleta. Saiba se os sinais do seu robô fazem sentido no momento, descubra tendências de Branco e teste padrões sem arriscar um centavo.
           </motion.p>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto"
-          >
-            <button 
-              onClick={scrollToPlanos}
-              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#00c83a] to-emerald-600 hover:from-[#00e044] hover:to-emerald-500 text-black font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(0,200,58,0.4)] flex items-center justify-center gap-2"
-            >
-              Ver Licenças Disponíveis
-              <ChevronRight size={18} />
-            </button>
-          </motion.div>
         </div>
 
         {/* HERO MOCKUP (DASHBOARD PREVIEW) */}
@@ -185,6 +200,17 @@ export default function VendasPage() {
           className="w-full max-w-6xl mx-auto mt-20 relative"
         >
           <div className="absolute -inset-1 bg-gradient-to-r from-[#00c83a]/30 via-[#f12c4c]/30 to-[#eab308]/30 blur-2xl opacity-20"></div>
+          
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1.2 }}
+            className="absolute -top-6 -right-6 md:-right-12 z-20 bg-white text-black font-black text-xs uppercase tracking-widest py-3 px-6 rounded-2xl rounded-bl-none shadow-[0_10px_30px_rgba(255,255,255,0.2)] border border-white/20 flex flex-col gap-1"
+          >
+            <span className="text-[#00c83a]">Radar Ao Vivo:</span>
+            Validação de Sinais
+          </motion.div>
+          
           <div className="relative bg-[#0a0a0f] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden aspect-video flex flex-col">
             {/* Fake Header do Terminal */}
             <div className="h-12 bg-[#050507] border-b border-white/5 flex items-center px-6 gap-6">
@@ -261,10 +287,10 @@ export default function VendasPage() {
               Não existe estratégia ruim. Existe <span className="text-[#f12c4c]">momento errado</span>.
             </h3>
             <p className="text-gray-400 text-lg leading-relaxed">
-              O cassino não funciona por sorte, ele funciona por ciclos de Arrecadação e Distribuição. O Apex exibe um gráfico de Ganhos e Perdas (PNL) em tempo real da mesa.
+              A Blaze não funciona por sorte, ela opera por ciclos matemáticos de Arrecadação e Distribuição. O Apex intercepta esses dados e exibe o gráfico de Ganhos e Perdas (PNL) real da roleta.
             </p>
             <p className="text-gray-400 text-lg leading-relaxed">
-              Se o gráfico está despencando, até as piores estratégias viram ouro operadas ao contrário. Se está subindo, o sistema te mostra quais estratégias estão no topo de acertos. Você surfa a onda no momento exato.
+              Se o gráfico está despencando, até as piores estratégias viram ouro se operadas ao contrário. Se está subindo, o sistema te mostra quais padrões estão no topo de acertos. Você surfa a onda no momento exato.
             </p>
             <div className="inline-flex items-center gap-3 px-5 py-3 rounded-lg bg-[#00c83a]/10 border border-[#00c83a]/20 text-[#00c83a] font-bold text-sm uppercase tracking-widest w-fit mt-4">
               <ShieldCheck size={20} />
@@ -292,6 +318,15 @@ export default function VendasPage() {
               <Cpu className="text-[#f12c4c]" size={32} />
               <h4 className="font-black text-white uppercase tracking-widest text-sm">Extração de Dados</h4>
               <p className="text-xs text-gray-500">Baixe todo o histórico recente das rodadas (todas as cores ou só branco) para fazer análises avançadas no seu próprio Excel.</p>
+            </div>
+          </div>
+          
+          <div className="md:col-span-2 mt-8 bg-[#0a0a0f] border border-white/10 rounded-2xl p-2 shadow-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#00c83a]/10 to-transparent pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity"></div>
+            <img src="/pnl-chart.png" alt="Gráfico PNL Blaze" className="w-full h-auto rounded-xl shadow-lg relative z-10" />
+            <div className="absolute bottom-6 left-6 z-20 bg-black/80 backdrop-blur-md px-4 py-2 border border-white/10 rounded-lg flex items-center gap-2 shadow-[0_0_20px_rgba(0,200,58,0.2)]">
+              <div className="w-2 h-2 rounded-full bg-[#00c83a] animate-pulse"></div>
+              <span className="text-[#00c83a] text-xs font-black uppercase tracking-widest">Gráfico Oficial BLAZE</span>
             </div>
           </div>
         </div>
@@ -322,22 +357,21 @@ export default function VendasPage() {
                   <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Confluência de múltiplos padrões.</li>
                 </ul>
               </div>
-              <div className="flex-1 w-full aspect-video bg-[#12141c] border border-white/10 rounded-2xl p-6 shadow-2xl relative order-1 md:order-2 overflow-hidden flex items-center justify-center">
-                 <div className="absolute inset-0 bg-gradient-to-tr from-[#8b008b]/10 to-transparent"></div>
-                 <div className="text-center">
-                    <Zap size={64} className="text-[#8b008b] opacity-50 mb-4 mx-auto" />
-                    <span className="font-mono text-gray-500 uppercase tracking-widest text-xs">Radar de Minutos e Confluências</span>
-                 </div>
+              <div className="flex-1 w-full aspect-video bg-[#12141c] border border-white/10 rounded-2xl p-6 shadow-2xl relative order-1 md:order-2 overflow-hidden flex items-center justify-center group perspective-1000">
+                 <div className="absolute inset-0 bg-gradient-to-tr from-[#8b008b]/20 to-transparent transition-opacity group-hover:opacity-40"></div>
+                 <img src="/minutos-ia.png" alt="Minutos IA" className="absolute w-[75%] rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.8)] transform rotate-[-8deg] -translate-x-8 -translate-y-8 group-hover:rotate-0 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-700 ease-out z-10 border border-white/10" />
+                 <img src="/painel-minutos.png" alt="Painel Minutos" className="absolute w-[75%] rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.8)] transform rotate-[8deg] translate-x-12 translate-y-12 group-hover:rotate-0 group-hover:translate-x-6 group-hover:translate-y-8 transition-all duration-700 ease-out z-20 border border-white/10" />
               </div>
             </div>
 
             {/* Mod 2 */}
             <div className="flex flex-col md:flex-row items-center gap-12">
-              <div className="flex-1 w-full aspect-video bg-[#12141c] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden flex items-center justify-center">
-                 <div className="absolute inset-0 bg-gradient-to-tr from-[#00c83a]/10 to-transparent"></div>
-                 <div className="text-center">
-                    <Activity size={64} className="text-[#00c83a] opacity-50 mb-4 mx-auto" />
-                    <span className="font-mono text-gray-500 uppercase tracking-widest text-xs">Simulador Backtester de 43 Mil Rodadas</span>
+              <div className="flex-1 w-full aspect-video bg-[#12141c] border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden flex items-center justify-center group">
+                 <div className="absolute inset-0 bg-gradient-to-tr from-[#00c83a]/20 to-transparent z-10"></div>
+                 <img src="/backtester.png" alt="Backtester" className="absolute w-full h-full object-cover opacity-20 blur-sm group-hover:blur-0 group-hover:opacity-60 transition-all duration-700 ease-out" />
+                 <div className="text-center relative z-20 transition-transform duration-700 group-hover:scale-95 group-hover:opacity-0 pointer-events-none">
+                    <Activity size={64} className="text-[#00c83a] opacity-80 mb-4 mx-auto drop-shadow-[0_0_15px_rgba(0,200,58,0.5)]" />
+                    <span className="font-mono text-white font-bold uppercase tracking-widest text-xs drop-shadow-md bg-black/80 border border-white/10 px-4 py-2 rounded-lg">Simulador Backtester</span>
                  </div>
               </div>
               <div className="flex-1 flex flex-col gap-4">
@@ -383,15 +417,15 @@ export default function VendasPage() {
       <section className="py-16 px-6 border-y border-[#00c83a]/20 bg-[#00c83a]/5 relative z-10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-around gap-8 text-center">
           <div className="flex flex-col items-center gap-2">
-             <span className="text-5xl font-black text-white">+43.200</span>
+             <span className="text-5xl font-black text-white">+2.880</span>
              <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Rodadas Analisadas / Dia</span>
           </div>
           <div className="flex flex-col items-center gap-2">
-             <span className="text-5xl font-black text-white">99.9%</span>
+             <span className="text-5xl font-black text-white">99.99%</span>
              <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Uptime dos Servidores</span>
           </div>
           <div className="flex flex-col items-center gap-2">
-             <span className="text-5xl font-black text-white">&lt;150ms</span>
+             <span className="text-5xl font-black text-white">&lt;50ms</span>
              <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Latência de Ingestão</span>
           </div>
         </div>
