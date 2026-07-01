@@ -134,15 +134,15 @@ export default function VendasPage() {
         ))}
         {/* Floating Ace Cards */}
         {[
-          { label: 'A♠', top: '20%', left: '20%', scale: 1.5, duration: 29 },
-          { label: 'A♥', top: '65%', left: '85%', scale: 1.2, duration: 21 },
-          { label: 'A♦', top: '80%', left: '25%', scale: 1.4, duration: 27 },
-          { label: 'A♣', top: '35%', left: '60%', scale: 1.1, duration: 33 },
+          { label: 'A♠', top: '20%', left: '20%', scale: 1.5, duration: 29, color: 'text-white/20' },
+          { label: 'A♥', top: '65%', left: '85%', scale: 1.2, duration: 21, color: 'text-[#f12c4c]/20' },
+          { label: 'A♦', top: '80%', left: '25%', scale: 1.4, duration: 27, color: 'text-[#f12c4c]/20' },
+          { label: 'A♣', top: '35%', left: '60%', scale: 1.1, duration: 33, color: 'text-white/20' },
         ].map((card, i) => (
            <motion.div 
              key={`card-${i}`}
              style={{ top: card.top, left: card.left, transform: `scale(${card.scale})` }}
-             className="absolute font-black text-4xl text-white/10 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]"
+             className={`absolute font-black text-6xl drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] ${card.color}`}
              animate={{ y: [0, -30, 0], x: [0, -20, 0], rotate: [0, -180] }}
              transition={{ duration: card.duration, repeat: Infinity, repeatType: 'reverse', ease: "linear" }}
            >
@@ -186,7 +186,7 @@ export default function VendasPage() {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#eab308]/10 border border-[#eab308]/30 text-[10px] font-black uppercase tracking-widest text-[#eab308] mb-8 shadow-[0_0_20px_rgba(234,179,8,0.15)]"
           >
             <Activity size={14} />
-            <span>O Único Raio-X Oficial para Roletas</span>
+            <span>Auditoria Institucional de Alta Precisão</span>
           </motion.div>
           
           <motion.h2 
@@ -224,7 +224,7 @@ export default function VendasPage() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 1.2 }}
-            className="absolute -top-6 -right-6 md:-right-12 z-20 bg-white text-black font-black text-xs uppercase tracking-widest py-3 px-6 rounded-2xl rounded-bl-none shadow-[0_10px_30px_rgba(255,255,255,0.2)] border border-white/20 flex flex-col gap-1"
+            className="absolute -top-6 -right-6 md:-right-12 z-20 bg-[#0a0a0f] text-white font-black text-xs uppercase tracking-widest py-3 px-6 rounded-2xl rounded-bl-none shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/20 flex flex-col gap-1"
           >
             <span className="text-[#00c83a]">Radar Ao Vivo:</span>
             Validação de Sinais
@@ -319,7 +319,7 @@ export default function VendasPage() {
       </section>
 
       {/* PNL GLOBAL SECTION */}
-      <section className="py-24 px-6 relative z-10 bg-[#020203]">
+      <section className="py-24 px-6 relative z-10">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           <div className="flex flex-col gap-6">
             <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white leading-tight">
@@ -363,6 +363,19 @@ export default function VendasPage() {
           <div className="md:col-span-2 mt-8 bg-[#0a0a0f] border border-white/10 rounded-2xl p-2 shadow-2xl relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-tr from-[#00c83a]/10 to-transparent pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity"></div>
             <img src="/pnl-chart.png" alt="Gráfico PNL Blaze" className="w-full h-auto rounded-xl shadow-lg relative z-10" />
+            
+            {/* Medias Móveis Baloon */}
+            <div className="absolute top-[30%] left-[20%] z-20 bg-[#12141c] text-white font-black text-[10px] uppercase tracking-widest py-3 px-6 rounded-2xl rounded-bl-none shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-white/10 flex flex-col gap-1 hidden md:flex hover:scale-105 transition-transform cursor-pointer">
+              <span className="text-[#00c83a]">Indicadores Premium:</span>
+              SMA, EMA & Bandas de Bollinger
+            </div>
+
+            {/* Ciclos de Mercado Baloon */}
+            <div className="absolute bottom-[40%] right-[15%] z-20 bg-[#0a0a0f] text-white font-black text-[10px] uppercase tracking-widest py-3 px-6 rounded-2xl rounded-tr-none shadow-[0_10px_30px_rgba(241,44,76,0.3)] border border-[#f12c4c]/30 flex flex-col gap-1 hidden md:flex hover:scale-105 transition-transform cursor-pointer">
+              <span className="text-[#f12c4c]">Leitura de Ciclos:</span>
+              Identifique Zonas de Arrecadação
+            </div>
+
             <div className="absolute bottom-6 left-6 z-20 bg-black/80 backdrop-blur-md px-4 py-2 border border-white/10 rounded-lg flex items-center gap-2 shadow-[0_0_20px_rgba(0,200,58,0.2)]">
               <div className="w-2 h-2 rounded-full bg-[#00c83a] animate-pulse"></div>
               <span className="text-[#00c83a] text-xs font-black uppercase tracking-widest">Gráfico Oficial BLAZE</span>
@@ -372,7 +385,7 @@ export default function VendasPage() {
       </section>
 
       {/* DEEP DIVE FEATURES */}
-      <section id="funcionalidades" className="py-32 px-6 relative z-10 border-t border-white/5 bg-gradient-to-b from-[#050507] to-[#0a0a0f]">
+      <section id="funcionalidades" className="py-32 px-6 relative z-10 border-t border-white/5">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
             <h3 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tighter mb-4">
@@ -429,12 +442,12 @@ export default function VendasPage() {
       </section>
 
       {/* AUTOMATION PARTNERSHIP */}
-      <section className="py-24 px-6 relative z-10 border-t border-white/5 bg-[#020203]">
+      <section className="py-24 px-6 relative z-10 border-t border-white/5">
         <div className="max-w-5xl mx-auto bg-gradient-to-br from-[#12141c] to-[#0a0a0f] border border-[#f12c4c]/30 rounded-3xl p-10 md:p-16 text-center shadow-[0_20px_50px_rgba(241,44,76,0.1)] relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#f12c4c]/10 rounded-full blur-[100px] pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#eab308]/10 rounded-full blur-[100px] pointer-events-none"></div>
           
-          <img src="/blaze-machine-logo.png" alt="Blaze Machine" className="w-24 h-24 mx-auto mb-6 object-contain mix-blend-screen drop-shadow-[0_0_20px_rgba(241,44,76,0.3)]" />
+          <img src="/blaze-machine-logo.png" alt="Blaze Machine" className="w-24 h-24 mx-auto mb-6 object-contain drop-shadow-[0_0_20px_rgba(241,44,76,0.3)]" />
           <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white mb-6">
             Quer automatizar suas operações?
           </h3>
@@ -453,7 +466,7 @@ export default function VendasPage() {
       </section>
 
       {/* ESTATÍSTICAS / SOCIAL PROOF */}
-      <section className="py-16 px-6 border-y border-[#00c83a]/20 bg-[#00c83a]/5 relative z-10">
+      <section className="py-16 px-6 border-y border-[#00c83a]/20 bg-[#00c83a]/5 relative z-10 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-around gap-8 text-center">
           <div className="flex flex-col items-center gap-2">
              <span className="text-5xl font-black text-white">+2.880</span>
@@ -471,7 +484,7 @@ export default function VendasPage() {
       </section>
 
       {/* PLANOS */}
-      <section id="planos" className="py-32 px-6 relative z-10 bg-[#050507]">
+      <section id="planos" className="py-32 px-6 relative z-10">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
             <h3 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tighter mb-4">
@@ -547,7 +560,7 @@ export default function VendasPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="py-12 border-t border-white/5 bg-[#020203] text-center relative z-10">
+      <footer className="py-12 border-t border-white/5 text-center relative z-10 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 flex flex-col items-center gap-6">
           <div className="flex items-center gap-3 opacity-50 grayscale hover:grayscale-0 transition-all cursor-pointer">
             <img src="/icon.svg" alt="Apex Machine" className="w-8 h-8 object-contain" />
