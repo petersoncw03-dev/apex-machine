@@ -148,9 +148,9 @@ export default function VendasPage() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-5xl md:text-7xl font-black tracking-tighter leading-[1.1] mb-6 text-white uppercase"
           >
-            Pare de jogar. <br />
+            Tenha a melhor visão de jogo <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00c83a] to-emerald-600 drop-shadow-[0_0_30px_rgba(0,200,58,0.3)]">
-              Comece a operar.
+              antes de apostar seu dinheiro.
             </span>
           </motion.h2>
           
@@ -160,7 +160,7 @@ export default function VendasPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-gray-400 font-medium max-w-2xl mx-auto mb-12"
           >
-            O Apex Machine não é um "robô de sinais". É o primeiro Terminal Analítico projetado para monitorar ciclos invisíveis e calcular confluências matemáticas em tempo real na Roleta.
+            O Terminal Analítico que funciona como o "Raio-X" da roleta. Saiba se os sinais do seu robô fazem sentido no momento, descubra tendências de Branco e teste padrões sem arriscar um centavo.
           </motion.p>
 
           <motion.div 
@@ -255,45 +255,45 @@ export default function VendasPage() {
         </motion.div>
       </section>
 
-      {/* PAIN & SOLUTION */}
+      {/* PNL GLOBAL SECTION */}
       <section className="py-24 px-6 relative z-10 bg-[#020203]">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           <div className="flex flex-col gap-6">
             <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white leading-tight">
-              A maioria opera <span className="text-[#f12c4c]">no escuro</span>.
+              Não existe estratégia ruim. Existe <span className="text-[#f12c4c]">momento errado</span>.
             </h3>
             <p className="text-gray-400 text-lg leading-relaxed">
-              Você usa robôs de Telegram gratuitos que mandam o mesmo sinal para milhares de pessoas com atraso? Você anota padrões no papel?
+              O cassino não funciona por sorte, ele funciona por ciclos de Arrecadação e Distribuição. O Apex exibe um gráfico de Ganhos e Perdas (PNL) em tempo real da mesa.
             </p>
             <p className="text-gray-400 text-lg leading-relaxed">
-              Enquanto o mercado amador joga contando com a sorte, os institucionais operam baseados em ingestão de dados massiva, latência zero e processamento simultâneo.
+              Se o gráfico está despencando, até as piores estratégias viram ouro operadas ao contrário. Se está subindo, o sistema te mostra quais estratégias estão no topo de acertos. Você surfa a onda no momento exato.
             </p>
             <div className="inline-flex items-center gap-3 px-5 py-3 rounded-lg bg-[#00c83a]/10 border border-[#00c83a]/20 text-[#00c83a] font-bold text-sm uppercase tracking-widest w-fit mt-4">
               <ShieldCheck size={20} />
-              Nós trouxemos a luz.
+              A Maré Exata da Mesa
             </div>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
-              <Radio className="text-[#00c83a]" size={32} />
-              <h4 className="font-black text-white uppercase tracking-widest text-sm">Latência &lt; 150ms</h4>
-              <p className="text-xs text-gray-500">Conexão WebSocket direta com os servidores. O sinal pisca na tela milissegundos após a pedra girar.</p>
+              <BarChart2 className="text-[#00c83a]" size={32} />
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">PNL Global Ao Vivo</h4>
+              <p className="text-xs text-gray-500">Veja exatamente quando a mesa parou de pagar e entrou em fase severa de recuperação (recolhendo a banca dos amadores).</p>
             </div>
             <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
-              <Cpu className="text-[#eab308]" size={32} />
-              <h4 className="font-black text-white uppercase tracking-widest text-sm">Processamento IA</h4>
-              <p className="text-xs text-gray-500">Avaliamos mais de 50 variáveis por segundo para encontrar o exato momento de ruptura.</p>
+              <Target className="text-[#eab308]" size={32} />
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Streaks Máximos</h4>
+              <p className="text-xs text-gray-500">O sistema filtra as estratégias que estão na máxima (acertando tudo) para você copiar no instante que a mesa estiver pagando.</p>
             </div>
             <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
-              <BarChart2 className="text-purple-500" size={32} />
-              <h4 className="font-black text-white uppercase tracking-widest text-sm">Confluências</h4>
-              <p className="text-xs text-gray-500">O sistema só emite alerta quando +5 estratégias profissionais concordam simultaneamente.</p>
+              <Radio className="text-purple-500" size={32} />
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Avisos Sonoros</h4>
+              <p className="text-xs text-gray-500">Foque no seu trabalho. O sistema apita quando o Branco bate, ou quando qualquer estratégia customizada se forma na mesa.</p>
             </div>
-            <div className="bg-[#0a0a0f] border border-[#f12c4c]/20 p-6 rounded-xl flex flex-col gap-3 hover:border-[#f12c4c]/40 transition-all shadow-[0_0_15px_rgba(241,44,76,0.05)]">
-              <Flame className="text-[#f12c4c]" size={32} />
-              <h4 className="font-black text-white uppercase tracking-widest text-sm">Radar REC</h4>
-              <p className="text-xs text-gray-500">Nossa IA avisa exatamente quando a mesa entra em fase de recuperação, evitando que você devolva o lucro.</p>
+            <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
+              <Cpu className="text-[#f12c4c]" size={32} />
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Extração de Dados</h4>
+              <p className="text-xs text-gray-500">Baixe todo o histórico recente das rodadas (todas as cores ou só branco) para fazer análises avançadas no seu próprio Excel.</p>
             </div>
           </div>
         </div>
@@ -304,10 +304,10 @@ export default function VendasPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
             <h3 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tighter mb-4">
-              Módulos de <span className="text-[#00c83a]">Alta Performance</span>
+              Ferramentas de <span className="text-[#00c83a]">Auditoria Máxima</span>
             </h3>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Cada módulo do Apex Machine substitui dezenas de ferramentas avulsas, unificando tudo em um terminal de comando hiper-rápido.
+              Destrua a necessidade do papel e caneta. Nossos módulos vasculham as estatísticas passadas e te entregam a confluência mastigada.
             </p>
           </div>
 
@@ -316,19 +316,19 @@ export default function VendasPage() {
             {/* Mod 1 */}
             <div className="flex flex-col md:flex-row items-center gap-12">
               <div className="flex-1 flex flex-col gap-4 order-2 md:order-1">
-                <div className="px-3 py-1 bg-[#8b008b]/10 border border-[#8b008b]/30 text-[#d8b4e2] text-[10px] font-black uppercase tracking-widest rounded-md w-fit">Radar Avançado</div>
-                <h4 className="text-3xl font-black uppercase text-white tracking-tight">O Fim das "Entradas no Achismo"</h4>
-                <p className="text-gray-400">O Radar Avançado cruza padrões ao vivo, calculando o TX (Taxa de Acerto), o SA (Streak Atual) e o SM (Streak Máxima) de cada estratégia, disparando um alerta visual e sonoro apenas quando a probabilidade matemática está a seu favor.</p>
+                <div className="px-3 py-1 bg-[#8b008b]/10 border border-[#8b008b]/30 text-[#d8b4e2] text-[10px] font-black uppercase tracking-widest rounded-md w-fit">Minutos da IA & Scanner 90 Dias</div>
+                <h4 className="text-3xl font-black uppercase text-white tracking-tight">O Fim do Caderninho</h4>
+                <p className="text-gray-400">Nossa inteligência cruza diversas estratégias simultaneamente e te entrega os "Minutos da IA", uma matriz exata com os melhores minutos para entrar. Além disso, nosso Scanner de 3 Meses encontra "horários cheios" que não pagaram Branco há mais de 90 dias, jogando a probabilidade extrema ao seu favor.</p>
                 <ul className="flex flex-col gap-3 mt-4">
-                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Histórico infinito real-time.</li>
-                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Filtragem de Confluências Máximas.</li>
+                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Encontre atrasos históricos de Branco.</li>
+                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Confluência de múltiplos padrões.</li>
                 </ul>
               </div>
               <div className="flex-1 w-full aspect-video bg-[#12141c] border border-white/10 rounded-2xl p-6 shadow-2xl relative order-1 md:order-2 overflow-hidden flex items-center justify-center">
                  <div className="absolute inset-0 bg-gradient-to-tr from-[#8b008b]/10 to-transparent"></div>
                  <div className="text-center">
-                    <Radio size={64} className="text-[#8b008b] opacity-50 mb-4 mx-auto" />
-                    <span className="font-mono text-gray-500 uppercase tracking-widest text-xs">Visualização do Radar</span>
+                    <Zap size={64} className="text-[#8b008b] opacity-50 mb-4 mx-auto" />
+                    <span className="font-mono text-gray-500 uppercase tracking-widest text-xs">Radar de Minutos e Confluências</span>
                  </div>
               </div>
             </div>
@@ -339,21 +339,45 @@ export default function VendasPage() {
                  <div className="absolute inset-0 bg-gradient-to-tr from-[#00c83a]/10 to-transparent"></div>
                  <div className="text-center">
                     <Activity size={64} className="text-[#00c83a] opacity-50 mb-4 mx-auto" />
-                    <span className="font-mono text-gray-500 uppercase tracking-widest text-xs">Simulador Time-Machine</span>
+                    <span className="font-mono text-gray-500 uppercase tracking-widest text-xs">Simulador Backtester de 43 Mil Rodadas</span>
                  </div>
               </div>
               <div className="flex-1 flex flex-col gap-4">
                 <div className="px-3 py-1 bg-[#00c83a]/10 border border-[#00c83a]/30 text-[#4ade80] text-[10px] font-black uppercase tracking-widest rounded-md w-fit">Time-Machine Backtester</div>
-                <h4 className="text-3xl font-black uppercase text-white tracking-tight">Viagem no Tempo Matemática</h4>
-                <p className="text-gray-400">Desenvolveu uma estratégia nova? Não teste com seu dinheiro real. Jogue ela na nossa Máquina do Tempo. O sistema simula o comportamento do seu robô pelas últimas 43.200 rodadas em questão de segundos e te entrega o PNL final exato.</p>
+                <h4 className="text-3xl font-black uppercase text-white tracking-tight">O Fim do Achismo</h4>
+                <p className="text-gray-400">Teve uma ideia de padrão genial? Não teste no achismo com seu saldo real. Jogue no Simulador do Apex, e em segundos ele cruza as últimas milhares de rodadas para te dizer matematicamente se essa ideia dá lucro ou prejuízo no longo prazo.</p>
                 <ul className="flex flex-col gap-3 mt-4">
-                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Validação Imediata.</li>
-                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Relatórios precisos de drawndown.</li>
+                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Validação antes de arriscar 1 centavo.</li>
+                  <li className="flex items-center gap-3 text-sm font-bold text-gray-300"><Target size={16} className="text-[#00c83a]" /> Gráficos e Relatórios de assertividade.</li>
                 </ul>
               </div>
             </div>
 
           </div>
+        </div>
+      </section>
+
+      {/* AUTOMATION PARTNERSHIP */}
+      <section className="py-24 px-6 relative z-10 border-t border-white/5 bg-[#020203]">
+        <div className="max-w-5xl mx-auto bg-gradient-to-br from-[#12141c] to-[#0a0a0f] border border-[#f12c4c]/30 rounded-3xl p-10 md:p-16 text-center shadow-[0_20px_50px_rgba(241,44,76,0.1)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#f12c4c]/10 rounded-full blur-[100px] pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#eab308]/10 rounded-full blur-[100px] pointer-events-none"></div>
+          
+          <Cpu size={48} className="text-[#f12c4c] mx-auto mb-6" />
+          <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white mb-6">
+            Quer automatizar suas operações?
+          </h3>
+          <p className="text-gray-400 text-lg mb-10 max-w-2xl mx-auto">
+            Você encontrou a estratégia de ouro no Apex e não quer perder noites de sono esperando ela bater? Nós somos a melhor ferramenta de análise. Para automatizar suas entradas com máxima segurança e velocidade, nós recomendamos a nossa parceira oficial.
+          </p>
+          <a 
+            href="#" 
+            target="_blank"
+            className="inline-flex items-center gap-3 px-10 py-5 bg-[#f12c4c] hover:bg-red-500 text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(241,44,76,0.3)]"
+          >
+            Conheça a Blaze Machine
+            <ArrowRight size={18} />
+          </a>
         </div>
       </section>
 
