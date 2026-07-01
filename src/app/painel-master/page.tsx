@@ -5,6 +5,7 @@ import { useSSE } from '@/contexts/SSEContext';
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 import ResumoDiarioPanel from '@/components/painel-master/ResumoDiarioPanel';
 import AnalisePnlTab from '@/components/painel-master/AnalisePnlTab';
+import GraficoPnlPanel from '@/components/painel-master/GraficoPnlPanel';
 
 interface Roll { color: string; roll: number; timestamp: string; id?: string; }
 
@@ -22,7 +23,7 @@ type SortDirection = 'desc' | 'asc' | null;
 
 
 export default function RadarAvancado() {
-  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'pnl'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'grafico' | 'analise-pnl'>('home');
   const [histRealTime, setHistRealTime] = useState(true);
   const [histFixedCols, setHistFixedCols] = useState(false);
   const [histReverse, setHistReverse] = useState(false);
@@ -1347,11 +1348,18 @@ export default function RadarAvancado() {
                Resumos
              </button>
              <button 
-               onClick={() => setActiveTab('pnl')} 
-               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'pnl' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+               onClick={() => setActiveTab('grafico')} 
+               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'grafico' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
              >
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
-               Análise PNL
+               Gráfico
+             </button>
+             <button 
+               onClick={() => setActiveTab('analise-pnl')} 
+               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'analise-pnl' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+             >
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+               Stress Test
              </button>
              <a 
                 href="https://blaze.bet.br/pt/games/double" 
@@ -2289,7 +2297,9 @@ export default function RadarAvancado() {
                 />
               ) : activeTab === 'resumos' ? (
                 <ResumoDiarioPanel globalData={globalData} />
-              ) : activeTab === 'pnl' ? (
+              ) : activeTab === 'grafico' ? (
+                <GraficoPnlPanel globalData={globalData} />
+              ) : activeTab === 'analise-pnl' ? (
                 <AnalisePnlTab globalData={globalData} />
               ) : null}
             </div>

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import GraficoPnlPanel from '@/components/painel-master/GraficoPnlPanel';
 
 interface Roll {
   color: string;
@@ -204,9 +203,6 @@ export default function AnalisePnlTab({ globalData }: { globalData: Roll[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 1) O Gráfico Global PNL no Topo */}
-      <GraficoPnlPanel globalData={globalData} />
-
       {/* 2) Filtros do Stress Test */}
       <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl p-4 md:p-5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col md:flex-row gap-4 items-end">
         <div className="flex-1 flex flex-col gap-1.5 w-full">
