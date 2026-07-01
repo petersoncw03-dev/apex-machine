@@ -132,32 +132,55 @@ export default function VendasPage() {
             transition={{ duration: stone.duration, repeat: Infinity, repeatType: 'reverse', ease: "linear" }}
           />
         ))}
-        {/* Floating Ace Cards */}
+        {/* Floating Magical Elements (Alice in Wonderland style) */}
         {[
-          { label: 'A♠', top: '20%', left: '20%', scale: 1.5, duration: 29, color: 'text-white/20' },
-          { label: 'A♥', top: '65%', left: '85%', scale: 1.2, duration: 21, color: 'text-[#f12c4c]/20' },
-          { label: 'A♦', top: '80%', left: '25%', scale: 1.4, duration: 27, color: 'text-[#f12c4c]/20' },
-          { label: 'A♣', top: '35%', left: '60%', scale: 1.1, duration: 33, color: 'text-white/20' },
+          { label: 'A', suit: '♠', top: '15%', left: '15%', scale: 1.1, duration: 25 },
+          { label: 'A', suit: '♥', top: '70%', left: '85%', scale: 0.9, duration: 22 },
+          { label: 'A', suit: '♦', top: '85%', left: '25%', scale: 1.2, duration: 28 },
+          { label: 'A', suit: '♣', top: '35%', left: '60%', scale: 0.85, duration: 33 },
         ].map((card, i) => (
            <motion.div 
-             key={`card-${i}`}
+             key={`magic-card-${i}`}
              style={{ top: card.top, left: card.left, transform: `scale(${card.scale})` }}
-             className={`absolute font-black text-6xl drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] ${card.color}`}
-             animate={{ y: [0, -30, 0], x: [0, -20, 0], rotate: [0, -180] }}
-             transition={{ duration: card.duration, repeat: Infinity, repeatType: 'reverse', ease: "linear" }}
+             className="absolute flex flex-col items-center justify-center w-12 h-16 md:w-16 md:h-24 rounded-lg bg-white/[0.02] border border-white/10 backdrop-blur-[2px] shadow-[0_0_20px_rgba(255,255,255,0.05)] text-white/40"
+             animate={{ y: [0, -30, 0], x: [0, -15, 0], rotate: [0, 10, -10, 0] }}
+             transition={{ duration: card.duration, repeat: Infinity, repeatType: 'reverse', ease: "easeInOut" }}
            >
-             {card.label}
+             <span className="text-sm md:text-lg font-black leading-none">{card.label}</span>
+             <span className="text-2xl md:text-4xl leading-none mt-1">{card.suit}</span>
+           </motion.div>
+        ))}
+
+        {/* Floating Clocks / Time Elements */}
+        {[
+          { top: '25%', left: '80%', scale: 0.7, duration: 40 },
+          { top: '60%', left: '10%', scale: 0.9, duration: 35 },
+          { top: '10%', left: '50%', scale: 0.5, duration: 45 },
+        ].map((clock, i) => (
+           <motion.div 
+             key={`clock-${i}`}
+             style={{ top: clock.top, left: clock.left, transform: `scale(${clock.scale})` }}
+             className="absolute w-20 h-20 rounded-full border-2 border-[#00c83a]/20 bg-[#00c83a]/[0.02] backdrop-blur-md shadow-[0_0_30px_rgba(0,200,58,0.1)] flex items-center justify-center"
+             animate={{ rotate: [0, 360], y: [0, -40, 0] }}
+             transition={{ duration: clock.duration, repeat: Infinity, ease: "linear" }}
+           >
+              <div className="w-1 h-8 bg-[#00c83a]/40 absolute bottom-1/2 left-1/2 origin-bottom rounded-full" style={{ transform: 'translateX(-50%)' }}></div>
+              <div className="w-8 h-1 bg-[#00c83a]/40 absolute top-1/2 left-1/2 origin-left rounded-full" style={{ transform: 'translateY(-50%)' }}></div>
+              {/* Outer glowing ring */}
+              <div className="absolute inset-[-4px] rounded-full border border-[#00c83a]/10 border-dashed animate-[spin_10s_linear_infinite]"></div>
            </motion.div>
         ))}
       </div>
       
       {/* Luzes de fundo globais */}
-      <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[#00c83a]/[0.03] blur-[150px] rounded-full pointer-events-none z-0"></div>
-      <div className="absolute top-[40%] right-[-10%] w-[600px] h-[600px] bg-[#f12c4c]/[0.02] blur-[150px] rounded-full pointer-events-none z-0"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[800px] h-[800px] bg-[#eab308]/[0.02] blur-[150px] rounded-full pointer-events-none z-0"></div>
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[#00c83a]/[0.03] blur-[150px] rounded-full"></div>
+        <div className="absolute top-[40%] right-[-10%] w-[600px] h-[600px] bg-[#f12c4c]/[0.02] blur-[150px] rounded-full"></div>
+        <div className="absolute top-[80%] left-[-10%] w-[800px] h-[800px] bg-[#eab308]/[0.02] blur-[150px] rounded-full"></div>
+      </div>
 
       {/* HEADER FIXO */}
-      <header className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-[#050507]/90 backdrop-blur-xl border-b border-white/5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.8)]' : 'bg-transparent py-6'}`}>
+      <header className={`fixed top-0 w-full z-[100] transition-all duration-300 py-4 ${scrolled ? 'bg-[#050507]/90 backdrop-blur-xl border-b border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.8)]' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-3 group cursor-pointer">
             <img src="/icon.svg" alt="Apex Machine" className="w-9 h-9 object-contain drop-shadow-[0_0_10px_rgba(241,44,76,0.5)] transition-transform group-hover:scale-110" />
@@ -186,7 +209,7 @@ export default function VendasPage() {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#eab308]/10 border border-[#eab308]/30 text-[10px] font-black uppercase tracking-widest text-[#eab308] mb-8 shadow-[0_0_20px_rgba(234,179,8,0.15)]"
           >
             <Activity size={14} />
-            <span>Auditoria Institucional de Alta Precisão</span>
+            <span>O Terminal Definitivo para Validar Sinais</span>
           </motion.div>
           
           <motion.h2 
