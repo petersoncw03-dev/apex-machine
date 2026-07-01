@@ -3,8 +3,9 @@ import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries } 
 
 function calcSMA(v: number[], p: number) { return v.map((_, i) => i < p - 1 ? null : v.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p); }
 function calcEMA(v: number[], p: number) { const k=2/(p+1); let e: number|null=null; return v.map((x,i)=>{ if(i<p-1)return null; e=e===null?v.slice(0,p).reduce((a,b)=>a+b,0)/p:x*k+e*(1-k); return parseFloat(e.toFixed(2)); }); }
+function calcBB(v: number[], p: number, mult: number) { return v.map((_, i) => { if (i < p - 1) return null; const sl = v.slice(i-p+1, i+1); const m = sl.reduce((a,b)=>a+b,0)/p; const variance = sl.reduce((a,b)=>a+Math.pow(b-m,2),0)/p; const dev = Math.sqrt(variance); return { upper: parseFloat((m + mult*dev).toFixed(2)), middle: parseFloat(m.toFixed(2)), lower: parseFloat((m - mult*dev).toFixed(2)) }; }); }
 
-interface Ind { key:string; type:"sma"|"ema"; period:number; color:string; thickness:number; }
+interface Ind { key:string; type:"sma"|"ema"|"bb"; period:number; color:string; thickness:number; }
 const CPOOL = ["#facc15","#f97316","#60a5fa","#34d399","#a78bfa","#ec4899","#22d3ee","#fb923c","#e879f9","#10b981","#ef4444","#8b5cf6"];
 
 interface Roll {
@@ -73,7 +74,7 @@ export default function GraficoPnlPanel({ globalData }: { globalData: Roll[] }) 
   const [tf, setTf] = useState("tick");
   const [inds, setInds] = useState<Ind[]>([]);
   const [showSide, setShowSide] = useState(false);
-  const [indType, setIndType] = useState<"sma" | "ema">("ema");
+  const [indType, setIndType] = useState<"sma" | "ema" | "bb">("ema");
   const [indPer, setIndPer] = useState("");
   const [indColor, setIndColor] = useState("#facc15");
   const [indThick, setIndThick] = useState(1.5);
@@ -90,9 +91,20 @@ export default function GraficoPnlPanel({ globalData }: { globalData: Roll[] }) 
 
   const updateInds = useCallback((accumulated: number[], times: number[], indList: Ind[]) => {
     indList.forEach(ind => {
-      const s = sMap.current.get(ind.key); if (!s) return;
-      const vals = ind.type === "sma" ? calcSMA(accumulated, ind.period) : calcEMA(accumulated, ind.period);
-      s.setData(times.map((t, i) => vals[i] !== null && !isNaN(vals[i] as number) && !isNaN(t) ? { time: t, value: vals[i] } : null).filter(Boolean) as any);
+      if (ind.type === "bb") {
+        const su = sMap.current.get(ind.key + "_upper");
+        const sm = sMap.current.get(ind.key + "_middle");
+        const sl = sMap.current.get(ind.key + "_lower");
+        if (!su || !sm || !sl) return;
+        const vals = calcBB(accumulated, ind.period, 2);
+        su.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).upper } : null).filter(Boolean) as any);
+        sm.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).middle } : null).filter(Boolean) as any);
+        sl.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).lower } : null).filter(Boolean) as any);
+      } else {
+        const s = sMap.current.get(ind.key); if (!s) return;
+        const vals = ind.type === "sma" ? calcSMA(accumulated, ind.period) : calcEMA(accumulated, ind.period);
+        s.setData(times.map((t, i) => vals[i] !== null && !isNaN(vals[i] as number) && !isNaN(t) ? { time: t, value: vals[i] } : null).filter(Boolean) as any);
+      }
     });
   }, []);
 
@@ -128,20 +140,47 @@ export default function GraficoPnlPanel({ globalData }: { globalData: Roll[] }) 
   const addInd = () => {
     if (!chart.current) return; const p = parseInt(indPer); if (isNaN(p) || p < 2) return;
     const key = `${indType}_${p}_${Date.now()}`;
-    const s = chart.current.addSeries(LineSeries, { color: indColor, lineWidth: indThick, lineStyle: indType === "ema" ? 1 : 0, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
-    sMap.current.set(key, s);
-    const built = getBuilt(activeData); const accs = built.map(b => b.acc); const times = built.map(b => b.time);
-    const vals = indType === "sma" ? calcSMA(accs, p) : calcEMA(accs, p);
-    s.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: vals[i] } : null).filter(Boolean) as any);
-    const color = CPOOL[cidx.current % CPOOL.length]; cidx.current++;
-    setInds(prev => [...prev, { key, type: indType, period: p, color: indColor || color, thickness: indThick }]);
+    const color = indColor || CPOOL[cidx.current % CPOOL.length]; cidx.current++;
+    
+    if (indType === "bb") {
+      const su = chart.current.addSeries(LineSeries, { color, lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
+      const sm = chart.current.addSeries(LineSeries, { color, lineWidth: indThick, lineStyle: 0, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
+      const sl = chart.current.addSeries(LineSeries, { color, lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
+      sMap.current.set(key + "_upper", su);
+      sMap.current.set(key + "_middle", sm);
+      sMap.current.set(key + "_lower", sl);
+      
+      const built = getBuilt(activeData); const accs = built.map(b => b.acc); const times = built.map(b => b.time);
+      const vals = calcBB(accs, p, 2);
+      su.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).upper } : null).filter(Boolean) as any);
+      sm.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).middle } : null).filter(Boolean) as any);
+      sl.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).lower } : null).filter(Boolean) as any);
+    } else {
+      const s = chart.current.addSeries(LineSeries, { color, lineWidth: indThick, lineStyle: indType === "ema" ? 1 : 0, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
+      sMap.current.set(key, s);
+      const built = getBuilt(activeData); const accs = built.map(b => b.acc); const times = built.map(b => b.time);
+      const vals = indType === "sma" ? calcSMA(accs, p) : calcEMA(accs, p);
+      s.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: vals[i] } : null).filter(Boolean) as any);
+    }
+    
+    setInds(prev => [...prev, { key, type: indType, period: p, color, thickness: indThick }]);
     setIndPer("");
   };
 
   const removeInd = (key: string) => {
-    const s = sMap.current.get(key);
-    if (s && chart.current) { try { s.applyOptions({ visible: false }); s.setData([]); chart.current.removeSeries(s); } catch { } }
-    sMap.current.delete(key); setInds(prev => prev.filter(i => i.key !== key));
+    const ind = inds.find(i => i.key === key);
+    if (ind && ind.type === "bb") {
+      ["_upper", "_middle", "_lower"].forEach(suffix => {
+        const s = sMap.current.get(key + suffix);
+        if (s && chart.current) { try { s.applyOptions({ visible: false }); s.setData([]); chart.current.removeSeries(s); } catch { } }
+        sMap.current.delete(key + suffix);
+      });
+    } else {
+      const s = sMap.current.get(key);
+      if (s && chart.current) { try { s.applyOptions({ visible: false }); s.setData([]); chart.current.removeSeries(s); } catch { } }
+      sMap.current.delete(key);
+    }
+    setInds(prev => prev.filter(i => i.key !== key));
   };
 
   const prevTf = useRef(tf);
@@ -173,6 +212,9 @@ export default function GraficoPnlPanel({ globalData }: { globalData: Roll[] }) 
 
   return (
     <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative w-full h-[700px]">
+      <style>{`
+        #tv-attr-logo { display: none !important; opacity: 0 !important; pointer-events: none !important; }
+      `}</style>
       {/* HEADER PREMIUM */}
       <div className="px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] shrink-0 z-10">
         <div className="flex items-center gap-4">
@@ -239,8 +281,8 @@ export default function GraficoPnlPanel({ globalData }: { globalData: Roll[] }) 
                 <h4 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Adicionar Média Móvel</h4>
                 <div className="space-y-3">
                   <label className="text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">Tipo</label>
-                  <select value={indType} onChange={e => setIndType(e.target.value as "sma" | "ema")} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-[#00c83a]">
-                    <option value="ema">EMA (Exponencial)</option><option value="sma">SMA (Simples)</option>
+                  <select value={indType} onChange={e => setIndType(e.target.value as "sma" | "ema" | "bb")} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-[#00c83a]">
+                    <option value="ema">EMA (Exponencial)</option><option value="sma">SMA (Simples)</option><option value="bb">BB (Bandas de Bollinger)</option>
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-3">
