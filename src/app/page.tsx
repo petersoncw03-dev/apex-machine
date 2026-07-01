@@ -14,7 +14,11 @@ import {
   BarChart2, 
   Zap,
   Lock,
-  ArrowRight
+  ArrowRight,
+  LayoutDashboard,
+  Mail,
+  MessageCircle,
+  HelpCircle
 } from 'lucide-react';
 
 export default function VendasPage() {
@@ -102,33 +106,48 @@ export default function VendasPage() {
       {/* Background Matrix/Cyber Vibe */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 z-0 pointer-events-none"></div>
       
-      {/* Floating Branco Stones */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-20">
+      {/* Floating Branco Stones and Casino Icons */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none opacity-20">
         {[
-          { top: '15%', left: '10%', scale: 1, duration: 25 },
-          { top: '45%', left: '85%', scale: 1.5, duration: 30 },
-          { top: '75%', left: '15%', scale: 0.8, duration: 20 },
-          { top: '25%', left: '75%', scale: 1.2, duration: 28 },
-          { top: '85%', left: '80%', scale: 1.1, duration: 22 },
+          { icon: '/blaze-white.png', top: '10%', left: '5%', scale: 1.2, duration: 25 },
+          { icon: '/blaze-white.png', top: '40%', left: '85%', scale: 1.5, duration: 30 },
+          { icon: '/blaze-white.png', top: '75%', left: '15%', scale: 0.9, duration: 20 },
+          { icon: '/blaze-white.png', top: '25%', left: '75%', scale: 1.3, duration: 28 },
+          { icon: '/blaze-white.png', top: '85%', left: '80%', scale: 1.1, duration: 22 },
+          { icon: '/blaze-white.png', top: '55%', left: '10%', scale: 1.4, duration: 26 },
+          { icon: '/blaze-white.png', top: '15%', left: '50%', scale: 0.8, duration: 32 },
+          { icon: '/blaze-white.png', top: '90%', left: '40%', scale: 1.2, duration: 24 },
         ].map((stone, i) => (
           <motion.img 
             key={i}
-            src="/blaze-white.png" 
+            src={stone.icon} 
             alt="Branco"
             style={{ top: stone.top, left: stone.left, transform: `scale(${stone.scale})` }}
-            className="absolute w-12 h-12 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+            className="absolute w-12 h-12 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]"
             animate={{
               y: [0, -40, 0],
               x: [0, 20, 0],
               rotate: [0, 360],
             }}
-            transition={{
-              duration: stone.duration,
-              repeat: Infinity,
-              repeatType: 'reverse',
-              ease: "linear"
-            }}
+            transition={{ duration: stone.duration, repeat: Infinity, repeatType: 'reverse', ease: "linear" }}
           />
+        ))}
+        {/* Floating Ace Cards */}
+        {[
+          { label: 'A♠', top: '20%', left: '20%', scale: 1.5, duration: 29 },
+          { label: 'A♥', top: '65%', left: '85%', scale: 1.2, duration: 21 },
+          { label: 'A♦', top: '80%', left: '25%', scale: 1.4, duration: 27 },
+          { label: 'A♣', top: '35%', left: '60%', scale: 1.1, duration: 33 },
+        ].map((card, i) => (
+           <motion.div 
+             key={`card-${i}`}
+             style={{ top: card.top, left: card.left, transform: `scale(${card.scale})` }}
+             className="absolute font-black text-4xl text-white/10 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]"
+             animate={{ y: [0, -30, 0], x: [0, -20, 0], rotate: [0, -180] }}
+             transition={{ duration: card.duration, repeat: Infinity, repeatType: 'reverse', ease: "linear" }}
+           >
+             {card.label}
+           </motion.div>
         ))}
       </div>
       
@@ -148,8 +167,8 @@ export default function VendasPage() {
             </h1>
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/login" className="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-xs font-bold tracking-widest text-white uppercase rounded-lg transition-all flex items-center gap-2">
-              <Lock size={14} className="text-gray-400" />
+            <Link href="/painel-master" className="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-xs font-bold tracking-widest text-white uppercase rounded-lg transition-all flex items-center gap-2">
+              <LayoutDashboard size={14} className="text-[#00c83a]" />
               Acesso ao Terminal
             </Link>
           </div>
@@ -209,6 +228,26 @@ export default function VendasPage() {
           >
             <span className="text-[#00c83a]">Radar Ao Vivo:</span>
             Validação de Sinais
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1.5 }}
+            className="absolute top-[40%] -left-6 md:-left-12 z-30 bg-[#12141c] text-white font-black text-[10px] uppercase tracking-widest py-3 px-6 rounded-2xl rounded-tr-none shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/10 flex flex-col gap-1"
+          >
+            <span className="text-[#f12c4c]">Taxa de Acerto (TX):</span>
+            Rankeamento Instantâneo
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1.8 }}
+            className="absolute -bottom-6 right-1/4 z-30 bg-[#0a0a0f] text-white font-black text-[10px] uppercase tracking-widest py-3 px-6 rounded-2xl rounded-tl-none shadow-[0_10px_30px_rgba(0,200,58,0.2)] border border-[#00c83a]/30 flex flex-col gap-1"
+          >
+            <span className="text-[#eab308]">Filtro Automático:</span>
+            Ignora Padrões Quebrados
           </motion.div>
           
           <div className="relative bg-[#0a0a0f] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden aspect-video flex flex-col">
@@ -301,8 +340,8 @@ export default function VendasPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
               <BarChart2 className="text-[#00c83a]" size={32} />
-              <h4 className="font-black text-white uppercase tracking-widest text-sm">PNL Global Ao Vivo</h4>
-              <p className="text-xs text-gray-500">Veja exatamente quando a mesa parou de pagar e entrou em fase severa de recuperação (recolhendo a banca dos amadores).</p>
+              <h4 className="font-black text-white uppercase tracking-widest text-sm">Gráfico Profissional</h4>
+              <p className="text-xs text-gray-500">Adicione médias móveis (SMA, EMA) e indicadores no gráfico de PNL, operando como um verdadeiro trader profissional, mas no cassino.</p>
             </div>
             <div className="bg-[#0a0a0f] border border-white/5 p-6 rounded-xl flex flex-col gap-3 hover:border-white/20 transition-all">
               <Target className="text-[#eab308]" size={32} />
@@ -368,7 +407,7 @@ export default function VendasPage() {
             <div className="flex flex-col md:flex-row items-center gap-12">
               <div className="flex-1 w-full aspect-video bg-[#12141c] border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden flex items-center justify-center group">
                  <div className="absolute inset-0 bg-gradient-to-tr from-[#00c83a]/20 to-transparent z-10"></div>
-                 <img src="/backtester.png" alt="Backtester" className="absolute w-full h-full object-cover opacity-20 blur-sm group-hover:blur-0 group-hover:opacity-60 transition-all duration-700 ease-out" />
+                 <img src="/backtester.png" alt="Backtester" className="absolute w-full h-full object-cover opacity-20 group-hover:opacity-80 transition-all duration-700 ease-out" />
                  <div className="text-center relative z-20 transition-transform duration-700 group-hover:scale-95 group-hover:opacity-0 pointer-events-none">
                     <Activity size={64} className="text-[#00c83a] opacity-80 mb-4 mx-auto drop-shadow-[0_0_15px_rgba(0,200,58,0.5)]" />
                     <span className="font-mono text-white font-bold uppercase tracking-widest text-xs drop-shadow-md bg-black/80 border border-white/10 px-4 py-2 rounded-lg">Simulador Backtester</span>
@@ -395,7 +434,7 @@ export default function VendasPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#f12c4c]/10 rounded-full blur-[100px] pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#eab308]/10 rounded-full blur-[100px] pointer-events-none"></div>
           
-          <Cpu size={48} className="text-[#f12c4c] mx-auto mb-6" />
+          <img src="/blaze-machine-logo.png" alt="Blaze Machine" className="w-24 h-24 mx-auto mb-6 object-contain mix-blend-screen drop-shadow-[0_0_20px_rgba(241,44,76,0.3)]" />
           <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white mb-6">
             Quer automatizar suas operações?
           </h3>
@@ -421,12 +460,12 @@ export default function VendasPage() {
              <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Rodadas Analisadas / Dia</span>
           </div>
           <div className="flex flex-col items-center gap-2">
-             <span className="text-5xl font-black text-white">99.99%</span>
-             <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Uptime dos Servidores</span>
+             <span className="text-5xl font-black text-white">100%</span>
+             <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Pedras em Tempo Real</span>
           </div>
           <div className="flex flex-col items-center gap-2">
-             <span className="text-5xl font-black text-white">&lt;50ms</span>
-             <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Latência de Ingestão</span>
+             <span className="text-5xl font-black text-white">+43.000</span>
+             <span className="text-[10px] uppercase font-black tracking-widest text-[#00c83a]">Padrões Validados</span>
           </div>
         </div>
       </section>
@@ -436,10 +475,10 @@ export default function VendasPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
             <h3 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tighter mb-4">
-              Escolha seu <span className="text-[#eab308]">Arsenal</span>
+              Junte-se à <span className="text-[#eab308]">Elite Operacional</span>
             </h3>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Selecione o nível de acesso ao terminal que mais se adequa ao seu volume operacional. Vagas estritamente limitadas para garantir a estabilidade do WebSocket.
+              Selecione o passe de acesso ao terminal que mais se adequa ao seu nível. Liberação imediata após a confirmação. Comece a auditar seus sinais agora.
             </p>
           </div>
 
@@ -464,9 +503,10 @@ export default function VendasPage() {
                  <span className="text-xs font-bold text-gray-500 mb-2">/ {plan.days === 1 ? 'dia' : `${plan.days} dias`}</span>
                </div>
                <ul className="flex flex-col gap-4 text-sm font-medium text-gray-300 mt-2 border-t border-white/5 pt-6 flex-1">
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Sinais em Tempo Real</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Todos os Radares (Confluências)</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Simulador (Backtester)</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Acesso total ao Gráfico PNL</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Confluência de IA & Minutos</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Simulador Backtest 43k Rodadas</li>
+                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Alertas Sonoros e Visuais</li>
                </ul>
                <button 
                  onClick={() => handleCheckout(plan.stripePriceId, plan.days)}
@@ -488,33 +528,44 @@ export default function VendasPage() {
       {/* CTA FINAL */}
       <section className="py-24 px-6 relative z-10 border-t border-white/5">
         <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
-          <Cpu size={48} className="text-[#00c83a] mb-6 opacity-50" />
+          <HelpCircle size={48} className="text-[#00c83a] mb-6 opacity-50" />
           <h3 className="text-4xl md:text-5xl font-black uppercase text-white tracking-tighter mb-6">
-            O terminal está <span className="text-[#00c83a]">pronto</span>.
+            Ainda tem <span className="text-[#00c83a]">dúvidas?</span>
           </h3>
           <p className="text-gray-400 text-lg mb-10 max-w-xl">
-            Pare de depender da sorte e coloque a matemática institucional para trabalhar a seu favor agora mesmo.
+            Se você quer ver o terminal funcionando na prática antes de assinar, ou precisa falar com a nossa equipe, entre em contato direto pelo suporte.
           </p>
-          <button 
-            onClick={scrollToPlanos}
-            className="px-10 py-5 bg-white text-black font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)] flex items-center gap-3"
+          <a 
+            href="#"
+            target="_blank"
+            className="px-10 py-5 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(37,211,102,0.3)] flex items-center gap-3"
           >
-            Quero fazer parte da Elite
-            <ArrowRight size={18} />
-          </button>
+            Falar com o Suporte
+            <MessageCircle size={18} />
+          </a>
         </div>
       </section>
 
       {/* FOOTER */}
       <footer className="py-12 border-t border-white/5 bg-[#020203] text-center relative z-10">
         <div className="max-w-6xl mx-auto px-6 flex flex-col items-center gap-6">
-          <div className="flex items-center gap-2 opacity-50">
-            <Cpu size={14} className="text-white" />
-            <span className="text-sm font-black tracking-widest text-white uppercase">APEX MACHINE</span>
+          <div className="flex items-center gap-3 opacity-50 grayscale hover:grayscale-0 transition-all cursor-pointer">
+            <img src="/icon.svg" alt="Apex Machine" className="w-8 h-8 object-contain" />
+            <span className="text-xl font-black tracking-tighter text-white flex gap-1 uppercase">
+              APEX <span className="font-light">MACHINE</span>
+            </span>
           </div>
-          <p className="text-xs text-gray-600 max-w-2xl mx-auto">
-            Apex Machine é um terminal analítico focado em estatística e probabilidade. Não garantimos ganhos financeiros. Operações financeiras envolvem riscos. 
+          <p className="text-xs text-gray-500 max-w-2xl mx-auto leading-relaxed">
+            Apex Machine é o terminal analítico definitivo focado em estatística de alta precisão e probabilidade para validação de sinais e leitura de ciclos matemáticos. Nós fornecemos ferramentas de visualização de dados e backtesting. Não processamos apostas nem garantimos ganhos financeiros, pois operações financeiras envolvem riscos de mercado. Seja responsável.
           </p>
+          <div className="flex items-center gap-4 mt-2">
+            <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+               <Mail size={16} />
+            </a>
+            <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#25D366] hover:bg-white/10 transition-colors">
+               <MessageCircle size={16} />
+            </a>
+          </div>
           <div className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mt-4">
             © {new Date().getFullYear()} APEX MACHINE. TODOS OS DIREITOS RESERVADOS.
           </div>
