@@ -111,12 +111,10 @@ export default function VendasPage() {
       <header className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-[#050507]/90 backdrop-blur-xl border-b border-white/5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.8)]' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-3 group cursor-pointer">
-            <div className="w-8 h-8 rounded bg-[#12141c] border border-white/10 flex items-center justify-center group-hover:border-[#00c83a]/50 transition-colors">
-              <Cpu size={16} className="text-[#00c83a]" />
-            </div>
-            <h1 className="text-xl font-black tracking-tighter flex gap-1 uppercase">
-              <span className="text-white">APEX</span>
-              <span className="text-gray-500 font-light">MACHINE</span>
+            <img src="/icon.svg" alt="Apex Machine" className="w-9 h-9 object-contain drop-shadow-[0_0_10px_rgba(241,44,76,0.5)] transition-transform group-hover:scale-110" />
+            <h1 className="text-2xl font-black tracking-tighter flex gap-1 uppercase">
+              <span className="text-[#f12c4c]">APEX</span>
+              <span className="text-[#00c83a]">MACHINE</span>
             </h1>
           </div>
           <div className="flex items-center gap-6">
