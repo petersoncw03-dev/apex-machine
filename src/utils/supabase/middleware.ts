@@ -81,6 +81,12 @@ export async function updateSession(request: NextRequest) {
 
   // Usuário logado em rota protegida: verifica se tem plano ativo (premium + não expirado)
   if (user && isProtectedRoute) {
+    // Bypass de administrador — e-mail definido via variável de ambiente (nunca no código-fonte)
+    const adminEmail = process.env.ADMIN_EMAIL
+    if (adminEmail && user.email === adminEmail) {
+      return supabaseResponse // Admin passa direto, sem verificação de plano
+    }
+
     try {
       // Usa service role para garantir leitura mesmo com RLS ativo
       const supabaseAdmin = createClient(
