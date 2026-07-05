@@ -30,6 +30,7 @@ const getGlobalListenClient = () => {
       .catch((err) => {
         console.error('[SSE] Falha ao conectar global listen client:', err);
         (globalThis as any)._listenClient = null;
+        setTimeout(getGlobalListenClient, 3000); // Retry na falha de conexão inicial
       });
 
     client.on('notification', (msg) => {
@@ -38,10 +39,23 @@ const getGlobalListenClient = () => {
       }
     });
 
+    const reconnect = () => {
+      if ((globalThis as any)._listenClient === client) {
+          (globalThis as any)._listenClient = null;
+          console.log('[SSE] Tentando reconectar Global Listen Client em 2s...');
+          setTimeout(getGlobalListenClient, 2000);
+      }
+    };
+
     client.on('error', (err) => {
       console.error('[SSE] Global Listen Client Error:', err);
       try { client.end(); } catch {}
-      (globalThis as any)._listenClient = null;
+      reconnect();
+    });
+
+    client.on('end', () => {
+      console.warn('[SSE] Global Listen Client End');
+      reconnect();
     });
   }
   return (globalThis as any)._listenClient;

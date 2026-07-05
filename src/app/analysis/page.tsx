@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { LiveHistoryCard } from '@/components/LiveHistoryCard';
+import { useSSE } from '@/contexts/SSEContext';
 import { Target } from 'lucide-react';
 
 // Types
@@ -20,6 +21,7 @@ const getHourMinute = (ts: string) => {
 };
 
 export default function AnalysisPage() {
+  const { subscribe } = useSSE();
   // Data for previous day and current day
   const [prevData, setPrevData] = useState<TickerData[]>([]);
   const [currData, setCurrData] = useState<TickerData[]>([]);
@@ -34,50 +36,65 @@ export default function AnalysisPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/results/period?hours=192');
-      const json = await res.json();
-      if (json.data) {
-        const parsed: TickerData[] = json.data.map((r: any) => ({
-          ...r,
-          color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
-          roll: r.roll?.toString(),
-        }));
-        // split by date (previous vs current day)
-        const now = new Date();
-        const yesterday = new Date(now);
-        yesterday.setDate(now.getDate() - 1);
-        
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - 7);
-        startOfWeek.setHours(0,0,0,0);
+      const [res48, resWhites] = await Promise.all([
+        fetch('/api/results/period?hours=48'),
+        fetch('/api/results/period?hours=192&onlyWhites=true')
+      ]);
+      const json48 = await res48.json();
+      const jsonWhites = await resWhites.json();
 
-        const isSameDay = (date: Date, day: Date) =>
-          date.getFullYear() === day.getFullYear() &&
-          date.getMonth() === day.getMonth() &&
-          date.getDate() === day.getDate();
-          
-        const prev: TickerData[] = [];
-        const curr: TickerData[] = [];
-        const weekMap = new Map<string, TickerData[]>();
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - 7);
+      startOfWeek.setHours(0,0,0,0);
+
+      const isSameDay = (date: Date, day: Date) =>
+        date.getFullYear() === day.getFullYear() &&
+        date.getMonth() === day.getMonth() &&
+        date.getDate() === day.getDate();
         
-        parsed.forEach((r) => {
+      const prev: TickerData[] = [];
+      const curr: TickerData[] = [];
+      const weekMap = new Map<string, TickerData[]>();
+      
+      if (json48.data) {
+        json48.data.forEach((r: any) => {
           const d = new Date(r.timestamp);
+          const parsed = {
+            ...r,
+            color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
+            roll: r.roll?.toString(),
+          };
           if (isSameDay(d, now)) {
-             curr.push(r);
-          } else {
-             if (isSameDay(d, yesterday)) prev.push(r);
-             
-             if (d >= startOfWeek) {
-                const dateKey = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
-                if (!weekMap.has(dateKey)) weekMap.set(dateKey, []);
-                weekMap.get(dateKey)!.push(r);
-             }
+             curr.push(parsed);
+          } else if (isSameDay(d, yesterday)) {
+             prev.push(parsed);
           }
         });
-        setPrevData(prev);
-        setCurrData(curr);
-        setWeekGroups(Array.from(weekMap.values()));
       }
+
+      if (jsonWhites.data) {
+        jsonWhites.data.forEach((r: any) => {
+          const d = new Date(r.timestamp);
+          if (d >= startOfWeek && !isSameDay(d, now) && !isSameDay(d, yesterday)) {
+            const parsed = {
+              ...r,
+              color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
+              roll: r.roll?.toString(),
+            };
+            const dateKey = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+            if (!weekMap.has(dateKey)) weekMap.set(dateKey, []);
+            weekMap.get(dateKey)!.push(parsed);
+          }
+        });
+      }
+
+      setPrevData(prev);
+      setCurrData(curr);
+      setWeekGroups(Array.from(weekMap.values()));
     } catch (e) {
       console.error(e);
     } finally {
@@ -87,9 +104,28 @@ export default function AnalysisPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000); // 5 seconds polling
-    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    return subscribe((roll: any) => {
+      const newRoll: TickerData = {
+        id: roll.id || roll.timestamp,
+        timestamp: roll.timestamp,
+        color: roll.color?.toString().charAt(0).toUpperCase() + roll.color?.toString().slice(1).toLowerCase(),
+        roll: roll.roll?.toString(),
+      };
+
+      setCurrData((prev) => {
+        if (prev.some((r) => r.id === newRoll.id || r.timestamp === newRoll.timestamp)) {
+          return prev;
+        }
+        const updated = [...prev, newRoll];
+        // Garantimos que seja ordenado do mais antigo para o mais recente (ordem cronológica padrão)
+        updated.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        return updated;
+      });
+    });
+  }, [subscribe]);
 
   // ---------------------------------------------------------------------
   // Build the 24 × 60 matrix for a given dataset.

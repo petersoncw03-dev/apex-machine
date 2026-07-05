@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
   let data = await getResultsPeriodFromDB(hours, onlyWhites);
   let source = 'postgres';
 
-  // Se falhar, retorna erro
+  // Se falhar, define data como array vazio
   if (!data || data.length === 0) {
     console.log('Postgres retornou vazio ou falhou...');
-    return NextResponse.json({ error: 'Erro ao extrair dados do banco. Tente novamente ou reinicie a página.' }, { status: 500 });
+    data = [];
   }
 
   return NextResponse.json({ data, total: data.length, period_hours: hours, source });

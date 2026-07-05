@@ -45,7 +45,6 @@ const sections: NavSection[] = [
       { href: '/laboratorio', label: 'Laboratório de Padrões', icon: <FlaskConical size={18} /> },
       { href: '/casa-exata', label: 'Casa Exata', icon: <TrendingUp size={18} /> },
       { href: '/dupla-exata', label: 'Dupla Exata', icon: <Target size={18} />, badge: 'Novo' },
-      { href: '/analise-pnl', label: 'Stress Test', icon: <LineChart size={18} />, badge: 'Novo' },
       { href: '/analysis', label: 'Análise Avançada', icon: <Grid3X3 size={18} />, badge: 'Beta' },
     ]
   }

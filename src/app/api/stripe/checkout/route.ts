@@ -31,9 +31,11 @@ export async function POST(req: Request) {
     }
 
     // Criar a sessão de checkout no Stripe
+    // PIX exige: currency = 'brl' e mode = 'payment' (cobrança única)
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment', // Deve ser 'payment' já que são cobranças únicas e não assinaturas automáticas
+      payment_method_types: ['card', 'pix'],
+      mode: 'payment',
+      currency: 'brl',
       customer_email: user.email,
       line_items: [
         {
@@ -41,8 +43,8 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/painel-master?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/planos?canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://apexmachine.com.br'}/painel-master?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://apexmachine.com.br'}/planos?canceled=true`,
       metadata: {
         userId: user.id, // Importante para sabermos quem pagou no Webhook
         days: days.toString(), // Enviamos os dias contratados para o Webhook ler

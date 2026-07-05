@@ -35,8 +35,33 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Lista de rotas protegidas
-  const protectedRoutes = ['/painel-master', '/analise-pnl', '/laboratorio', '/casa-exata', '/dupla-exata', '/analysis', '/analista', '/radar']
+  // Lista de rotas protegidas — todas as áreas que exigem login.
+  // Rotas públicas: /, /login, /planos, /termos, /privacidade, /api/stripe/webhook
+  const protectedRoutes = [
+    '/painel-master',
+    '/analista',
+    '/analista-simulador',
+    '/analise-pnl',
+    '/laboratorio',
+    '/laboratorio-minutos',
+    '/casa-exata',
+    '/casa-exata-teste',
+    '/dupla-exata',
+    '/analysis',
+    '/radar',
+    '/radar-chuva',
+    '/radar-rec',
+    '/backtester',
+    '/fabrica-ia',
+    '/meus-robos',
+    '/minutos-ia',
+    '/sinais',
+    '/grafico',
+    '/grid',
+    '/max-soro',
+    '/foco-na-cor',
+    '/sandbox',
+  ]
   const isProtectedRoute = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   if (

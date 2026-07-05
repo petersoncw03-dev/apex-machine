@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback, useDeferredValue } from 'react';
 import { useSSE } from '@/contexts/SSEContext';
+import { useMasterSniper } from '@/hooks/useMasterSniper';
+import { useMinutosIa } from '@/hooks/useMinutosIa';
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 import ResumoDiarioPanel from '@/components/painel-master/ResumoDiarioPanel';
 import AnalisePnlTab from '@/components/painel-master/AnalisePnlTab';
@@ -416,110 +418,10 @@ export default function RadarAvancado() {
   }, [globalData, seqColorLen]);
 
   // --- IA SIGNALS CALCULATION ---
-  const iaSignals = useMemo(() => {
-    const scores = Array(60).fill(0);
-    const activeStrats = [
-      'Minutagem (10m/20m)',
-      'Horário Cheio (60m/120m)',
-      'Soma Anterior (+Pedra)',
-      'Soma Posterior (+Pedra)',
-      'Cruzamento Linha x Coluna (3h)',
-      'Top 3 Minutos Quentes (6h)'
-    ];
-
-    if (!globalData || globalData.length < 3) return { scores, activeStrats };
-
-    const latestTime = new Date(globalData[globalData.length - 1].timestamp).getTime();
-    
-    const cutoff3h = latestTime - 3 * 60 * 60 * 1000;
-    const cutoff6h = latestTime - 6 * 60 * 60 * 1000;
-
-    const rowCount = Array(6).fill(0);
-    const colCount = Array(10).fill(0);
-    const minCount6h = Array(60).fill(0);
-
-    for (let i = 1; i < globalData.length; i++) {
-      const roll = globalData[i];
-      if (roll.roll !== 0) continue;
-
-      const timeW = new Date(roll.timestamp).getTime();
-      const m = new Date(roll.timestamp).getMinutes();
-
-      // Ignora pedras que caíram há menos de 10 minutos para as estatísticas de tendência (calor).
-      // Como as pedras ficam visíveis no painel por 10 minutos, isso garante que a pontuação
-      // daquele minuto "congele" e não se altere na sua frente enquanto ele ainda está na tela.
-      const timeSinceFell = latestTime - timeW;
-      const ignoreForHeat = timeSinceFell <= 10 * 60000;
-
-      if (!ignoreForHeat) {
-        if (timeW >= cutoff6h) {
-          minCount6h[m]++;
-        }
-
-        if (timeW >= cutoff3h) {
-          const row = Math.floor(m / 10);
-          const col = m % 10;
-          rowCount[row]++;
-          colCount[col]++;
-        }
-      }
-
-      if (timeW >= cutoff3h) {
-        const prev = globalData[i - 1] ? Number(globalData[i - 1].roll) : 0;
-        const next = i + 1 < globalData.length ? Number(globalData[i + 1].roll) : null;
-
-        const strategies = [
-          timeW + 10 * 60000,
-          timeW + 20 * 60000,
-          timeW + 60 * 60000,
-          timeW + 120 * 60000
-        ];
-        
-        // Evitar offset 0 (que faria o branco apontar para ele mesmo instantaneamente)
-        if (prev > 0) strategies.push(timeW + prev * 60000);
-        if (next !== null && next > 0) strategies.push(timeW + next * 60000);
-
-        strategies.forEach(targetTime => {
-          if (targetTime >= latestTime - 10 * 60000 && targetTime <= latestTime + 20 * 60000) {
-            const tm = new Date(targetTime).getMinutes();
-            scores[tm] += 1;
-          }
-        });
-      }
-    }
-
-    const currentMin = new Date(latestTime).getMinutes();
-    const isVisible = (m: number) => {
-      const diffFwd = (m - currentMin + 60) % 60;
-      const diffBack = (currentMin - m + 60) % 60;
-      return diffFwd <= 20 || diffBack <= 10;
-    };
-
-    // Cruzamento Linha x Coluna (Hot Zones)
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 10; c++) {
-        const m = r * 10 + c;
-        if (rowCount[r] >= 2 && colCount[c] >= 2 && isVisible(m)) {
-           scores[m] += 1;
-        }
-      }
-    }
-
-    // Top 3 Minutos Quentes (6h)
-    const sortedMins = minCount6h
-      .map((hits, min) => ({ min, hits }))
-      .filter(x => x.hits >= 2)
-      .sort((a, b) => b.hits - a.hits);
-    
-    for(let i=0; i<3 && i<sortedMins.length; i++) {
-        const m = sortedMins[i].min;
-        if (isVisible(m)) {
-            scores[m] += 1;
-        }
-    }
-    
-    return { scores, activeStrats };
-  }, [globalData]);
+  const [iaPeriodFilter, setIaPeriodFilter] = useState(3);
+  const iaSignals = useMinutosIa(globalData as any, iaPeriodFilter, new Set<number>(), true, false);
+  // --- MASTER SNIPER AI ---
+  const sniper = useMasterSniper(globalData, iaSignals.scores);
 
   // --- IA STATS (SA/SM) CALCULATION ---
   const [iaMinConfluence, setIaMinConfluence] = useState(1);
@@ -1595,6 +1497,69 @@ export default function RadarAvancado() {
                   </div>
                 </div>
 
+                
+              {/* ── SEQUÊNCIA DE CORES ────────────────────── */}
+              <div className="flex flex-col gap-6 overflow-hidden shrink-0">
+                <div className={`${CARD} flex flex-col h-full`}>
+                  <div className={HEAD}>
+                    <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
+                      Sequência de Cores
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <select 
+                        className={SEL} 
+                        value={maxDataHours} 
+                        onChange={e => handleSetMaxDataHours(+e.target.value)}
+                        title="Período de Histórico"
+                      >
+                        <option value={168}>7 Dias</option>
+                        <option value={360}>15 Dias</option>
+                      </select>
+                      <select className={SEL} value={seqColorLen} onChange={e => setSeqColorLen(+e.target.value)}>
+                        {[5, 6, 7, 8, 9].map(v => <option key={v} value={v}>{v} Cores</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="p-4 flex flex-col gap-4">
+                    {/* Preto/Vermelho (Ambos) */}
+                    <div className="flex items-start gap-4">
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <div className="w-8 h-8 rounded bg-[linear-gradient(135deg,#E51E3E_50%,#131722_50%)] text-white font-black flex items-center justify-center text-xs border border-white/20 shadow-md">X{seqColorLen}</div>
+                      </div>
+                      <div className="flex flex-col justify-center gap-1">
+                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Preto/Vermelho foi há <strong className="text-white">{seqColorStats.any.minAtras} min</strong></span>
+                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.any.rodadasAtras} rodadas atrás</span>
+                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.any.maxima}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Vermelho */}
+                    <div className="flex items-start gap-4 pt-3 border-t border-white/5">
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <div className="w-8 h-8 rounded bg-[#E51E3E] text-white font-black flex items-center justify-center text-xs border border-white/20">X{seqColorLen}</div>
+                      </div>
+                      <div className="flex flex-col justify-center gap-1">
+                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Vermelho foi há <strong className="text-white">{seqColorStats.red.minAtras} min</strong></span>
+                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.red.rodadasAtras} rodadas atrás</span>
+                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.red.maxima}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Preto */}
+                    <div className="flex items-start gap-4 pt-3 border-t border-white/5">
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <div className="w-8 h-8 rounded bg-[#2C2F33] text-white font-black flex items-center justify-center text-xs border border-white/20">X{seqColorLen}</div>
+                      </div>
+                      <div className="flex flex-col justify-center gap-1">
+                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Preto foi há <strong className="text-white">{seqColorStats.black.minAtras} min</strong></span>
+                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.black.rodadasAtras} rodadas atrás</span>
+                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.black.maxima}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
                 {/* Cores por Hora */}
                 <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative flex-1 flex flex-col min-h-[500px]">
                   <div className="px-4 py-2 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center shrink-0 border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
@@ -1761,7 +1726,7 @@ export default function RadarAvancado() {
 
 
               {/* ── LEFT BOTTOM: SOMA DE 2 PEDRAS ────────────────────── */}
-              <div className="flex flex-col gap-6 overflow-hidden flex-1 min-h-[500px] shrink-0">
+              <div className="flex flex-col gap-6 overflow-hidden h-fit shrink-0">
                 <div className={`${CARD} flex flex-col h-full`}>
                   <div className={HEAD}>
                     <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
@@ -1832,68 +1797,70 @@ export default function RadarAvancado() {
                   </div>
                 </div>
               </div>
-
-              {/* ── SEQUÊNCIA DE CORES ────────────────────── */}
-              <div className="flex flex-col gap-6 overflow-hidden shrink-0">
-                <div className={`${CARD} flex flex-col h-full`}>
-                  <div className={HEAD}>
+              {/* ── LEFT TOP: SUPER AI CARD (Vazio por enquanto) ── */}
+              <div className="flex flex-col overflow-hidden shrink-0">
+                <div className={`${CARD} flex flex-col h-full border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.15)]`}>
+                  <div className="px-5 py-4 bg-gradient-to-b from-amber-500/10 to-transparent border-b border-amber-500/20 flex justify-between items-center border-t-[3px] border-t-amber-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                     <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                      Sequência de Cores
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div> Master Sniper AI
                     </span>
-                    <div className="flex items-center gap-2">
-                      <select 
-                        className={SEL} 
-                        value={maxDataHours} 
-                        onChange={e => handleSetMaxDataHours(+e.target.value)}
-                        title="Período de Histórico"
-                      >
-                        <option value={168}>7 Dias</option>
-                        <option value={360}>15 Dias</option>
-                      </select>
-                      <select className={SEL} value={seqColorLen} onChange={e => setSeqColorLen(+e.target.value)}>
-                        {[5, 6, 7, 8, 9].map(v => <option key={v} value={v}>{v} Cores</option>)}
-                      </select>
-                    </div>
                   </div>
-                  <div className="p-4 flex flex-col gap-4">
-                    {/* Preto/Vermelho (Ambos) */}
-                    <div className="flex items-start gap-4">
-                      <div className="flex flex-col gap-1 shrink-0">
-                        <div className="w-8 h-8 rounded bg-[linear-gradient(135deg,#E51E3E_50%,#131722_50%)] text-white font-black flex items-center justify-center text-xs border border-white/20 shadow-md">X{seqColorLen}</div>
-                      </div>
-                      <div className="flex flex-col justify-center gap-1">
-                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Preto/Vermelho foi há <strong className="text-white">{seqColorStats.any.minAtras} min</strong></span>
-                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.any.rodadasAtras} rodadas atrás</span>
-                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.any.maxima}</strong></span>
-                      </div>
-                    </div>
-
-                    {/* Vermelho */}
-                    <div className="flex items-start gap-4 pt-3 border-t border-white/5">
-                      <div className="flex flex-col gap-1 shrink-0">
-                        <div className="w-8 h-8 rounded bg-[#E51E3E] text-white font-black flex items-center justify-center text-xs border border-white/20">X{seqColorLen}</div>
-                      </div>
-                      <div className="flex flex-col justify-center gap-1">
-                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Vermelho foi há <strong className="text-white">{seqColorStats.red.minAtras} min</strong></span>
-                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.red.rodadasAtras} rodadas atrás</span>
-                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.red.maxima}</strong></span>
+                  <div className="p-4 flex flex-col gap-4 items-center justify-center min-h-[350px] relative overflow-hidden">
+                    {/* Background Pulsante se Atirando */}
+                    {sniper.state === 'FIRING' && (
+                      <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none"></div>
+                    )}
+                    
+                    {/* Status Header */}
+                    <div className="flex flex-col items-center gap-1 z-10">
+                      <span className={`text-[12px] font-black uppercase tracking-widest ${sniper.state === 'FIRING' ? 'text-red-500' : sniper.state === 'WIN' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                        {sniper.state === 'STANDBY' ? 'Rastreando Padrões' : sniper.state === 'FIRING' ? 'Autorização de Entrada' : sniper.state === 'WIN' ? 'Alvo Abatido (Win)' : 'Alvo Perdido (Loss)'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Score:</span>
+                         <span className={`text-[14px] font-black ${sniper.metrics.score >= 80 ? 'text-red-500' : sniper.metrics.score >= 50 ? 'text-amber-400' : 'text-slate-300'}`}>{sniper.metrics.score.toFixed(0)}/100</span>
                       </div>
                     </div>
 
-                    {/* Preto */}
-                    <div className="flex items-start gap-4 pt-3 border-t border-white/5">
-                      <div className="flex flex-col gap-1 shrink-0">
-                        <div className="w-8 h-8 rounded bg-[#2C2F33] text-white font-black flex items-center justify-center text-xs border border-white/20">X{seqColorLen}</div>
+                    {/* Firing Countdown */}
+                    {sniper.state === 'FIRING' ? (
+                      <div className="flex flex-col items-center justify-center my-4 z-10">
+                        <div className="w-24 h-24 rounded-full border-4 border-red-500 flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.4)] animate-pulse relative">
+                           <div className="absolute inset-0 rounded-full border-4 border-red-500 animate-ping opacity-20"></div>
+                           <span className="text-4xl font-black text-white">{sniper.countdown}/5</span>
+                        </div>
+                        <span className="mt-4 text-[14px] font-black text-red-400 uppercase tracking-widest">Entrar no Branco</span>
                       </div>
-                      <div className="flex flex-col justify-center gap-1">
-                        <span className="text-[10px] text-slate-300 leading-tight">Última seq. Preto foi há <strong className="text-white">{seqColorStats.black.minAtras} min</strong></span>
-                        <span className="text-[10px] text-white font-bold leading-tight">{seqColorStats.black.rodadasAtras} rodadas atrás</span>
-                        <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem a sequência de {seqColorLen} é: <strong className="text-white">{seqColorStats.black.maxima}</strong></span>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center my-4 z-10 opacity-30">
+                        <div className="w-24 h-24 rounded-full border-4 border-amber-500/30 flex items-center justify-center">
+                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="w-10 h-10 text-amber-500/50"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                        </div>
                       </div>
+                    )}
+
+                    {/* Sinais Ativos */}
+                    <div className="flex flex-col gap-1 w-full z-10 mt-2">
+                       {sniper.metrics.activeSignals.length > 0 ? (
+                         sniper.metrics.activeSignals.map((sig: string, i: number) => (
+                            <div key={i} className="flex items-center justify-between bg-black/40 px-3 py-1.5 border border-white/5 rounded">
+                               <div className="flex items-center gap-2">
+                                  <div className={`w-1.5 h-1.5 rounded-full ${sniper.state === 'FIRING' ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}`}></div>
+                                  <span className="text-[9px] uppercase font-bold text-slate-300">{sig}</span>
+                               </div>
+                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-emerald-500"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                         ))
+                       ) : (
+                         <div className="text-center py-2 text-[9px] uppercase font-bold text-slate-500 border border-white/5 border-dashed rounded">
+                           Nenhuma confluência crítica
+                         </div>
+                       )}
                     </div>
                   </div>
                 </div>
               </div>
+
 
             </div>
             )}
@@ -2225,48 +2192,46 @@ export default function RadarAvancado() {
               {/* ── MINUTOS DA IA ────────────────────── */}
               <div className={`${CARD_GREEN} shrink-0`}>
                 <div className={HEAD_GREEN}>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse"></div> MINUTOS DA IA
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse"></div>
+                    <span className="text-[11px] font-black uppercase tracking-widest text-white">
+                      MINUTOS DA IA
                     </span>
-                    <div className="flex items-center gap-3">
-                      {/* SA e SM Badge */}
-                      <div className="flex items-center gap-3 bg-[#0b0e14]/50 px-3 py-1 rounded-full border border-white/5">
-                         <span className="text-[10px] font-bold text-slate-400">SA: <span className={iaStats.sa === 0 ? "text-emerald-400 font-black" : "text-white"}>{iaStats.sa}</span></span>
-                         <div className="w-px h-3 bg-white/10"></div>
-                         <span className="text-[10px] font-bold text-slate-400">SM: <span className="text-white">{iaStats.sm}</span></span>
-                      </div>
-                      
-                      {/* Min Confluencia Input */}
-                      <div className="flex items-center gap-2 bg-[#0b0e14]/50 rounded-full border border-white/5 px-1 py-0.5" title="Calcular SA/SM somente em sinais com esta confluência ou superior">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider pl-2">Sinais +</span>
-                        <div className="flex items-center">
-                          <button onClick={() => setIaMinConfluence(Math.max(1, iaMinConfluence - 1))} className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors">-</button>
-                          <div className="w-6 text-center text-[11px] font-black text-cyan-400">{iaMinConfluence}</div>
-                          <button onClick={() => setIaMinConfluence(iaMinConfluence + 1)} className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors">+</button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                  <div className="group/tooltip relative">
-                    <span className="text-[9px] text-cyan-500/70 uppercase font-black tracking-widest cursor-help border-b border-cyan-500/30 border-dashed">
-                      {iaSignals.activeStrats.length} Estratégias Ativas
-                    </span>
-                    <div className="absolute right-0 top-full mt-2 w-48 p-2.5 bg-[#0b0e14] border border-white/10 rounded-md shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-50">
-                      <div className="text-[9px] uppercase font-black text-slate-400 mb-1.5 tracking-wider">Estratégias Confluentes:</div>
-                      <ul className="flex flex-col gap-1">
-                        {iaSignals.activeStrats.map((strat, idx) => (
-                          <li key={idx} className="text-[10px] text-slate-300 font-bold flex items-center gap-1.5">
-                            <div className="w-1 h-1 rounded-full bg-cyan-500"></div> {strat}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                  
+                  <div className="flex items-center gap-3">
+                    
+                    
+                    <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-1 rounded outline-none" value={iaPeriodFilter} onChange={(e) => setIaPeriodFilter(+e.target.value)}>
+                      <option value={1}>1h</option>
+                      <option value={2}>2h</option>
+                      <option value={3}>3h</option>
+                      <option value={4}>4h</option>
+                      <option value={6}>6h</option>
+                      <option value={9}>9h</option>
+                      <option value={12}>12h</option>
+                      <option value={18}>18h</option>
+                      <option value={24}>24h</option>
+                      <option value={48}>48h</option>
+                    </select>
                   </div>
                 </div>
-                
+
+                <div className="w-full p-3 flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                   {iaSignals.stats.map((st: any, idx: number) => (
+                      <div key={idx} className="flex-1 shrink-0 bg-black/40 border border-white/5 rounded px-2 py-2 flex flex-col items-center justify-center min-w-[65px]">
+                         <span className="text-[9px] uppercase font-bold text-slate-500 mb-1">Confl. {st.conf}+</span>
+                         <span className={`text-sm font-black ${st.winRate >= 50 ? 'text-emerald-400' : 'text-amber-400'}`}>{st.winRate.toFixed(1)}%</span>
+                         <div className="flex gap-2 mt-1 text-[9px] font-mono font-bold text-slate-400">
+                           <span>SA:{st.sa}</span>
+                           <span>SM:{st.sm}</span>
+                         </div>
+                      </div>
+                   ))}
+                </div>
+
                 <div className="p-4 bg-black/40">
-                  <div className="grid grid-cols-6 gap-0 border-t border-l border-white/10 rounded-lg overflow-hidden shadow-lg">
+                  <div className="grid grid-cols-6 gap-0 border-t border-l border-white/10 rounded-lg shadow-lg">
                     {Array.from({length: 60}).map((_, i) => {
                       const col = i % 6;
                       const row = Math.floor(i / 6);
@@ -2274,10 +2239,73 @@ export default function RadarAvancado() {
                       const minStr = String(min).padStart(2, '0');
                       const score = iaSignals.scores[min];
                       return (
-                        <div key={i} className={`bg-[#0b0e14]/60 hover:bg-cyan-900/20 border-r border-b border-white/10 transition-colors px-4 py-2 flex items-center justify-between h-10 cursor-pointer group ${score >= 3 ? 'bg-cyan-900/40 shadow-[inset_0_0_15px_rgba(6,182,212,0.3)]' : ''}`}>
-                          <span className={`text-[11px] font-mono font-black transition-colors ${score > 0 ? 'text-cyan-400' : 'text-slate-500 group-hover:text-cyan-400'}`}>{minStr}</span>
-                          <div className={`min-w-[26px] h-[18px] rounded-[3px] transition-colors flex items-center justify-center ${score > 0 ? (score >= 3 ? 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-cyan-200') : 'bg-slate-300 group-hover:bg-slate-200'}`}>
-                            {score > 0 && <span className={`text-[10px] font-black ${score >= 3 ? 'text-slate-900' : 'text-cyan-900'}`}>{score}</span>}
+                        <div key={i} className={`relative bg-[#0b0e14]/60 hover:bg-cyan-900/20 border-r border-b border-white/10 transition-colors h-10 flex ${score >= 3 ? 'bg-cyan-900/40 shadow-[inset_0_0_15px_rgba(6,182,212,0.3)]' : ''}`}>
+                          
+                          <div className="relative group/min flex-1 flex items-center pl-4 pr-1 cursor-pointer">
+                            <span className={`text-[11px] font-mono font-black transition-colors ${score > 0 ? 'text-cyan-400' : 'text-slate-500 group-hover/min:text-cyan-400'}`}>{minStr}</span>
+                            
+                            {/* Tooltip Hover Histórico */}
+                            {iaSignals.history12h && (
+                              <div className={`absolute ${row < 5 ? 'top-full mt-2' : 'bottom-full mb-2'} ${col < 3 ? 'left-0' : 'right-0'} w-max opacity-0 invisible group-hover/min:opacity-100 group-hover/min:visible transition-all delay-[500ms] duration-200 z-[100]`}>
+                                <div className="bg-[#0b0e14] border border-slate-700/80 rounded-lg p-3 shadow-2xl backdrop-blur-md">
+                                  {(() => {
+                                    const rawHistory = iaSignals.history12h[min];
+                                    const history = [
+                                      rawHistory[3], rawHistory[2], rawHistory[1], rawHistory[0],
+                                      rawHistory[7], rawHistory[6], rawHistory[5], rawHistory[4],
+                                      rawHistory[11], rawHistory[10], rawHistory[9], rawHistory[8]
+                                    ].filter(Boolean);
+                                    const wins = rawHistory.filter((h: any) => h.hit).length;
+                                    const wr = ((wins / 12) * 100).toFixed(0);
+                                    return (
+                                      <>
+                                        <div className="flex justify-between items-center mb-2 gap-4">
+                                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Histórico 12h</div>
+                                          <div className={`text-[11px] font-black ${wins >= 5 ? 'text-[#00c83a]' : 'text-amber-400'}`}>Win {wr}%</div>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-1.5">
+                                          {history.map((h: any, hIdx: number) => (
+                                            <div key={hIdx} className={`w-8 h-8 rounded flex items-center justify-center text-[10px] font-mono font-bold ${h.hit ? 'bg-[#00c83a]/20 text-[#00c83a] border border-[#00c83a]/30 shadow-[inset_0_0_8px_rgba(0,200,58,0.2)]' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                              {h.hourString.replace('h', '')}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </>
+                                    )
+                                  })()}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="relative group/score shrink-0 flex items-center pr-4 pl-1 cursor-pointer">
+                            <div className={`min-w-[26px] h-[18px] rounded-[3px] transition-colors flex items-center justify-center ${score > 0 ? (score >= 3 ? 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-cyan-200') : 'bg-slate-300 group-hover/score:bg-slate-200'}`}>
+                              {score > 0 && <span className={`text-[10px] font-black ${score >= 3 ? 'text-slate-900' : 'text-cyan-900'}`}>{score}</span>}
+                            </div>
+                            
+                            {/* Tooltip Hover Estratégias */}
+                            {score > 0 && iaSignals.activeStratsByMin && iaSignals.activeStratsByMin[min]?.length > 0 && (
+                              <div className={`absolute ${row < 5 ? 'top-full mt-2' : 'bottom-full mb-2'} ${col < 3 ? 'left-0' : 'right-0'} w-max opacity-0 invisible group-hover/score:opacity-100 group-hover/score:visible transition-all delay-[500ms] duration-200 z-[100]`}>
+                                                                <div className="bg-[#0b0e14] border border-cyan-900/80 rounded-lg p-2.5 shadow-2xl backdrop-blur-md min-w-[200px]">
+                                  <div className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-2 border-b border-cyan-900/50 pb-1.5 text-center">Confluência M{minStr}</div>
+                                  <div className="flex flex-col gap-1">
+                                    {iaSignals.activeStratsByMin[min].map((sIdx: any) => {
+                                      const sName = iaSignals.activeStrats[sIdx];
+                                      const sInfo = iaSignals.stratStats.find((s: any) => s.name === sName) || { winRate: 0, sa: 0, sm: 0, name: sName };
+                                      return (
+                                        <div key={sIdx} className="flex justify-between items-center bg-black/40 px-2 py-1 rounded border border-white/5">
+                                          <div className="text-[9px] text-slate-300 font-bold max-w-[120px] truncate">{sInfo.name}</div>
+                                          <div className="flex gap-2 text-[9px] font-mono font-bold text-right shrink-0">
+                                            <span className="text-cyan-400 w-7 text-right">{sInfo.winRate.toFixed(0)}%</span>
+                                            <span className={`w-6 text-right ${sInfo.sa >= sInfo.sm && sInfo.sm > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{sInfo.sa}/{sInfo.sm}</span>
+                                          </div>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )

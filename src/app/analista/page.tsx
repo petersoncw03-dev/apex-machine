@@ -114,7 +114,7 @@ export default function AnalistaPage() {
   const [patternType, setPatternType] = useState('TODOS'); 
     const [targetFocus, setTargetFocus] = useState('Branco'); 
     const [coverWhite, setCoverWhite] = useState(true);
-    const [continuousRead, setContinuousRead] = useState(false);
+    const [continuousRead, setContinuousRead] = useState(true);
     const [useWildcards, setUseWildcards] = useState(false);
     const [maxWildcards, setMaxWildcards] = useState(1);
   
@@ -124,7 +124,7 @@ export default function AnalistaPage() {
   const [minSaFilter, setMinSaFilter] = useState(0);
   const [minPaFilter, setMinPaFilter] = useState(0);
   const [sortBy, setSortBy] = useState('WINRATE');
-  const [sizeRange, setSizeRange] = useState<[number, number]>([3, 5]);
+  const [sizeRange, setSizeRange] = useState<[number, number]>([8, 8]);
   
   // Live Monitor
   const [liveMode, setLiveMode] = useState(false);
@@ -194,7 +194,7 @@ export default function AnalistaPage() {
   const [isMixedMining, setIsMixedMining] = useState(false);
   const [mixedProgress, setMixedProgress] = useState(0);
   const [mixedTotal, setMixedTotal] = useState(0);
-  const [useMixedMining, setUseMixedMining] = useState(false);
+  const [useMixedMining, setUseMixedMining] = useState(true);
 
   // Quick Trend State
   const [showTrendModal, setShowTrendModal] = useState(false);
@@ -227,22 +227,56 @@ export default function AnalistaPage() {
       const patternStr = pat.elements.map(el => {
         const isWhite = el.t === 'c' ? el.v === 'B' : el.v === '0';
         if (el.t === 'c' || isWhite) {
-          if (el.v === 'V') return '🔴';
-          if (el.v === 'P') return '⚫️';
-          if (el.v === 'DUAL') return '🌗';
-          if (el.v === 'TRI') return '🔀';
-          return '⚪';
+          if (el.v === 'V') return 'V';
+          if (el.v === 'P') return 'P';
+          if (el.v === 'DUAL') return 'DUAL';
+          if (el.v === 'TRI') return 'TRI';
+          return 'B';
         }
         return el.v;
       }).join(hasNumbers ? ' ' : '');
 
-      const targetEmoji = getTargetEmoji(targetFocus);
+      let targetName = 'branco';
+      const rawTarget = pat.target || targetFocus;
+      if (rawTarget === 'Vermelho') targetName = 'vermelho';
+      else if (rawTarget === 'Preto') targetName = 'preto';
+
       const galeLabel = `g${(pat.entries || entriesRange[1]) - 1}`;
       
-      const targetStr = coverWhite && targetFocus !== 'Branco' ? `${targetEmoji} + ⚪` : targetEmoji;
-
-      return `${patternStr} = ${targetStr} ${galeLabel}`;
+      return `${patternStr} = ${targetName} ${galeLabel}`;
     }).join('\n');
+  };
+
+  const copySinglePattern = (pat: DiscoveredPattern, idx: number) => {
+    const hasNumbers = pat.elements.some(el => el.t === 'n');
+    const patternStr = pat.elements.map(el => {
+      const isWhite = el.t === 'c' ? el.v === 'B' : el.v === '0';
+      if (el.t === 'c' || isWhite) {
+        if (el.v === 'V') return 'V';
+        if (el.v === 'P') return 'P';
+        if (el.v === 'DUAL') return 'DUAL';
+        if (el.v === 'TRI') return 'TRI';
+        return 'B';
+      }
+      return el.v;
+    }).join(hasNumbers ? ' ' : '');
+
+    let targetName = 'branco';
+    const rawTarget = pat.target || targetFocus;
+    if (rawTarget === 'Vermelho') targetName = 'vermelho';
+    else if (rawTarget === 'Preto') targetName = 'preto';
+
+    const galeLabel = `g${(pat.entries || entriesRange[1]) - 1}`;
+    
+    const text = `${patternStr} = ${targetName} ${galeLabel}`;
+    navigator.clipboard.writeText(text);
+    
+    const btn = document.getElementById(`copy-btn-${idx}`);
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="text-[9px] uppercase tracking-widest text-emerald-400 font-bold">Copiado!</span>';
+      setTimeout(() => btn.innerHTML = originalText, 2000);
+    }
   };
 
   const playAlert = () => {
@@ -1548,30 +1582,21 @@ const runFullDiscovery = (config: any, currentData: Roll[], isAuto: boolean, old
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Padrão</label>
-              <select className="bg-[#12141c] border border-white/10 text-white px-3 py-2 rounded-md outline-none focus:border-blue-500 text-xs font-bold" value={patternType} onChange={(e) => setPatternType(e.target.value)}>
+              <select className="bg-[#12141c] border border-white/10 text-white px-3 py-2 rounded-md outline-none focus:border-blue-500 text-xs font-bold" value={patternType} onChange={(e) => {
+                setPatternType(e.target.value);
+                if (e.target.value === 'ONLY_NUMBERS') {
+                  setSizeRange([4, 4]);
+                } else {
+                  setSizeRange([8, 8]);
+                }
+              }}>
                 <option value="TODOS">⭐ Todos (Misturado)</option>
                 <option value="ONLY_COLORS">🔴 Somente Cores</option>
                 <option value="ONLY_NUMBERS">🔢 Somente Números</option>
-                <option value="COLORS_1_NUM">🎨 Cores + 1 Número</option>
-                <option value="COLORS_2_NUM">🎨 Cores + 2 Números</option>
-                <option value="1_NUM_COLORS">🔢 1 Número + Cores</option>
-                <option value="2_NUM_COLORS">🔢 2 Números + Cores</option>
               </select>
             </div>
 
-            <div className="mt-1">
-              <DualSlider 
-                range={sizeRange} 
-                setRange={setSizeRange} 
-                min={1} 
-                max={10} 
-                title="📏 Tamanho do Padrão" 
-                labelLeft="1 Pedra" 
-                labelRight="10 Pedras" 
-              />
-            </div>
-
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 mt-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Histórico</label>
                 <select className="bg-transparent border-b border-white/10 text-white px-2 py-1 outline-none focus:border-blue-500 text-[11px] transition-all" value={periodHours} onChange={(e) => setPeriodHours(Number(e.target.value))}>
@@ -1622,16 +1647,6 @@ const runFullDiscovery = (config: any, currentData: Roll[], isAuto: boolean, old
               </label>
             )}
 
-            <label className="flex items-center gap-2 mt-2 cursor-pointer text-xs font-bold text-gray-400 hover:text-white transition-colors">
-              <input 
-                type="checkbox" 
-                checked={continuousRead} 
-                onChange={(e) => setContinuousRead(e.target.checked)} 
-                className="w-3.5 h-3.5 rounded border-gray-600 bg-[#12141c] accent-blue-500"
-              />
-              Leitura Contínua
-            </label>
-
             <div className="flex items-center gap-3 mt-2">
               <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-400 hover:text-white transition-colors">
                 <input 
@@ -1641,6 +1656,13 @@ const runFullDiscovery = (config: any, currentData: Roll[], isAuto: boolean, old
                   className="w-3.5 h-3.5 rounded border-gray-600 bg-[#12141c] accent-blue-500"
                 />
                 Curingas
+                <div className="relative group flex items-center ml-1">
+                  <span className="text-gray-500 hover:text-blue-400 transition-colors cursor-help bg-white/5 rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold border border-white/10">?</span>
+                  <div className="absolute left-6 w-52 p-2 bg-[#12141c] border border-white/10 rounded shadow-xl text-[9px] text-gray-300 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                    <strong className="text-white">Dual (🌗):</strong> Qualquer cor, exceto Branco.<br/>
+                    <strong className="text-white">Tri (🔀):</strong> Qualquer resultado possível.
+                  </div>
+                </div>
               </label>
               {useWildcards && (
                 <input 
@@ -1683,14 +1705,6 @@ const runFullDiscovery = (config: any, currentData: Roll[], isAuto: boolean, old
             </div>
 
             <div className="flex flex-col gap-2 mt-4">
-              <button
-                onClick={() => setUseMixedMining(!useMixedMining)}
-                className={`flex items-center justify-between p-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${useMixedMining ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_15px_rgba(217,119,6,0.2)]' : 'bg-[#12141c] text-gray-500 border-white/5 hover:border-white/10 hover:bg-white/5'}`}
-              >
-                <span>Super Mineração (Mistos + IA)</span>
-                <div className={`w-3 h-3 rounded-sm border ${useMixedMining ? 'bg-amber-400 border-amber-400' : 'border-gray-500'}`}></div>
-              </button>
-
               <button 
                 onClick={handleProcessIAClick} 
                 disabled={isDiscovering || loading || isMixedMining}
@@ -1863,14 +1877,25 @@ const runFullDiscovery = (config: any, currentData: Roll[], isAuto: boolean, old
                   )}
                   
                   <div className="flex flex-col z-10">
-                    <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-2 italic">
-                      {pat.type === 'ONLY_COLORS' ? 'Cores Puras' : 
-                       pat.type === 'ONLY_NUMBERS' ? 'Números Puros' : 
-                       pat.type === 'COLORS_1_NUM' ? 'Cores + 1 Número' : 
-                       pat.type === 'COLORS_2_NUM' ? 'Cores + 2 Números' :
-                       pat.type === '1_NUM_COLORS' ? '1 Número + Cores' : 
-                       pat.type === '2_NUM_COLORS' ? '2 Números + Cores' : 'Misto (Cores/Núm)'}
-                    </span>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest italic">
+                        {pat.type === 'ONLY_COLORS' ? 'Cores Puras' : 
+                         pat.type === 'ONLY_NUMBERS' ? 'Números Puros' : 
+                         pat.type === 'COLORS_1_NUM' ? 'Cores + 1 Número' : 
+                         pat.type === 'COLORS_2_NUM' ? 'Cores + 2 Números' :
+                         pat.type === '1_NUM_COLORS' ? '1 Número + Cores' : 
+                         pat.type === '2_NUM_COLORS' ? '2 Números + Cores' : 'Misto (Cores/Núm)'}
+                      </span>
+                      <button 
+                        id={`copy-btn-${i}`}
+                        onClick={() => copySinglePattern(pat, i)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-400 hover:text-white flex items-center gap-1"
+                        title="Copiar Padrão"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <span className="text-[9px] uppercase tracking-widest font-bold">Copiar</span>
+                      </button>
+                    </div>
                     <div className="flex flex-wrap gap-1 items-center bg-black/40 p-3 rounded-xl border border-white/5 group-hover:border-blue-500/20 transition-all">
                       {pat.elements.map((el, idx) => {
                         const isZero = el.t === 'n' && el.v === '0';
