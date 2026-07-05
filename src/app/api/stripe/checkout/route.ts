@@ -26,8 +26,16 @@ export async function POST(req: Request) {
 
     const { priceId, days } = await req.json();
 
+    console.log('[Stripe Checkout] priceId recebido:', priceId, '| days:', days);
+
     if (!priceId || !days) {
       return NextResponse.json({ error: 'ID do preço e quantidade de dias são obrigatórios' }, { status: 400 });
+    }
+
+    // Garante que o priceId é um ID real do Stripe, não uma chave pública (pk_live_...) 
+    if (!priceId.startsWith('price_')) {
+      console.error('[Stripe Checkout] priceId inválido recebido:', priceId);
+      return NextResponse.json({ error: 'ID de preço inválido. Use um price_... válido do Stripe.' }, { status: 400 });
     }
 
     // Criar a sessão de checkout no Stripe
