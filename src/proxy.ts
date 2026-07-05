@@ -17,7 +17,7 @@ export const config = {
      * - Arquivos estáticos do Next.js (_next/static, _next/image)
      * - favicon.ico, sitemap.xml, robots.txt
      * - Arquivos de mídia/fonte (svg, png, jpg, jpeg, gif, webp, ico, woff, woff2)
-     * - Webhook do Stripe (deve receber sem interferência de sessão)
+     * - Webhook do Mercado Pago (deve receber sem interferência de sessão)
      *
      * Rotas privadas protegidas dentro de updateSession (redirect → /login):
      *   /painel-master, /analista, /analista-simulador, /analise-pnl,
@@ -27,8 +27,8 @@ export const config = {
      *   /sinais, /grafico, /grid, /max-soro, /foco-na-cor, /sandbox
      *
      * Rotas públicas (sem proteção):
-     *   /, /login, /planos, /termos, /privacidade, /api/stripe/webhook
+     *   /, /login, /planos, /termos, /privacidade, /api/mercadopago/webhook
      */
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/mercadopago/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
   ],
 }

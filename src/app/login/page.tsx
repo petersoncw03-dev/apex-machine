@@ -176,7 +176,7 @@ export default function LoginPage() {
             <div className="flex items-center gap-2 mt-1">
               <input type="checkbox" required className="accent-[#00ff41] w-3 h-3 cursor-pointer" />
               <span className="text-[10px] font-mono text-white/40">
-                Li e concordo com os <a href="/termos" className="text-white hover:text-[#00ff41] underline underline-offset-2">Termos</a> e <a href="/privacidade" className="text-white hover:text-[#00ff41] underline underline-offset-2">Privacidade</a>
+                Li e concordo com os <a href="/termos" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#00ff41] underline underline-offset-2">Termos</a> e <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#00ff41] underline underline-offset-2">Privacidade</a>
               </span>
             </div>
           )}
