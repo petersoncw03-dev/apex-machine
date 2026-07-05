@@ -1,0 +1,94 @@
+# Análise de Assertividade: Minutos da IA
+
+Abaixo está o ranking de **todas as estratégias ativas** no motor, organizadas pelas que tiveram o **PIOR** desempenho em cada janela de tempo.
+
+## Janela de 12 Horas
+
+| Posição | Estratégia | Win Rate | Wins / Total | Max SM |
+|---|---|---|---|---|
+| 1º | Horário Cheio (60/120m) | **24.42%** | 42 / 172 | 13 |
+| 2º | Soma Anterior (+Pedra) | **25.35%** | 18 / 71 | 15 |
+| 3º | Fibo Filtrado (Alta Freq) | **25.40%** | 48 / 189 | 19 |
+| 4º | Fibonacci Espaçado (3/5/8) | **25.58%** | 55 / 215 | 22 |
+| 5º | Frequência Dinâmica (6h/12h) | **25.93%** | 35 / 135 | 14 |
+| 6º | Soma Posterior (+Pedra) | **26.03%** | 19 / 73 | 12 |
+| 7º | Cruzamento Linha x Coluna (3h) | **27.78%** | 120 / 432 | 29 |
+| 8º | Minutagem (10/20m) | **28.95%** | 44 / 152 | 15 |
+| 9º | Quentes (22h - 22%+) | **29.03%** | 27 / 93 | 11 |
+| 10º | Soma Sanduíche (Cores Iguais) | **30.00%** | 12 / 40 | 12 |
+| 11º | Quentes (12h - 35%+) | **30.30%** | 10 / 33 | 7 |
+| 12º | Zero Absoluto (12h - 0%) | **30.65%** | 57 / 186 | 18 |
+| 13º | Quentes (6h - 50%+) | **37.50%** | 6 / 16 | 6 |
+
+## Janela de 24 Horas
+
+| Posição | Estratégia | Win Rate | Wins / Total | Max SM |
+|---|---|---|---|---|
+| 1º | Soma Sanduíche (Cores Iguais) | **25.00%** | 20 / 80 | 12 |
+| 2º | Soma Anterior (+Pedra) | **25.34%** | 37 / 146 | 15 |
+| 3º | Horário Cheio (60/120m) | **25.57%** | 79 / 309 | 13 |
+| 4º | Fibonacci Espaçado (3/5/8) | **25.65%** | 109 / 425 | 22 |
+| 5º | Quentes (12h - 35%+) | **26.09%** | 12 / 46 | 7 |
+| 6º | Fibo Filtrado (Alta Freq) | **26.61%** | 99 / 372 | 19 |
+| 7º | Frequência Dinâmica (6h/12h) | **27.56%** | 70 / 254 | 19 |
+| 8º | Cruzamento Linha x Coluna (3h) | **28.25%** | 239 / 846 | 32 |
+| 9º | Quentes (22h - 22%+) | **29.19%** | 47 / 161 | 11 |
+| 10º | Soma Posterior (+Pedra) | **29.45%** | 43 / 146 | 15 |
+| 11º | Minutagem (10/20m) | **29.57%** | 89 / 301 | 18 |
+| 12º | Zero Absoluto (12h - 0%) | **29.64%** | 99 / 334 | 18 |
+| 13º | Quentes (6h - 50%+) | **37.93%** | 11 / 29 | 6 |
+
+## Janela de 48 Horas
+
+| Posição | Estratégia | Win Rate | Wins / Total | Max SM |
+|---|---|---|---|---|
+| 1º | Quentes (12h - 35%+) | **23.16%** | 22 / 95 | 13 |
+| 2º | Soma Anterior (+Pedra) | **25.09%** | 71 / 283 | 15 |
+| 3º | Fibonacci Espaçado (3/5/8) | **26.84%** | 222 / 827 | 22 |
+| 4º | Soma Sanduíche (Cores Iguais) | **27.08%** | 39 / 144 | 12 |
+| 5º | Fibo Filtrado (Alta Freq) | **27.16%** | 198 / 729 | 19 |
+| 6º | Minutagem (10/20m) | **27.23%** | 162 / 595 | 18 |
+| 7º | Horário Cheio (60/120m) | **27.27%** | 165 / 605 | 24 |
+| 8º | Soma Posterior (+Pedra) | **27.76%** | 78 / 281 | 15 |
+| 9º | Zero Absoluto (12h - 0%) | **27.77%** | 188 / 677 | 19 |
+| 10º | Frequência Dinâmica (6h/12h) | **27.81%** | 136 / 489 | 19 |
+| 11º | Cruzamento Linha x Coluna (3h) | **28.92%** | 481 / 1663 | 32 |
+| 12º | Quentes (22h - 22%+) | **29.04%** | 97 / 334 | 11 |
+| 13º | Quentes (6h - 50%+) | **39.06%** | 25 / 64 | 6 |
+
+## Janela de 72 Horas
+
+| Posição | Estratégia | Win Rate | Wins / Total | Max SM |
+|---|---|---|---|---|
+| 1º | Quentes (12h - 35%+) | **25.48%** | 40 / 157 | 13 |
+| 2º | Soma Anterior (+Pedra) | **25.51%** | 113 / 443 | 15 |
+| 3º | Soma Sanduíche (Cores Iguais) | **26.99%** | 61 / 226 | 21 |
+| 4º | Minutagem (10/20m) | **27.12%** | 253 / 933 | 18 |
+| 5º | Horário Cheio (60/120m) | **27.24%** | 258 / 947 | 24 |
+| 6º | Fibonacci Espaçado (3/5/8) | **27.49%** | 351 / 1277 | 22 |
+| 7º | Fibo Filtrado (Alta Freq) | **27.66%** | 320 / 1157 | 19 |
+| 8º | Frequência Dinâmica (6h/12h) | **28.93%** | 219 / 757 | 19 |
+| 9º | Zero Absoluto (12h - 0%) | **29.04%** | 275 / 947 | 19 |
+| 10º | Cruzamento Linha x Coluna (3h) | **29.56%** | 745 / 2520 | 32 |
+| 11º | Soma Posterior (+Pedra) | **30.48%** | 132 / 433 | 15 |
+| 12º | Quentes (22h - 22%+) | **30.70%** | 167 / 544 | 11 |
+| 13º | Quentes (6h - 50%+) | **43.82%** | 39 / 89 | 6 |
+
+## Janela de 120 Horas
+
+| Posição | Estratégia | Win Rate | Wins / Total | Max SM |
+|---|---|---|---|---|
+| 1º | Soma Anterior (+Pedra) | **26.41%** | 201 / 761 | 23 |
+| 2º | Quentes (12h - 35%+) | **27.05%** | 79 / 292 | 13 |
+| 3º | Minutagem (10/20m) | **27.69%** | 440 / 1589 | 18 |
+| 4º | Fibo Filtrado (Alta Freq) | **28.17%** | 569 / 2020 | 19 |
+| 5º | Fibonacci Espaçado (3/5/8) | **28.20%** | 613 / 2174 | 22 |
+| 6º | Frequência Dinâmica (6h/12h) | **28.56%** | 357 / 1250 | 30 |
+| 7º | Soma Sanduíche (Cores Iguais) | **28.95%** | 110 / 380 | 21 |
+| 8º | Soma Posterior (+Pedra) | **28.97%** | 219 / 756 | 15 |
+| 9º | Cruzamento Linha x Coluna (3h) | **29.89%** | 1266 / 4235 | 32 |
+| 10º | Horário Cheio (60/120m) | **29.92%** | 477 / 1594 | 24 |
+| 11º | Zero Absoluto (12h - 0%) | **30.32%** | 480 / 1583 | 19 |
+| 12º | Quentes (22h - 22%+) | **32.44%** | 302 / 931 | 17 |
+| 13º | Quentes (6h - 50%+) | **48.26%** | 83 / 172 | 6 |
+
