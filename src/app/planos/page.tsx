@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { CheckCircle, Zap, Shield, Clock } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 
 const PLANS = [
   {
@@ -54,9 +55,21 @@ export default function PlanosPage() {
     setLoading(days);
     setError(null);
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setError('Você precisa estar logado para assinar um plano.');
+        setLoading(null);
+        return;
+      }
+
       const res = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ days }),
       });
 

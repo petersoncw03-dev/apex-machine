@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { mpClient } from '@/lib/mercadopago';
 import { Preference } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 
 // Mapa de planos: days -> { title, price }
 const PLANS: Record<number, { title: string; price: number }> = {
@@ -14,32 +13,16 @@ const PLANS: Record<number, { title: string; price: number }> = {
 
 export async function POST(req: Request) {
   try {
-    // Usamos o service role para validar o token JWT sem sofrer bloqueio de RLS.
-    // O access token do usuário é lido diretamente do cookie de sessão do Supabase.
-    const cookieStore = await cookies();
-
-    // O Supabase armazena a sessão como JSON em um cookie chamado sb-<project_ref>-auth-token
-    // Tentamos extrair o access_token de qualquer cookie de sessão presente
-    let accessToken: string | undefined;
-    for (const [name, cookie] of Object.entries(Object.fromEntries(
-      cookieStore.getAll().map(c => [c.name, c.value])
-    ))) {
-      if (name.includes('-auth-token') && !name.includes('.')) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(cookie));
-          if (parsed?.access_token) {
-            accessToken = parsed.access_token;
-            break;
-          }
-        } catch {}
-      }
-    }
+    // Lê o access_token do header Authorization enviado pelo frontend
+    // Isso evita qualquer problema de leitura/parse de cookies SSR e RLS
+    const authHeader = req.headers.get('Authorization');
+    const accessToken = authHeader?.replace('Bearer ', '').trim();
 
     if (!accessToken) {
       return NextResponse.json({ error: 'Não autorizado. Faça login novamente.' }, { status: 401 });
     }
 
-    // Valida o token via service role — ignora RLS, sem queries à tabela profiles
+    // Valida o token via service role (ignora RLS completamente)
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -96,7 +79,7 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log(`[MP Checkout] Preference criada para ${user.email} — ${days} dias`);
+    console.log(`[MP Checkout] ✅ Preference criada para ${user.email} — ${days} dias`);
     return NextResponse.json({ url: response.init_point });
   } catch (error: any) {
     console.error('[MP Checkout] Erro:', error);
