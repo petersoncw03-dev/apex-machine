@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import {
   Radio, BrainCircuit, BarChart3, FlaskConical, Bot, Zap,
   LineChart, TrendingUp, Clock, ChevronLeft, ChevronRight,
@@ -52,7 +53,15 @@ const sections: NavSection[] = [
 
 export default function SidebarNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(true);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  };
 
   // Ícone SVG (Logo Apex Machine)
   const LogoIcon = () => (
@@ -176,10 +185,14 @@ export default function SidebarNav() {
           <div className="h-[1px] w-full bg-white/[0.05] my-1"></div>
 
           {/* Botão Sair */}
-          <Link href="/" className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all ${collapsed ? 'justify-center' : ''}`}>
+          <button
+            onClick={handleLogout}
+            title={collapsed ? 'Sair da conta' : undefined}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all w-full ${collapsed ? 'justify-center' : ''}`}
+          >
             <LogOut size={18} />
             {!collapsed && <span className="text-[13px] font-medium">Sair</span>}
-          </Link>
+          </button>
 
           {/* Botão Recolher/Abrir */}
           <button
