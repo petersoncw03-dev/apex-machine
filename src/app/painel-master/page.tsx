@@ -8,6 +8,7 @@ import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 import ResumoDiarioPanel from '@/components/painel-master/ResumoDiarioPanel';
 import AnalisePnlTab from '@/components/painel-master/AnalisePnlTab';
 import GraficoPnlPanel from '@/components/painel-master/GraficoPnlPanel';
+import { VisaoCoresTab } from '@/components/painel-master/VisaoCoresTab';
 
 interface Roll { color: string; roll: number; timestamp: string; id?: string; }
 
@@ -25,7 +26,7 @@ type SortDirection = 'desc' | 'asc' | null;
 
 
 export default function RadarAvancado() {
-  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'grafico' | 'analise-pnl'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'grafico' | 'analise-pnl' | 'visao-cores'>('home');
   const [histRealTime, setHistRealTime] = useState(true);
   const [histFixedCols, setHistFixedCols] = useState(false);
   const [histReverse, setHistReverse] = useState(false);
@@ -1263,8 +1264,15 @@ export default function RadarAvancado() {
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                Stress Test
              </button>
+             <button 
+               onClick={() => setActiveTab('visao-cores')} 
+               className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'visao-cores' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+             >
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+               Raio-X das Cores
+             </button>
              <a 
-                href="https://blaze.bet.br/pt/games/double" 
+                href="https://blaze.bet.br/pt/games/double"  
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="ml-auto bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-colors rounded-lg px-4 py-2 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest shadow-sm active:scale-95"
@@ -1342,6 +1350,13 @@ export default function RadarAvancado() {
             <div className="flex flex-col xl:flex-row gap-6 pb-32 items-stretch">
               
               {/* ── LEFT COLUMN: NOVAS INFORMAÇÕES ──────────────────────────────────── */}
+              
+              {activeTab === 'visao-cores' && (
+                <div className="w-full">
+                  <VisaoCoresTab />
+                </div>
+              )}
+
               {activeTab === 'home' && (
                 <div className="flex flex-col gap-6 w-full xl:w-[300px] shrink-0">
 
