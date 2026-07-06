@@ -8,8 +8,37 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Apex Machine",
-  description: "Sistema de Análises Avançadas",
+  title: "Apex Machine — Painel de Análises para Blaze Double",
+  description:
+    "O terminal analítico definitivo para validar sinais, analisar padrões e detectar confluências na Blaze Double em tempo real. Backtester, Minutos da IA e Radar ao Vivo.",
+  keywords: ["blaze double", "sinais blaze", "análise blaze", "painel blaze", "apex machine", "minutos da ia"],
+  openGraph: {
+    title: "Apex Machine — Painel de Análises para Blaze Double",
+    description:
+      "Valide seus sinais antes de apostar. Radar ao Vivo, Backtester de 43 mil rodadas e Inteligência Artificial para Blaze Double.",
+    url: "https://apexmachine.com.br",
+    siteName: "Apex Machine",
+    images: [
+      {
+        url: "https://apexmachine.com.br/apex-logo.jpeg",
+        width: 1200,
+        height: 630,
+        alt: "Apex Machine — Terminal de Análises Blaze",
+      },
+    ],
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Apex Machine — Painel de Análises para Blaze Double",
+    description: "Valide seus sinais antes de apostar. Radar ao Vivo, Backtester e IA.",
+    images: ["https://apexmachine.com.br/apex-logo.jpeg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

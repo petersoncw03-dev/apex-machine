@@ -64,7 +64,7 @@ export async function POST(req: Request) {
           excluded_payment_types: [],
         },
         back_urls: {
-          success: `${siteUrl}/painel-master?success=true`,
+          success: `${siteUrl}/obrigado?success=true`,
           failure: `${siteUrl}/planos?canceled=true`,
           pending: `${siteUrl}/planos?pending=true`,
         },

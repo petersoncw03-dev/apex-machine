@@ -1,17 +1,77 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createHash, createHmac } from 'crypto';
 
 // O Mercado Pago envia notificações IPN/Webhook neste endpoint.
 // Documentação: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
 
+/**
+ * Valida a assinatura HMAC-SHA256 enviada pelo Mercado Pago no header x-signature.
+ * Formato do header: ts=<timestamp>,v1=<hash>
+ * O template de assinatura é: "id:<dataId>;request-id:<xRequestId>;ts:<ts>;"
+ */
+function validateMPSignature(
+  req: Request,
+  body: any,
+  rawText: string
+): boolean {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  // Se não há secret configurado, pula a validação (não recomendado em produção)
+  if (!secret) {
+    console.warn('[MP Webhook] ⚠️ MP_WEBHOOK_SECRET não configurado — validação HMAC desativada.');
+    return true;
+  }
+
+  const signatureHeader = req.headers.get('x-signature');
+  const requestId = req.headers.get('x-request-id') || '';
+
+  if (!signatureHeader) {
+    console.warn('[MP Webhook] Header x-signature ausente.');
+    return false;
+  }
+
+  // Extrai ts e v1 do header
+  const parts = Object.fromEntries(
+    signatureHeader.split(',').map(p => p.trim().split('=') as [string, string])
+  );
+  const ts = parts['ts'];
+  const v1 = parts['v1'];
+
+  if (!ts || !v1) {
+    console.warn('[MP Webhook] Header x-signature malformado.');
+    return false;
+  }
+
+  const dataId = body?.data?.id || '';
+  const template = `id:${dataId};request-id:${requestId};ts:${ts};`;
+  const expectedHash = createHmac('sha256', secret).update(template).digest('hex');
+
+  if (expectedHash !== v1) {
+    console.error('[MP Webhook] ❌ Assinatura HMAC inválida! Possível tentativa de fraude.');
+    return false;
+  }
+
+  return true;
+}
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const rawText = await req.text();
+    let body: any;
+    try {
+      body = JSON.parse(rawText);
+    } catch {
+      return NextResponse.json({ ok: true });
+    }
 
     console.log('[MP Webhook] Notificação recebida:', JSON.stringify(body));
 
+    // ── Validação de Assinatura HMAC ──────────────────────────────────────
+    if (!validateMPSignature(req, body, rawText)) {
+      return NextResponse.json({ error: 'Assinatura inválida.' }, { status: 401 });
+    }
+
     // O MP pode enviar vários tipos de notificação — só nos importa pagamento aprovado
-    const topic = body.type || body.topic;
     const resourceId = body.data?.id || body.id;
 
     if (!resourceId) {

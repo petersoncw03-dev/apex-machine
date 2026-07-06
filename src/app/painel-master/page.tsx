@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback, useDeferredValue } from 'react';
 import { useSSE } from '@/contexts/SSEContext';
-import { useMasterSniper } from '@/hooks/useMasterSniper';
 import { useMinutosIa } from '@/hooks/useMinutosIa';
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 import ResumoDiarioPanel from '@/components/painel-master/ResumoDiarioPanel';
@@ -421,8 +420,7 @@ export default function RadarAvancado() {
   // --- IA SIGNALS CALCULATION ---
   const [iaPeriodFilter, setIaPeriodFilter] = useState(3);
   const iaSignals = useMinutosIa(globalData as any, iaPeriodFilter, new Set<number>(), true, false);
-  // --- MASTER SNIPER AI ---
-  const sniper = useMasterSniper(globalData, iaSignals.scores);
+  // (O Master Sniper AI foi removido para dar lugar ao Mestre de Confluência)
 
   // --- IA STATS (SA/SM) CALCULATION ---
   const [iaMinConfluence, setIaMinConfluence] = useState(1);
@@ -1812,69 +1810,7 @@ export default function RadarAvancado() {
                   </div>
                 </div>
               </div>
-              {/* ── LEFT TOP: SUPER AI CARD (Vazio por enquanto) ── */}
-              <div className="flex flex-col overflow-hidden shrink-0">
-                <div className={`${CARD} flex flex-col h-full border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.15)]`}>
-                  <div className="px-5 py-4 bg-gradient-to-b from-amber-500/10 to-transparent border-b border-amber-500/20 flex justify-between items-center border-t-[3px] border-t-amber-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div> Master Sniper AI
-                    </span>
-                  </div>
-                  <div className="p-4 flex flex-col gap-4 items-center justify-center min-h-[350px] relative overflow-hidden">
-                    {/* Background Pulsante se Atirando */}
-                    {sniper.state === 'FIRING' && (
-                      <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none"></div>
-                    )}
-                    
-                    {/* Status Header */}
-                    <div className="flex flex-col items-center gap-1 z-10">
-                      <span className={`text-[12px] font-black uppercase tracking-widest ${sniper.state === 'FIRING' ? 'text-red-500' : sniper.state === 'WIN' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                        {sniper.state === 'STANDBY' ? 'Rastreando Padrões' : sniper.state === 'FIRING' ? 'Autorização de Entrada' : sniper.state === 'WIN' ? 'Alvo Abatido (Win)' : 'Alvo Perdido (Loss)'}
-                      </span>
-                      <div className="flex items-center gap-2">
-                         <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Score:</span>
-                         <span className={`text-[14px] font-black ${sniper.metrics.score >= 80 ? 'text-red-500' : sniper.metrics.score >= 50 ? 'text-amber-400' : 'text-slate-300'}`}>{sniper.metrics.score.toFixed(0)}/100</span>
-                      </div>
-                    </div>
 
-                    {/* Firing Countdown */}
-                    {sniper.state === 'FIRING' ? (
-                      <div className="flex flex-col items-center justify-center my-4 z-10">
-                        <div className="w-24 h-24 rounded-full border-4 border-red-500 flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.4)] animate-pulse relative">
-                           <div className="absolute inset-0 rounded-full border-4 border-red-500 animate-ping opacity-20"></div>
-                           <span className="text-4xl font-black text-white">{sniper.countdown}/5</span>
-                        </div>
-                        <span className="mt-4 text-[14px] font-black text-red-400 uppercase tracking-widest">Entrar no Branco</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center my-4 z-10 opacity-30">
-                        <div className="w-24 h-24 rounded-full border-4 border-amber-500/30 flex items-center justify-center">
-                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="w-10 h-10 text-amber-500/50"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Sinais Ativos */}
-                    <div className="flex flex-col gap-1 w-full z-10 mt-2">
-                       {sniper.metrics.activeSignals.length > 0 ? (
-                         sniper.metrics.activeSignals.map((sig: string, i: number) => (
-                            <div key={i} className="flex items-center justify-between bg-black/40 px-3 py-1.5 border border-white/5 rounded">
-                               <div className="flex items-center gap-2">
-                                  <div className={`w-1.5 h-1.5 rounded-full ${sniper.state === 'FIRING' ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}`}></div>
-                                  <span className="text-[9px] uppercase font-bold text-slate-300">{sig}</span>
-                               </div>
-                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-emerald-500"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            </div>
-                         ))
-                       ) : (
-                         <div className="text-center py-2 text-[9px] uppercase font-bold text-slate-500 border border-white/5 border-dashed rounded">
-                           Nenhuma confluência crítica
-                         </div>
-                       )}
-                    </div>
-                  </div>
-                </div>
-              </div>
 
 
             </div>

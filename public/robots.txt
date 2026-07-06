@@ -1,0 +1,31 @@
+User-agent: *
+Allow: /
+Allow: /planos
+Allow: /termos
+Allow: /privacidade
+
+# Bloqueia rotas privadas do painel
+Disallow: /painel-master
+Disallow: /analista
+Disallow: /analista-simulador
+Disallow: /laboratorio
+Disallow: /laboratorio-minutos
+Disallow: /casa-exata
+Disallow: /dupla-exata
+Disallow: /analysis
+Disallow: /radar
+Disallow: /radar-chuva
+Disallow: /radar-rec
+Disallow: /backtester
+Disallow: /fabrica-ia
+Disallow: /meus-robos
+Disallow: /minutos-ia
+Disallow: /sinais
+Disallow: /grafico
+Disallow: /grid
+Disallow: /max-soro
+Disallow: /foco-na-cor
+Disallow: /sandbox
+Disallow: /api/
+
+Sitemap: https://apexmachine.com.br/sitemap.xml

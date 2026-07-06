@@ -36,7 +36,6 @@ export default function VendasPage() {
       name: 'Passe Diário',
       days: 1,
       price: '5',
-      stripePriceId: 'price_1To6Vp630gqKt3w8p246HmHQ',
       description: 'Teste a assertividade em 24 horas.',
       recommended: false,
     },
@@ -45,7 +44,6 @@ export default function VendasPage() {
       name: 'Acesso Semanal',
       days: 7,
       price: '15',
-      stripePriceId: 'price_1To6W6630gqKt3w8Sjp0fcxI',
       description: 'Uma semana inteira de sinais VIP.',
       recommended: false,
     },
@@ -54,7 +52,6 @@ export default function VendasPage() {
       name: 'Acesso Quinzenal',
       days: 15,
       price: '35',
-      stripePriceId: 'price_1To6WS630gqKt3w8csHOOm9c',
       description: 'Tempo ideal para criar consistência.',
       recommended: false,
     },
@@ -63,19 +60,33 @@ export default function VendasPage() {
       name: 'Passe Mensal',
       days: 30,
       price: '50',
-      stripePriceId: 'price_1To6Wi630gqKt3w84c7usskg',
       description: 'O melhor custo-benefício (30 dias).',
       recommended: true,
     }
   ];
 
-  const handleCheckout = async (priceId: string, days: number) => {
-    setLoading(priceId);
+  const handleCheckout = async (days: number) => {
+    setLoading(String(days));
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      // Importa o cliente Supabase dinamicamente para pegar a sessão
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        // Usuário não está logado — redireciona para login
+        window.location.href = '/login?redirect=/planos';
+        setLoading(null);
+        return;
+      }
+
+      const res = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId, days }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ days }),
       });
 
       const data = await res.json();
@@ -88,7 +99,7 @@ export default function VendasPage() {
       }
     } catch (err) {
       console.error(err);
-      alert('Erro inesperado.');
+      alert('Erro inesperado. Tente novamente.');
       setLoading(null);
     }
   };
@@ -478,7 +489,7 @@ export default function VendasPage() {
             Você encontrou a estratégia de ouro no Apex e não quer perder noites de sono esperando ela bater? Nós somos a melhor ferramenta de análise. Para automatizar suas entradas com máxima segurança e velocidade, nós recomendamos a nossa parceira oficial.
           </p>
           <a 
-            href="#" 
+            href="https://t.me/apexmachinesuporte" 
             target="_blank"
             className="inline-flex items-center gap-3 px-10 py-5 bg-[#f12c4c] hover:bg-red-500 text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(241,44,76,0.3)]"
           >
@@ -545,7 +556,7 @@ export default function VendasPage() {
                  <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Alertas Sonoros e Visuais</li>
                </ul>
                <button 
-                 onClick={() => handleCheckout(plan.stripePriceId, plan.days)}
+                 onClick={() => handleCheckout(plan.days)}
                  disabled={loading !== null}
                  className={`mt-4 w-full py-4 font-black text-xs uppercase tracking-widest rounded-xl transition-all ${
                    plan.recommended 
@@ -553,7 +564,7 @@ export default function VendasPage() {
                     : 'bg-white/5 hover:bg-white/10 border border-white/10 text-white hover:border-white/20'
                  } disabled:opacity-50`}
                >
-                 {loading === plan.stripePriceId ? 'Processando...' : 'Garantir Acesso'}
+                 {loading === String(plan.days) ? 'Processando...' : 'Garantir Acesso'}
                </button>
             </div>
           ))}
@@ -572,7 +583,7 @@ export default function VendasPage() {
             Se você quer ver o terminal funcionando na prática antes de assinar, ou precisa falar com a nossa equipe, entre em contato direto pelo suporte.
           </p>
           <a 
-            href="#"
+            href="https://wa.me/SEUNUMERO?text=Ol%C3%A1%2C+vim+pelo+Apex+Machine+e+tenho+uma+d%C3%BAvida."
             target="_blank"
             className="px-10 py-5 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(37,211,102,0.3)] flex items-center gap-3"
           >
@@ -595,10 +606,10 @@ export default function VendasPage() {
             Apex Machine é o terminal analítico definitivo focado em estatística de alta precisão e probabilidade para validação de sinais e leitura de ciclos matemáticos. Nós fornecemos ferramentas de visualização de dados e backtesting. Não processamos apostas nem garantimos ganhos financeiros, pois operações financeiras envolvem riscos de mercado. Seja responsável.
           </p>
           <div className="flex items-center gap-4 mt-2">
-            <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+            <a href="mailto:contato@apexmachine.com.br" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
                <Mail size={16} />
             </a>
-            <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#25D366] hover:bg-white/10 transition-colors">
+            <a href="https://wa.me/SEUNUMERO?text=Ol%C3%A1%2C+vim+pelo+Apex+Machine+e+tenho+uma+d%C3%BAvida." target="_blank" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#25D366] hover:bg-white/10 transition-colors">
                <MessageCircle size={16} />
             </a>
           </div>

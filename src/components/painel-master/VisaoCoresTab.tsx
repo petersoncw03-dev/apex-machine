@@ -33,7 +33,7 @@ export function VisaoCoresTab() {
   }>({ status: 'standby', step: 0, level: 0, stones: [] });
 
   const parsedHistory = useMemo(() => history.map(r => ({ ...r, roll: parseInt(r.roll as string) })), [history]);
-  const { scores: iaScores, stats: iaStats } = useMinutosIa(parsedHistory, 24);
+  const { scores: iaScores, stats: iaStats } = useMinutosIa(parsedHistory, 3);
 
   const StoneIcon = ({ n, size = "md" }: { n: number, size?: "sm" | "md" | "lg" | "ticker" }) => {
     let containerBg = 'bg-[#2C2F33]';
@@ -402,8 +402,8 @@ export function VisaoCoresTab() {
   const zonesStats = useMemo(() => {
      if (history.length === 0) return { blocks: [], currentGap: 0 };
      
-     // Usar 4 horas (~1000 pedras) para análise do branco
-     const rolls = history.slice(-1000);
+     // Usar 3 horas (~750 pedras) para análise das Zonas Quentes
+     const rolls = history.slice(-750);
      const whiteIndices = rolls.reduce((acc, r, i) => {
         const n = parseInt(r.roll as string);
         if (r.color?.includes('Branco') || n === 0) acc.push(i);
@@ -463,30 +463,40 @@ export function VisaoCoresTab() {
 
       setSignalState(prev => {
           let points = 0;
+          let hasZonasQuentes = zonesStats.blocks.some(b => b.status === 'ativo' && b.winrate >= 30);
+          if (hasZonasQuentes) points++;
           
-          if (zonesStats.blocks.some(b => b.status === 'ativo' && b.winrate >= 30)) points++;
-          if (radarStats.topCasas?.some((c: any) => c.isLive && c.target === 'B')) points++;
-          if ([4,5,6].some(t => {
+          let hasCasas = radarStats.topCasas?.some((c: any) => c.isLive && c.target === 'B');
+          if (hasCasas) points++;
+          
+          let hasPatterns = [4,5,6].some(t => {
              const pat = radarStats.livePatterns[t];
              if (!pat || pat.target !== 'B') return false;
              if (pat.total < 4 || pat.winrate < 60) return false;
              if (pat.wrL !== null && pat.wrL < 50) return false;
              return true;
-          })) points++;
+          });
+          if (hasPatterns) points++;
 
+          // Validação pela IA
+          let approvedByIa = false;
+          const currentMin = new Date(lastStone.timestamp).getMinutes();
+          const m1 = (currentMin + 1) % 60;
+          const m2 = (currentMin + 2) % 60;
+          const score1 = iaScores[m1] || 0;
+          const score2 = iaScores[m2] || 0;
+          if (score1 >= 3 || score2 >= 3) approvedByIa = true;
+          if (score1 === 2 || score2 === 2) {
+              const winrate2 = iaStats[1]?.winRate || 0;
+              if (winrate2 >= 35) approvedByIa = true;
+          }
+
+          // REGRA DE APROVAÇÃO:
+          // Tem que ter no mínimo 1 gatilho (Padrão, Casa Exata ou Zona Quente).
+          // E o sinal precisa ser validado: OU pela IA Minutos, OU pelas Zonas Quentes.
           let approved = false;
-          if (points >= 1) {
-              const currentMin = new Date(lastStone.timestamp).getMinutes();
-              const m1 = (currentMin + 1) % 60;
-              const m2 = (currentMin + 2) % 60;
-
-              const score1 = iaScores[m1] || 0;
-              const score2 = iaScores[m2] || 0;
-              if (score1 >= 3 || score2 >= 3) approved = true;
-              if (score1 === 2 || score2 === 2) {
-                  const winrate2 = iaStats[1]?.winRate || 0;
-                  if (winrate2 >= 35) approved = true;
-              }
+          if (points >= 1 && (approvedByIa || hasZonasQuentes)) {
+              approved = true;
           }
 
           if (prev.status === 'active') {
