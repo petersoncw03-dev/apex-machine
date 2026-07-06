@@ -814,7 +814,7 @@ export function VisaoCoresTab() {
           
           <div className="p-4 grid grid-cols-2 gap-3 flex-1 content-start">
             {zonesStats.blocks.map((z, i) => (
-              <div key={i} className={`rounded-xl border p-3 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
+              <div key={i} className={`rounded-xl border px-3 pt-3 pb-5 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
                 z.status === 'ativo' ? 'bg-[#00c83a]/10 border-[#00c83a]/40 shadow-[0_0_15px_rgba(0,200,58,0.2)]' :
                 z.status === 'passou' ? 'bg-red-500/5 border-red-500/20 opacity-60' :
                 'bg-[#0b0c10] border-white/5 hover:border-white/10'
