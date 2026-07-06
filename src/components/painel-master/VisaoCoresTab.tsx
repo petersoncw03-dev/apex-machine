@@ -469,7 +469,7 @@ export function VisaoCoresTab() {
         if (nextEnt >= z.s && nextEnt <= z.e) status = 'ativo';
         else if (nextEnt > z.e) status = 'passou';
         
-        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-5) };
+        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-7) };
      });
      
      return { blocks, currentGap };
@@ -814,7 +814,7 @@ export function VisaoCoresTab() {
           
           <div className="p-4 grid grid-cols-2 gap-3 flex-1 content-start">
             {zonesStats.blocks.map((z, i) => (
-              <div key={i} className={`rounded-xl border p-2 flex flex-col gap-1 transition-all relative overflow-hidden ${
+              <div key={i} className={`rounded-xl border p-3 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
                 z.status === 'ativo' ? 'bg-[#00c83a]/10 border-[#00c83a]/40 shadow-[0_0_15px_rgba(0,200,58,0.2)]' :
                 z.status === 'passou' ? 'bg-red-500/5 border-red-500/20 opacity-60' :
                 'bg-[#0b0c10] border-white/5 hover:border-white/10'
@@ -844,9 +844,9 @@ export function VisaoCoresTab() {
                   <span className="text-red-400/80">{z.losses} Loss</span>
                 </div>
               
-                <div className="mt-1 pt-1 border-t border-white/5 flex gap-1 justify-end z-10 relative h-[18px]">
+                <div className="mt-1 pt-1.5 border-t border-white/5 flex gap-1 justify-end z-10 relative h-[22px]">
                   {z.cycles.map((cy, ci) => (
-                     <div key={ci} className={`min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-[3px] text-[8px] font-black font-mono shadow-sm ${
+                     <div key={ci} className={`min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-[4px] text-[10px] font-black font-mono shadow-sm ${
                         cy.type === 'W' ? 'bg-[#00c83a]/20 text-[#00c83a] border border-[#00c83a]/30' : 'bg-[#e51e3e]/15 text-[#e51e3e] border border-[#e51e3e]/20'
                      }`}>
                        {cy.count}
