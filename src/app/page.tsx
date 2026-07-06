@@ -535,36 +535,56 @@ export default function VendasPage() {
           {PLANS.map((plan) => (
             <div 
               key={plan.id}
-              className={`relative bg-[#0a0a0f] border ${plan.recommended ? 'border-[#00c83a] shadow-[0_10px_30px_rgba(0,200,58,0.15)] transform md:-translate-y-4' : 'border-white/10 hover:border-white/30'} rounded-2xl p-8 flex flex-col gap-6 transition-all h-full`}
+              className={`relative flex flex-col rounded-2xl p-6 transition-all duration-300 ${
+                plan.recommended
+                  ? 'bg-[#0b0e14] border border-[#00ff41] shadow-[0_0_30px_rgba(0,255,65,0.05)] md:scale-105 z-10'
+                  : 'bg-[#0b0e14] border border-white/[0.05] hover:border-white/10'
+              }`}
             >
                {plan.recommended && (
-                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#00c83a] text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
-                   Melhor Custo Benefício
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#00ff41] text-black text-[9px] sm:text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest uppercase shadow-[0_0_15px_rgba(0,255,65,0.5)] whitespace-nowrap">
+                   Mais Escolhido
                  </div>
                )}
-               <div className="flex flex-col gap-1">
-                 <h4 className={`text-lg font-black uppercase tracking-widest ${plan.recommended ? 'text-[#00c83a]' : 'text-white'}`}>{plan.name}</h4>
-                 <p className="text-xs text-gray-500 min-h-[32px]">{plan.description}</p>
+               
+               <div className="mb-6 mt-2">
+                 <h4 className={`text-xl font-black mb-1.5 tracking-wider uppercase ${plan.recommended ? 'text-[#00ff41]' : 'text-white'}`}>{plan.name}</h4>
+                 <p className="text-gray-500 text-[13px] leading-relaxed">{plan.description}</p>
                </div>
-               <div className="flex items-end gap-1">
-                 <span className="text-sm font-bold text-gray-400 mb-2">R$</span>
-                 <span className="text-4xl font-black text-white">{plan.price}</span>
-                 <span className="text-xs font-bold text-gray-500 mb-2">/ {plan.days === 1 ? 'dia' : `${plan.days} dias`}</span>
+               
+               <div className="mb-8 flex items-baseline gap-1">
+                 <span className="text-gray-400 font-bold text-sm">R$</span>
+                 <span className={`text-5xl font-black tracking-tighter ${plan.recommended ? 'text-white' : 'text-white'}`}>{plan.price}</span>
+                 <span className="text-gray-500 font-medium text-xs ml-1">/ {plan.days === 1 ? 'dia' : `${plan.days} dias`}</span>
                </div>
-               <ul className="flex flex-col gap-4 text-sm font-medium text-gray-300 mt-2 border-t border-white/5 pt-6 flex-1">
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Acesso total ao Gráfico PNL</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Confluência de IA & Minutos</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Simulador Backtest 43k Rodadas</li>
-                 <li className="flex items-center gap-3"><ShieldCheck size={16} className="text-[#00c83a]" /> Alertas Sonoros e Visuais</li>
+               
+               <ul className="flex-grow space-y-4 mb-10">
+                 <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
+                   <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
+                   <span className="leading-tight">Acesso total ao Gráfico PNL</span>
+                 </li>
+                 <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
+                   <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
+                   <span className="leading-tight">Confluência de IA & Minutos</span>
+                 </li>
+                 <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
+                   <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
+                   <span className="leading-tight">Simulador Backtest 43k Rodadas</span>
+                 </li>
+                 <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
+                   <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
+                   <span className="leading-tight">Alertas Sonoros e Visuais</span>
+                 </li>
                </ul>
+               
                <button 
                  onClick={() => handleCheckout(plan.days)}
                  disabled={loading !== null}
-                 className={`mt-4 w-full py-4 font-black text-xs uppercase tracking-widest rounded-xl transition-all ${
+                 className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 ${
                    plan.recommended 
-                    ? 'bg-[#00c83a] hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(0,200,58,0.3)] hover:scale-105' 
-                    : 'bg-white/5 hover:bg-white/10 border border-white/10 text-white hover:border-white/20'
-                 } disabled:opacity-50`}
+                    ? 'bg-[#00ff41] hover:bg-[#00dd38] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]' 
+                    : 'bg-[#12141c] hover:bg-[#1a1d24] border border-white/5 hover:border-white/10 text-white'
+                 }`}
                >
                  {loading === String(plan.days) ? 'Processando...' : 'Garantir Acesso'}
                </button>

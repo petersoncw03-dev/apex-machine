@@ -121,39 +121,40 @@ export default function PlanosPage() {
         {PLANS.map((plan) => (
           <div
             key={plan.id}
-            className={`relative flex flex-col rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-1 ${
+            className={`relative flex flex-col rounded-2xl p-6 transition-all duration-300 ${
               plan.recommended
-                ? 'bg-gradient-to-b from-[#0e1a0e] to-[#0a0a0f] border-[#00ff41]/40 shadow-[0_0_30px_rgba(0,255,65,0.1)]'
-                : 'bg-[#0a0a0f] border-white/5 hover:border-white/10'
+                ? 'bg-[#0b0e14] border border-[#00ff41] shadow-[0_0_30px_rgba(0,255,65,0.05)] md:scale-105 z-10'
+                : 'bg-[#0b0e14] border border-white/[0.05] hover:border-white/10'
             }`}
           >
             {plan.recommended && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00ff41] text-black text-[10px] font-black px-4 py-1 rounded-full tracking-widest uppercase shadow-[0_0_15px_rgba(0,255,65,0.5)]">
-                ⭐ Mais Escolhido
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#00ff41] text-black text-[9px] sm:text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest uppercase shadow-[0_0_15px_rgba(0,255,65,0.5)] whitespace-nowrap">
+                Mais Escolhido
               </div>
             )}
 
-            <div className="mb-6">
-              <h2 className={`text-lg font-black mb-1 ${plan.recommended ? 'text-[#00ff41]' : 'text-white'}`}>
+            <div className="mb-6 mt-2">
+              <h2 className={`text-xl font-black mb-1.5 tracking-wider uppercase ${plan.recommended ? 'text-[#00ff41]' : 'text-white'}`}>
                 {plan.name}
               </h2>
-              <p className="text-gray-500 text-sm leading-snug">{plan.description}</p>
+              <p className="text-gray-500 text-[13px] leading-relaxed">{plan.description}</p>
             </div>
 
-            <div className="mb-6">
-              <div className={`text-4xl font-black ${plan.recommended ? 'text-[#00ff41]' : 'text-white'}`}>
-                {plan.priceStr}
-              </div>
-              <div className="text-gray-500 text-xs mt-1 font-mono">
-                por {plan.days} {plan.days === 1 ? 'dia' : 'dias'}
-              </div>
+            <div className="mb-8 flex items-baseline gap-1">
+              <span className="text-gray-400 font-bold text-sm">R$</span>
+              <span className={`text-5xl font-black tracking-tighter ${plan.recommended ? 'text-white' : 'text-white'}`}>
+                {plan.price}
+              </span>
+              <span className="text-gray-500 font-medium text-xs ml-1">
+                / {plan.days} {plan.days === 1 ? 'dia' : 'dias'}
+              </span>
             </div>
 
-            <ul className="flex-grow space-y-2.5 mb-8">
+            <ul className="flex-grow space-y-4 mb-10">
               {plan.features.map((f) => (
-                <li key={f} className="flex items-center gap-2 text-sm text-gray-300">
-                  <CheckCircle size={14} className={plan.recommended ? 'text-[#00ff41] shrink-0' : 'text-gray-500 shrink-0'} />
-                  {f}
+                <li key={f} className="flex items-start gap-3 text-sm text-gray-300 font-medium">
+                  <CheckCircle size={18} className="text-[#00ff41] shrink-0 mt-0.5" />
+                  <span className="leading-tight">{f}</span>
                 </li>
               ))}
             </ul>
@@ -161,13 +162,13 @@ export default function PlanosPage() {
             <button
               onClick={() => handleCheckout(plan.days)}
               disabled={loading !== null}
-              className={`w-full py-3 rounded-xl font-black text-sm tracking-wide transition-all disabled:opacity-50 ${
+              className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 ${
                 plan.recommended
                   ? 'bg-[#00ff41] hover:bg-[#00dd38] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]'
-                  : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white'
+                  : 'bg-[#12141c] hover:bg-[#1a1d24] border border-white/5 hover:border-white/10 text-white'
               }`}
             >
-              {loading === plan.days ? 'Redirecionando...' : 'Assinar Agora'}
+              {loading === plan.days ? 'Aguarde...' : 'Garantir Acesso'}
             </button>
           </div>
         ))}
