@@ -32,8 +32,10 @@ export function VisaoCoresTab() {
       stones: number[]
   }>({ status: 'standby', step: 0, level: 0, stones: [] });
 
+  const [iaPeriodFilter, setIaPeriodFilter] = useState<number>(3);
   const parsedHistory = useMemo(() => history.map(r => ({ ...r, roll: parseInt(r.roll as string) })), [history]);
-  const { scores: iaScores, stats: iaStats } = useMinutosIa(parsedHistory, 3);
+  const iaSignals = useMinutosIa(parsedHistory as any, iaPeriodFilter, new Set<number>(), true, false);
+  const { scores: iaScores, stats: iaStats } = iaSignals;
 
   const StoneIcon = ({ n, size = "md" }: { n: number, size?: "sm" | "md" | "lg" | "ticker" }) => {
     let containerBg = 'bg-[#2C2F33]';
@@ -761,52 +763,178 @@ export function VisaoCoresTab() {
         </div>
       </div>
 
-      {/* Zonas Quentes do Branco */}
-      <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] mt-4">
-        <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a]">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
-            <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes do Branco</span>
-          </div>
-          <span className="text-[10px] font-bold text-gray-400 bg-black/40 px-3 py-1 rounded-full border border-white/5">
-            Atraso Atual: <strong className="text-white text-[12px] ml-1">{zonesStats.currentGap}</strong>
-          </span>
-        </div>
+      {/* ── SEÇÃO AVANÇADA (Zonas Quentes + Minutos da IA) ── */}
+      <div className="flex flex-col lg:flex-row gap-4 mt-4">
         
-        <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {zonesStats.blocks.map((z, i) => (
-            <div key={i} className={`rounded-xl border p-3 flex flex-col gap-2 transition-all relative overflow-hidden ${
-              z.status === 'ativo' ? 'bg-[#00c83a]/10 border-[#00c83a]/40 shadow-[0_0_15px_rgba(0,200,58,0.2)]' :
-              z.status === 'passou' ? 'bg-red-500/5 border-red-500/20 opacity-60' :
-              'bg-[#0b0c10] border-white/5 hover:border-white/10'
-            }`}>
-              {z.status === 'ativo' && (
-                <div className="absolute -top-10 -right-10 w-20 h-20 bg-[#00c83a]/20 blur-2xl rounded-full"></div>
-              )}
-              
-              <div className="flex justify-between items-center z-10 relative">
-                <span className={`text-[10px] font-black uppercase tracking-wider ${z.status === 'ativo' ? 'text-emerald-400' : 'text-gray-400'}`}>
-                  Casa {z.label}
-                </span>
-                {z.status === 'ativo' && (
-                  <span className="text-[8px] font-bold bg-emerald-400 text-black px-1.5 py-0.5 rounded animate-pulse">ATIVO</span>
-                )}
-              </div>
-              
-              <div className="flex items-end gap-1 mt-1 z-10 relative">
-                <span className={`text-xl font-black ${z.winrate >= 50 ? 'text-emerald-400' : z.winrate > 0 ? 'text-white' : 'text-gray-600'}`}>
-                  {z.winrate.toFixed(1)}%
-                </span>
-                <span className="text-[9px] text-gray-500 mb-1 font-bold">Win</span>
-              </div>
-              
-              <div className="flex gap-1 mt-1 text-[9px] font-bold z-10 relative">
-                <span className="text-emerald-400/80">{z.wins} Win</span>
-                <span className="text-gray-600">|</span>
-                <span className="text-red-400/80">{z.losses} Loss</span>
-              </div>
+        {/* Zonas Quentes do Branco */}
+        <div className="flex-1 bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col">
+          <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a]">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
+              <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes</span>
             </div>
-          ))}
+            <span className="text-[10px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5">
+              Atraso Atual: <strong className="text-white text-[11px] ml-1">{zonesStats.currentGap}</strong>
+            </span>
+          </div>
+          
+          <div className="p-4 grid grid-cols-2 gap-3 flex-1 content-start">
+            {zonesStats.blocks.map((z, i) => (
+              <div key={i} className={`rounded-xl border p-2 flex flex-col gap-1 transition-all relative overflow-hidden ${
+                z.status === 'ativo' ? 'bg-[#00c83a]/10 border-[#00c83a]/40 shadow-[0_0_15px_rgba(0,200,58,0.2)]' :
+                z.status === 'passou' ? 'bg-red-500/5 border-red-500/20 opacity-60' :
+                'bg-[#0b0c10] border-white/5 hover:border-white/10'
+              }`}>
+                {z.status === 'ativo' && (
+                  <div className="absolute -top-10 -right-10 w-20 h-20 bg-[#00c83a]/20 blur-2xl rounded-full"></div>
+                )}
+                
+                <div className="flex justify-between items-center z-10 relative">
+                  <span className={`text-[9px] font-black uppercase tracking-wider ${z.status === 'ativo' ? 'text-emerald-400' : 'text-gray-400'}`}>
+                    Casa {z.label}
+                  </span>
+                  {z.status === 'ativo' && (
+                    <span className="text-[7px] font-bold bg-emerald-400 text-black px-1.5 py-0.5 rounded animate-pulse">ATIVO</span>
+                  )}
+                </div>
+                
+                <div className="flex items-end gap-1 mt-1 z-10 relative">
+                  <span className={`text-lg font-black ${z.winrate >= 50 ? 'text-emerald-400' : z.winrate > 0 ? 'text-white' : 'text-gray-600'}`}>
+                    {z.winrate.toFixed(1)}%
+                  </span>
+                  <span className="text-[8px] text-gray-500 mb-1 font-bold">Win</span>
+                </div>
+                
+                <div className="flex justify-between mt-1 text-[8px] font-bold z-10 relative">
+                  <span className="text-emerald-400/80">{z.wins} Win</span>
+                  <span className="text-red-400/80">{z.losses} Loss</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── MINUTOS DA IA ────────────────────── */}
+        <div className="flex-[2] bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300 shrink-0">
+          <div className="px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse"></div>
+              <span className="text-[11px] font-black uppercase tracking-widest text-white">
+                MINUTOS DA IA
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-1 rounded outline-none cursor-pointer" value={iaPeriodFilter} onChange={(e) => setIaPeriodFilter(+e.target.value)}>
+                <option value={1}>1h</option>
+                <option value={2}>2h</option>
+                <option value={3}>3h</option>
+                <option value={4}>4h</option>
+                <option value={6}>6h</option>
+                <option value={9}>9h</option>
+                <option value={12}>12h</option>
+                <option value={18}>18h</option>
+                <option value={24}>24h</option>
+                <option value={48}>48h</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="w-full p-3 flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+             {iaSignals.stats.map((st: any, idx: number) => (
+                <div key={idx} className="flex-1 shrink-0 bg-black/40 border border-white/5 rounded px-2 py-2 flex flex-col items-center justify-center min-w-[65px]">
+                   <span className="text-[9px] uppercase font-bold text-slate-500 mb-1">Confl. {st.conf}+</span>
+                   <span className={`text-sm font-black ${st.winRate >= 50 ? 'text-emerald-400' : 'text-amber-400'}`}>{st.winRate.toFixed(1)}%</span>
+                   <div className="flex gap-2 mt-1 text-[9px] font-mono font-bold text-slate-400">
+                     <span>SA:{st.sa}</span>
+                     <span>SM:{st.sm}</span>
+                   </div>
+                </div>
+             ))}
+          </div>
+
+          <div className="p-4 bg-black/40 flex-1">
+            <div className="grid grid-cols-6 gap-0 border-t border-l border-white/10 rounded-lg shadow-lg">
+              {Array.from({length: 60}).map((_, i) => {
+                const col = i % 6;
+                const row = Math.floor(i / 6);
+                const min = col * 10 + row;
+                const minStr = String(min).padStart(2, '0');
+                const score = iaSignals.scores[min];
+                return (
+                  <div key={i} className={`relative bg-[#0b0e14]/60 hover:bg-cyan-900/20 border-r border-b border-white/10 transition-colors h-10 flex ${score >= 3 ? 'bg-cyan-900/40 shadow-[inset_0_0_15px_rgba(6,182,212,0.3)]' : ''}`}>
+                    
+                    <div className="relative group/min flex-1 flex items-center pl-4 pr-1 cursor-pointer">
+                      <span className={`text-[11px] font-mono font-black transition-colors ${score > 0 ? 'text-cyan-400' : 'text-slate-500 group-hover/min:text-cyan-400'}`}>{minStr}</span>
+                      
+                      {/* Tooltip Hover Histórico */}
+                      {iaSignals.history12h && (
+                        <div className={`absolute ${row < 5 ? 'top-full mt-2' : 'bottom-full mb-2'} ${col < 3 ? 'left-0' : 'right-0'} w-max opacity-0 invisible group-hover/min:opacity-100 group-hover/min:visible transition-all delay-[500ms] duration-200 z-[100]`}>
+                          <div className="bg-[#0b0e14] border border-slate-700/80 rounded-lg p-3 shadow-2xl backdrop-blur-md">
+                            {(() => {
+                              const rawHistory = iaSignals.history12h[min];
+                              const rHist = [
+                                rawHistory[3], rawHistory[2], rawHistory[1], rawHistory[0],
+                                rawHistory[7], rawHistory[6], rawHistory[5], rawHistory[4],
+                                rawHistory[11], rawHistory[10], rawHistory[9], rawHistory[8]
+                              ].filter(Boolean);
+                              const wins = rawHistory.filter((h: any) => h.hit).length;
+                              const wr = ((wins / 12) * 100).toFixed(0);
+                              return (
+                                <>
+                                  <div className="flex justify-between items-center mb-2 gap-4">
+                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Histórico 12h</div>
+                                    <div className={`text-[11px] font-black ${wins >= 5 ? 'text-[#00c83a]' : 'text-amber-400'}`}>Win {wr}%</div>
+                                  </div>
+                                  <div className="grid grid-cols-4 gap-1.5">
+                                    {rHist.map((h: any, hIdx: number) => (
+                                      <div key={hIdx} className={`w-8 h-8 rounded flex items-center justify-center text-[10px] font-mono font-bold ${h.hit ? 'bg-[#00c83a]/20 text-[#00c83a] border border-[#00c83a]/30 shadow-[inset_0_0_8px_rgba(0,200,58,0.2)]' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                        {h.hourString.replace('h', '')}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </>
+                              )
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="relative group/score shrink-0 flex items-center pr-4 pl-1 cursor-pointer">
+                      <div className={`min-w-[26px] h-[18px] rounded-[3px] transition-colors flex items-center justify-center ${score > 0 ? (score >= 3 ? 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-cyan-200') : 'bg-slate-300 group-hover/score:bg-slate-200'}`}>
+                        {score > 0 && <span className={`text-[10px] font-black ${score >= 3 ? 'text-slate-900' : 'text-cyan-900'}`}>{score}</span>}
+                      </div>
+                      
+                      {/* Tooltip Hover Estratégias */}
+                      {score > 0 && iaSignals.activeStratsByMin && iaSignals.activeStratsByMin[min]?.length > 0 && (
+                        <div className={`absolute ${row < 5 ? 'top-full mt-2' : 'bottom-full mb-2'} ${col < 3 ? 'left-0' : 'right-0'} w-max opacity-0 invisible group-hover/score:opacity-100 group-hover/score:visible transition-all delay-[500ms] duration-200 z-[100]`}>
+                          <div className="bg-[#0b0e14] border border-cyan-900/80 rounded-lg p-2.5 shadow-2xl backdrop-blur-md min-w-[200px]">
+                            <div className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-2 border-b border-cyan-900/50 pb-1.5 text-center">Confluência M{minStr}</div>
+                            <div className="flex flex-col gap-1">
+                              {iaSignals.activeStratsByMin[min].map((sIdx: any) => {
+                                const sName = iaSignals.activeStrats[sIdx];
+                                const sInfo = iaSignals.stratStats.find((s: any) => s.name === sName) || { winRate: 0, sa: 0, sm: 0, name: sName };
+                                return (
+                                  <div key={sIdx} className="flex justify-between items-center bg-black/40 px-2 py-1 rounded border border-white/5">
+                                    <div className="text-[9px] text-slate-300 font-bold max-w-[120px] truncate">{sInfo.name}</div>
+                                    <div className="flex gap-2 text-[9px] font-mono font-bold text-right shrink-0">
+                                      <span className="text-cyan-400 w-7 text-right">{sInfo.winRate.toFixed(0)}%</span>
+                                      <span className={`w-6 text-right ${sInfo.sa >= sInfo.sm && sInfo.sm > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{sInfo.sa}/{sInfo.sm}</span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
