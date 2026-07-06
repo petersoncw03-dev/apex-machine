@@ -191,19 +191,20 @@ export default function VendasPage() {
       </div>
 
       {/* HEADER FIXO */}
-      <header className={`fixed top-0 w-full z-[100] transition-all duration-300 py-4 ${scrolled ? 'bg-[#050507]/90 backdrop-blur-xl border-b border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.8)]' : 'bg-transparent'}`}>
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-3 group cursor-pointer">
-            <img src="/icon.svg" alt="Apex Machine" className="w-9 h-9 object-contain drop-shadow-[0_0_10px_rgba(241,44,76,0.5)] transition-transform group-hover:scale-110" />
-            <h1 className="text-2xl font-black tracking-tighter flex gap-1 uppercase">
+      <header className={`fixed top-0 w-full z-[100] transition-all duration-300 py-3 md:py-4 ${scrolled ? 'bg-[#050507]/90 backdrop-blur-xl border-b border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.8)]' : 'bg-transparent'}`}>
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-3 group cursor-pointer shrink-0">
+            <img src="/icon.svg" alt="Apex Machine" className="w-7 h-7 md:w-9 md:h-9 object-contain drop-shadow-[0_0_10px_rgba(241,44,76,0.5)] transition-transform group-hover:scale-110" />
+            <h1 className="text-[16px] md:text-2xl font-black tracking-tighter flex gap-1 uppercase">
               <span className="text-[#f12c4c]">APEX</span>
               <span className="text-[#00c83a]">MACHINE</span>
             </h1>
           </div>
-          <div className="flex items-center gap-6">
-            <Link href="/painel-master" className="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-xs font-bold tracking-widest text-white uppercase rounded-lg transition-all flex items-center gap-2">
+          <div className="flex items-center shrink-0">
+            <Link href="/painel-master" className="px-3 md:px-6 py-2 md:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-[10px] md:text-xs font-bold tracking-widest text-white uppercase rounded-lg transition-all flex items-center gap-1.5 md:gap-2 whitespace-nowrap">
               <LayoutDashboard size={14} className="text-[#00c83a]" />
-              Acesso ao Terminal
+              <span className="hidden sm:inline">Acesso ao Terminal</span>
+              <span className="sm:hidden">Terminal</span>
             </Link>
           </div>
         </div>
