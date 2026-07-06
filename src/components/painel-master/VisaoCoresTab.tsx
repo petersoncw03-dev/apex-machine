@@ -171,7 +171,7 @@ export function VisaoCoresTab() {
   }, [history]);
 
   const radarStats = useMemo(() => {
-    if (history.length === 0) return { lastNumber: 0, 3: [], 4: [], 5: [], 6: [] };
+    if (history.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
 
     const targetMargin = radarMode === 'branco' ? 6 : 2;
     const sizes = [4, 5, 6];
@@ -187,7 +187,7 @@ export function VisaoCoresTab() {
     // 4 horas (~1000 pedras) para branco, 2 horas (~500 pedras) para cor
     const sliceAmount = radarMode === 'branco' ? -1000 : -500;
     const h2h = history.slice(sliceAmount);
-    if (h2h.length === 0) return { lastNumber: 0, livePatterns: {}, 4: [], 5: [], 6: [] };
+    if (h2h.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
 
     const lastRoll = h2h[h2h.length - 1];
     const lastRollNumber = parseInt(lastRoll.roll as string);
@@ -566,7 +566,7 @@ export function VisaoCoresTab() {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '8px' }}
                       itemStyle={{ color: '#fff' }}
-                      formatter={(value: number) => [`${value} rodadas`, 'Ocorrências']}
+                      formatter={(value: any) => [`${value} rodadas`, 'Ocorrências']}
                     />
                   </PieChart>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -934,7 +934,7 @@ export function VisaoCoresTab() {
                       </tr>
                     </thead>
                     <tbody>
-                      {radarStats[tamanho as keyof typeof radarStats]?.map((stat: any, i: number) => (
+                      {(radarStats[tamanho as keyof typeof radarStats] as any[])?.map((stat: any, i: number) => (
                         <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
                           <td className="p-2 text-center text-[10px] text-gray-600 font-bold">{i + 1}</td>
                           <td className="p-2">
@@ -957,7 +957,7 @@ export function VisaoCoresTab() {
                           </td>
                         </tr>
                       ))}
-                      {(!radarStats[tamanho as keyof typeof radarStats] || radarStats[tamanho as keyof typeof radarStats].length === 0) && (
+                      {(!radarStats[tamanho as keyof typeof radarStats] || (radarStats[tamanho as keyof typeof radarStats] as any[]).length === 0) && (
                         <tr>
                           <td colSpan={3} className="p-4 text-center text-[10px] text-gray-500">Sem dados recentes suficientes</td>
                         </tr>

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, LayoutDashboard, ArrowRight, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function SuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [countdown, setCountdown] = useState(10);
@@ -96,5 +96,13 @@ export default function SuccessPage() {
         </div>
       </motion.div>
     </main>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#050507] text-white flex items-center justify-center">Carregando...</div>}>
+      <SuccessContent />
+    </Suspense>
   );
 }
