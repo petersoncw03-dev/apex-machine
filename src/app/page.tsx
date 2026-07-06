@@ -489,8 +489,9 @@ export default function VendasPage() {
             Você encontrou a estratégia de ouro no Apex e não quer perder noites de sono esperando ela bater? Nós somos a melhor ferramenta de análise. Para automatizar suas entradas com máxima segurança e velocidade, nós recomendamos a nossa parceira oficial.
           </p>
           <a 
-            href="https://t.me/apexmachinesuporte" 
+            href="https://app.blazemachine.com.br/loja?code=automoney" 
             target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-10 py-5 bg-[#f12c4c] hover:bg-red-500 text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(241,44,76,0.3)]"
           >
             Conheça a Blaze Machine
@@ -583,7 +584,7 @@ export default function VendasPage() {
             Se você quer ver o terminal funcionando na prática antes de assinar, ou precisa falar com a nossa equipe, entre em contato direto pelo suporte.
           </p>
           <a 
-            href="https://wa.me/SEUNUMERO?text=Ol%C3%A1%2C+vim+pelo+Apex+Machine+e+tenho+uma+d%C3%BAvida."
+            href="https://wa.me/5547991523220?text=Ol%C3%A1%2C+vim+pelo+Apex+Machine+e+tenho+uma+d%C3%BAvida."
             target="_blank"
             className="px-10 py-5 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all hover:scale-105 shadow-[0_0_30px_rgba(37,211,102,0.3)] flex items-center gap-3"
           >
@@ -606,12 +607,16 @@ export default function VendasPage() {
             Apex Machine é o terminal analítico definitivo focado em estatística de alta precisão e probabilidade para validação de sinais e leitura de ciclos matemáticos. Nós fornecemos ferramentas de visualização de dados e backtesting. Não processamos apostas nem garantimos ganhos financeiros, pois operações financeiras envolvem riscos de mercado. Seja responsável.
           </p>
           <div className="flex items-center gap-4 mt-2">
-            <a href="mailto:contato@apexmachine.com.br" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+            <a href="mailto:sup_apexmachine@gmail.com" title="E-mail" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
                <Mail size={16} />
             </a>
-            <a href="https://wa.me/SEUNUMERO?text=Ol%C3%A1%2C+vim+pelo+Apex+Machine+e+tenho+uma+d%C3%BAvida." target="_blank" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#25D366] hover:bg-white/10 transition-colors">
+            <a href="https://wa.me/5547991523220?text=Ol%C3%A1%2C+vim+pelo+Apex+Machine+e+tenho+uma+d%C3%BAvida." target="_blank" rel="noopener noreferrer" title="WhatsApp" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#25D366] hover:bg-white/10 transition-colors">
                <MessageCircle size={16} />
             </a>
+            <a href="https://t.me/sup_apexmachine" target="_blank" rel="noopener noreferrer" title="Telegram" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#2AABEE] hover:bg-white/10 transition-colors">
+               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            </a>
+          </div>
           </div>
           <div className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mt-4">
             © {new Date().getFullYear()} APEX MACHINE. TODOS OS DIREITOS RESERVADOS.
