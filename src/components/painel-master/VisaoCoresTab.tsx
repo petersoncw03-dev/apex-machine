@@ -844,14 +844,24 @@ export function VisaoCoresTab() {
                   <span className="text-red-400/80">{z.losses} Loss</span>
                 </div>
               
-                <div className="mt-1 pt-1.5 border-t border-white/5 flex gap-1 justify-end z-10 relative h-[22px]">
-                  {z.cycles.map((cy, ci) => (
-                     <div key={ci} className={`min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-[4px] text-[10px] font-black font-mono shadow-sm ${
-                        cy.type === 'W' ? 'bg-[#00c83a]/20 text-[#00c83a] border border-[#00c83a]/30' : 'bg-[#e51e3e]/15 text-[#e51e3e] border border-[#e51e3e]/20'
-                     }`}>
-                       {cy.count}
-                     </div>
-                  ))}
+                <div className="mt-2 pt-2 border-t border-white/5 flex gap-1.5 justify-end items-center z-10 relative h-[28px]">
+                  {z.cycles.map((cy, ci) => {
+                     const isNewest = ci === z.cycles.length - 1;
+                     return (
+                       <div key={ci} className="relative flex flex-col items-center justify-center">
+                         <div className={`min-w-[22px] h-[22px] px-1 flex items-center justify-center rounded-[5px] text-[11px] font-black font-mono shadow-sm transition-all ${
+                            cy.type === 'W' 
+                              ? 'bg-[#00c83a]/20 text-[#00c83a] border-[#00c83a]/40' 
+                              : 'bg-[#e51e3e]/15 text-[#e51e3e] border-[#e51e3e]/40'
+                         } ${isNewest ? 'border scale-110 shadow-[0_0_8px_rgba(255,255,255,0.15)] ring-1 ring-white/20 z-10 opacity-100' : 'border opacity-70'}`}>
+                           {cy.count}
+                         </div>
+                         {isNewest && (
+                           <div className="absolute -bottom-2.5 w-1 h-1 rounded-full bg-white animate-pulse shadow-[0_0_5px_white]"></div>
+                         )}
+                       </div>
+                     );
+                  })}
                 </div>
               </div>
             ))}
