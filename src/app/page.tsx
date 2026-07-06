@@ -482,7 +482,7 @@ export default function VendasPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#f12c4c]/10 rounded-full blur-[100px] pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#eab308]/10 rounded-full blur-[100px] pointer-events-none"></div>
           
-          <img src="/blaze-machine-logo.png" alt="Blaze Machine" className="w-24 h-24 mx-auto mb-6 object-contain drop-shadow-[0_0_20px_rgba(241,44,76,0.3)]" />
+          <img src="/blaze-bot.png" alt="Blaze Machine" className="w-24 h-24 mx-auto mb-6 object-contain drop-shadow-[0_0_20px_rgba(241,44,76,0.3)]" />
           <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white mb-6">
             Quer automatizar suas operações?
           </h3>
