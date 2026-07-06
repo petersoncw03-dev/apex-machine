@@ -4,6 +4,15 @@ import React, { useState } from 'react';
 import { CheckCircle, Zap, Shield, Clock } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
+const ALL_FEATURES = [
+  'Sinais em Tempo Real',
+  'Acesso ao Painel Master',
+  'Filtros Avançados VIP',
+  'Simulador Backtest 43k',
+  'Acesso à IA Analista',
+  'Alertas Sonoros e Visuais'
+];
+
 const PLANS = [
   {
     id: 'diario',
@@ -13,7 +22,7 @@ const PLANS = [
     priceStr: 'R$ 5',
     description: 'Ideal para testar a assertividade da IA em um dia de operações.',
     recommended: false,
-    features: ['Sinais em Tempo Real', 'Painel Master', 'Filtros Avançados'],
+    features: ALL_FEATURES,
   },
   {
     id: 'semanal',
@@ -23,7 +32,7 @@ const PLANS = [
     priceStr: 'R$ 15',
     description: 'Uma semana completa com todos os sinais do Painel Master.',
     recommended: false,
-    features: ['Sinais em Tempo Real', 'Painel Master', 'Filtros Avançados', 'Simulador e Histórico'],
+    features: ALL_FEATURES,
   },
   {
     id: 'quinzenal',
@@ -33,7 +42,7 @@ const PLANS = [
     priceStr: 'R$ 35',
     description: 'Quinze dias para construir seu histórico de lucros sem pressa.',
     recommended: false,
-    features: ['Sinais em Tempo Real', 'Painel Master', 'Filtros Avançados', 'Simulador e Histórico', 'IA Analista'],
+    features: ALL_FEATURES,
   },
   {
     id: 'mensal',
@@ -43,7 +52,7 @@ const PLANS = [
     priceStr: 'R$ 50',
     description: 'O melhor custo-benefício. Acesso VIP durante todo o mês.',
     recommended: true,
-    features: ['Sinais em Tempo Real', 'Painel Master', 'Filtros Avançados', 'Simulador e Histórico', 'IA Analista', 'Suporte Prioritário'],
+    features: ALL_FEATURES,
   },
 ];
 

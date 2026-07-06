@@ -561,15 +561,23 @@ export default function VendasPage() {
                <ul className="flex-grow space-y-4 mb-10">
                  <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
                    <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
-                   <span className="leading-tight">Acesso total ao Gráfico PNL</span>
+                   <span className="leading-tight">Sinais em Tempo Real</span>
                  </li>
                  <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
                    <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
-                   <span className="leading-tight">Confluência de IA & Minutos</span>
+                   <span className="leading-tight">Acesso ao Painel Master</span>
                  </li>
                  <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
                    <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
-                   <span className="leading-tight">Simulador Backtest 43k Rodadas</span>
+                   <span className="leading-tight">Filtros Avançados VIP</span>
+                 </li>
+                 <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
+                   <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
+                   <span className="leading-tight">Simulador Backtest 43k</span>
+                 </li>
+                 <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
+                   <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
+                   <span className="leading-tight">Acesso à IA Analista</span>
                  </li>
                  <li className="flex items-start gap-3 text-sm text-gray-300 font-medium">
                    <ShieldCheck size={18} className="text-[#00ff41] shrink-0 mt-0.5" /> 
