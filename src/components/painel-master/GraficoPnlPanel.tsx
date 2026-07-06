@@ -64,7 +64,7 @@ function buildAgg(data: Roll[], minutes: number) {
   });
 }
 
-export default function GraficoPnlPanel({ globalData }: { globalData: Roll[] }) {
+export default function GraficoPnlPanel({ globalData, isVip = false }: { globalData: Roll[], isVip?: boolean }) {
   const cRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const chart = useRef<any>(null), candle = useRef<any>(null);
@@ -230,7 +230,13 @@ export default function GraficoPnlPanel({ globalData }: { globalData: Roll[] }) 
         {/* TF Selector */}
         <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 gap-1 overflow-x-auto custom-scrollbar max-w-full">
           {TFS.map(t => (
-            <button key={t.k} onClick={() => setTf(t.k)} className={`px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${tf === t.k ? "bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]" : "text-slate-500 hover:text-white"}`}>{t.l}</button>
+            <button key={t.k} onClick={() => {
+              if (!isVip && t.k !== 'tick') {
+                alert('Tempo gráfico customizado é exclusivo para usuários VIP!');
+                return;
+              }
+              setTf(t.k);
+            }} className={`px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${tf === t.k ? "bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]" : "text-slate-500 hover:text-white"} ${!isVip && t.k !== 'tick' ? "opacity-50 cursor-not-allowed" : ""}`} title={!isVip && t.k !== 'tick' ? "Exclusivo VIP" : ""}>{t.l}</button>
           ))}
         </div>
       </div>

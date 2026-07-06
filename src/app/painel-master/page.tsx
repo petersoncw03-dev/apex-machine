@@ -25,6 +25,7 @@ type SortDirection = 'desc' | 'asc' | null;
 
 
 export default function RadarAvancado() {
+  const [isVip] = useState(false); // TODO: Integrar com Auth Freemium
   const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'grafico' | 'analise-pnl' | 'visao-cores'>('home');
   const [histRealTime, setHistRealTime] = useState(true);
   const [histFixedCols, setHistFixedCols] = useState(false);
@@ -1247,26 +1248,28 @@ export default function RadarAvancado() {
                Resumos
              </button>
              <button 
-               onClick={() => setActiveTab('grafico')} 
-               className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'grafico' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-             >
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
-               Gráfico
-             </button>
-             <button 
-               onClick={() => setActiveTab('analise-pnl')} 
-               className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'analise-pnl' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-             >
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-               Stress Test
-             </button>
-             <button 
-               onClick={() => setActiveTab('visao-cores')} 
-               className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'visao-cores' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-             >
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-               Avançado
-             </button>
+                onClick={() => isVip ? setActiveTab('analise-pnl') : alert('Aba exclusiva para usuários VIP!')} 
+                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'analise-pnl' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'} ${!isVip ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={!isVip ? "Exclusivo VIP" : ""}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                Stress Test
+              </button>
+              <button 
+                onClick={() => isVip ? setActiveTab('visao-cores') : alert('Aba exclusiva para usuários VIP!')} 
+                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'visao-cores' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'} ${!isVip ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={!isVip ? "Exclusivo VIP" : ""}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+                Avançado
+              </button>
+              <button 
+                onClick={() => setActiveTab('grafico')} 
+                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'grafico' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+                Gráfico
+              </button>
              <a 
                 href="https://blaze.bet.br/pt/games/double"  
                 target="_blank" 
@@ -1436,7 +1439,7 @@ export default function RadarAvancado() {
                 <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 relative">
                   <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                     <span className="text-[11px] font-black uppercase tracking-widest text-white">Pagamento por Cor</span>
-                    <select className={SEL} value={horasCor} onChange={e => setHorasCor(+e.target.value)}>
+                    <select className={SEL} value={horasCor} onChange={e => setHorasCor(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                       {[1, 2, 3, 4, 5, 6, 12, 18, 24].map(v => <option key={v} value={v}>{v}h</option>)}
                     </select>
                   </div>
@@ -1521,12 +1524,13 @@ export default function RadarAvancado() {
                         className={SEL} 
                         value={maxDataHours} 
                         onChange={e => handleSetMaxDataHours(+e.target.value)}
-                        title="Período de Histórico"
+                        title={!isVip ? "Filtro exclusivo VIP" : "Período de Histórico"}
+                        disabled={!isVip}
                       >
                         <option value={168}>7 Dias</option>
                         <option value={360}>15 Dias</option>
                       </select>
-                      <select className={SEL} value={seqColorLen} onChange={e => setSeqColorLen(+e.target.value)}>
+                      <select className={SEL} value={seqColorLen} onChange={e => setSeqColorLen(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                         {[5, 6, 7, 8, 9].map(v => <option key={v} value={v}>{v} Cores</option>)}
                       </select>
                     </div>
@@ -1654,17 +1658,18 @@ export default function RadarAvancado() {
 
                   <div className="px-3 py-2 bg-black/40 border-b border-white/10 flex flex-col gap-2">
                     <div className="flex gap-2 w-full">
-                      <select className={`${SEL_GREEN} flex-1`} value={scanDays} onChange={e => setScanDays(+e.target.value)}>
+                      <select className={`${SEL_GREEN} flex-1`} value={scanDays} onChange={e => setScanDays(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                         {[1, 2, 3, 5, 7, 10, 14, 30, 60, 90, 120].map(v => <option key={v} value={v}>{v} Dias</option>)}
                       </select>
-                      <select className={`${SEL_GREEN} flex-1`} value={scanMin} onChange={e => setScanMin(+e.target.value)}>
+                      <select className={`${SEL_GREEN} flex-1`} value={scanMin} onChange={e => setScanMin(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                         {[0.5, 1, 2, 3, 5, 10, 15, 20, 30, 45, 60].map(v => <option key={v} value={v}>{v} Min</option>)}
                       </select>
                     </div>
                     <button
                       onClick={() => fetchScannerData(scanDays)}
-                      disabled={loadingScanner}
-                      className="w-full py-1.5 rounded font-black uppercase text-[9px] tracking-widest transition-all bg-white/5 hover:bg-white/10 text-white border border-white/10 relative overflow-hidden flex items-center justify-center"
+                      disabled={loadingScanner || !isVip}
+                      title={!isVip ? "Exclusivo VIP" : ""}
+                      className="w-full py-1.5 rounded font-black uppercase text-[9px] tracking-widest transition-all bg-white/5 hover:bg-white/10 text-white border border-white/10 relative overflow-hidden flex items-center justify-center disabled:opacity-50"
                     >
                       <span className="relative z-10 flex items-center justify-center gap-2">
                         {loadingScanner ? 'CARREGANDO...' : 'APLICAR DIAS'}
@@ -1689,11 +1694,15 @@ export default function RadarAvancado() {
                         value={minSaScanner}
                         onChange={e => setMinSaScanner(Math.max(0, parseInt(e.target.value) || 0))}
                         className="bg-[#12141c] border border-white/20 text-white text-[10px] w-12 px-1.5 py-1 rounded-md outline-none text-center font-bold"
+                        disabled={!isVip}
+                        title={!isVip ? "Exclusivo VIP" : ""}
                       />
                     </div>
                     <button
                       onClick={handleGenerateScannerPatterns}
-                      className="bg-white/5 hover:bg-white/10 text-white border border-white/10 text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded transition-all hover:border-white/20 active:scale-95"
+                      className="bg-white/5 hover:bg-white/10 text-white border border-white/10 text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded transition-all hover:border-white/20 active:scale-95 disabled:opacity-50"
+                      disabled={!isVip}
+                      title={!isVip ? "Exclusivo VIP" : ""}
                     >
                       Gerar Padrões
                     </button>
@@ -1748,13 +1757,13 @@ export default function RadarAvancado() {
                   <div className="px-3 py-2 bg-black/40 border-b border-white/10 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] uppercase font-bold text-gray-400">Geral (BCO/SA):</span>
-                      <select className={SEL} value={somaHoursGeral} onChange={e => setSomaHoursGeral(+e.target.value)}>
+                      <select className={SEL} value={somaHoursGeral} onChange={e => setSomaHoursGeral(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                         {[1, 2, 3, 6, 12, 18, 24, 36, 48].map(v => <option key={v} value={v}>{v}h</option>)}
                       </select>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] uppercase font-bold text-gray-400">Filtro SM:</span>
-                      <select className={SEL} value={somaHoursSM} onChange={e => setSomaHoursSM(+e.target.value)}>
+                      <select className={SEL} value={somaHoursSM} onChange={e => setSomaHoursSM(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                         {[1, 2, 3, 6, 12, 18, 24, 36, 48].map(v => <option key={v} value={v}>{v}h</option>)}
                       </select>
                     </div>
@@ -1826,10 +1835,10 @@ export default function RadarAvancado() {
                     <div className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></div> Painel de Minuto
                   </span>
                   <div className="flex gap-1.5 items-center">
-                    <button onClick={() => handleOpenMaximas(30)} className="bg-white/5 hover:bg-white/10 text-white border border-white/10 text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded transition-all">
+                    <button onClick={() => handleOpenMaximas(30)} className="bg-white/5 hover:bg-white/10 text-white border border-white/10 text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded transition-all disabled:opacity-50" disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                       Máximas 30d
                     </button>
-                    <select className={SEL} value={minHours} onChange={e => setMinHours(+e.target.value)}>
+                    <select className={SEL} value={minHours} onChange={e => setMinHours(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                       {[1, 2, 3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96].map(v => <option key={v} value={v}>{v}h</option>)}
                     </select>
                   </div>
@@ -2055,10 +2064,10 @@ export default function RadarAvancado() {
                     <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> Pagamento Após Pedra
                   </span>
                   <div className="flex gap-1.5">
-                    <select className={SEL} value={casasHours} onChange={e => setCasasHours(+e.target.value)}>
+                    <select className={SEL} value={casasHours} onChange={e => setCasasHours(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                       {[1, 2, 3, 4, 6, 9, 12, 18, 24, 36, 48].map(v => <option key={v} value={v}>{v}h</option>)}
                     </select>
-                    <select className={SEL} value={casas} onChange={e => setCasas(+e.target.value)}>
+                    <select className={SEL} value={casas} onChange={e => setCasas(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                       {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1} Casas</option>)}
                     </select>
                   </div>
@@ -2152,7 +2161,7 @@ export default function RadarAvancado() {
               ) : activeTab === 'resumos' ? (
                 <ResumoDiarioPanel globalData={globalData} />
               ) : activeTab === 'grafico' ? (
-                <GraficoPnlPanel globalData={globalData} />
+                <GraficoPnlPanel isVip={isVip} globalData={globalData} />
               ) : activeTab === 'analise-pnl' ? (
                 <AnalisePnlTab globalData={globalData} />
               ) : null}
@@ -2864,7 +2873,11 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
 
   const handleExportCSV = () => {
      // Pegar até 20.000 linhas, do mais novo pro mais antigo
-     const exportData = [...activeData].reverse().slice(0, 20000);
+     let exportData = [...activeData].reverse().slice(0, 20000);
+     if (!isVip && exportData.length > 5000) {
+        exportData = exportData.slice(0, 5000);
+        alert('Exportação limitada a 5.000 registros no plano Gratuito. Assine o VIP para exportar o histórico completo (20.000).');
+     }
      
      if (exportData.length === 0) {
         alert('Nenhum dado para exportar.');
@@ -3072,7 +3085,14 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
             <div className="grid grid-cols-5 gap-4">
                <div>
                   <label className={F_LABEL}>Quantidade</label>
-                  <input type="number" className={F_INPUT} value={fQty} onChange={e => setFQty(e.target.value ? +e.target.value : '')} />
+                  <input type="number" className={F_INPUT} value={fQty} onChange={e => {
+                     let val: any = e.target.value ? +e.target.value : '';
+                     if (!isVip && typeof val === 'number' && val > 5000) {
+                        alert('Limite de 5.000 resultados na tela para usuários Free. Assine o VIP para buscar até 20.000.');
+                        val = 5000;
+                     }
+                     setFQty(val);
+                  }} />
                </div>
                <div>
                   <label className={F_LABEL}>Data inicial</label>
