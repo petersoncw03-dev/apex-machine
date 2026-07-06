@@ -603,10 +603,10 @@ export default function RadarAvancado() {
 
   // CASAS
   const [casas, setCasas] = useState(3);
-  const [casasHours, setCasasHours] = useState(12);
+  const [casasHours, setCasasHours] = useState(3);
 
   // MINUTOS
-  const [minHours, setMinHours] = useState(48);
+  const [minHours, setMinHours] = useState(24);
 
   // ENTRADAS BRANCO
   const [entradasBranco, setEntradasBranco] = useState(3);
@@ -1830,7 +1830,7 @@ export default function RadarAvancado() {
                       Máximas 30d
                     </button>
                     <select className={SEL} value={minHours} onChange={e => setMinHours(+e.target.value)}>
-                      {[1, 2, 3, 6, 12, 24, 36, 48, 60, 72, 84, 96].map(v => <option key={v} value={v}>{v}h</option>)}
+                      {[1, 2, 3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96].map(v => <option key={v} value={v}>{v}h</option>)}
                     </select>
                   </div>
                 </div>
