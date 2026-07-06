@@ -25,6 +25,7 @@ export function VisaoCoresTab() {
   const [loading, setLoading] = useState(true);
   const [radarMode, setRadarMode] = useState<'branco' | 'cor'>('branco');
   const lastProcessedIdRef = useRef<string | null>(null);
+  const pendingNextStateRef = useRef<any>(null);
   const [signalState, setSignalState] = useState<{
       status: 'standby' | 'active' | 'win' | 'loss',
       step: number,
@@ -524,7 +525,16 @@ export function VisaoCoresTab() {
               approved = true;
           }
 
+          const nextActiveState = (points >= 1 && approved) 
+                ? { status: 'active' as const, step: 1, level: points, stones: [] } 
+                : { status: 'standby' as const, step: 0, level: 0, stones: [] };
+
+          pendingNextStateRef.current = nextActiveState;
+
           if (prev.status === 'active') {
+              if (points > prev.level && approved) {
+                  return { status: 'active', step: 1, level: points, stones: [] };
+              }
               const newStones = [...prev.stones, isNaN(currentRollValue) ? -1 : currentRollValue];
               if (isBranco) {
                   return { status: 'win', step: prev.step, level: prev.level, stones: newStones };
@@ -532,20 +542,28 @@ export function VisaoCoresTab() {
                   if (prev.step < 6) {
                       return { ...prev, step: prev.step + 1, stones: newStones };
                   } else {
-                      if (points >= 1 && approved) {
-                          return { status: 'active', step: 1, level: points, stones: [] };
-                      }
                       return { status: 'loss', step: 6, level: prev.level, stones: newStones };
                   }
               }
           } else {
-              if (points >= 1 && approved) {
-                  return { status: 'active', step: 1, level: points, stones: [] };
-              }
-              return { status: 'standby', step: 0, level: 0, stones: [] };
+              return nextActiveState;
           }
       });
   }, [history, zonesStats, radarStats, iaScores, iaStats]);
+
+  useEffect(() => {
+      if (signalState.status === 'win' || signalState.status === 'loss') {
+          const t = setTimeout(() => {
+              setSignalState(prev => {
+                  if (prev.status === 'win' || prev.status === 'loss') {
+                      return pendingNextStateRef.current || { status: 'standby', step: 0, level: 0, stones: [] };
+                  }
+                  return prev;
+              });
+          }, 7000);
+          return () => clearTimeout(t);
+      }
+  }, [signalState.status]);
 
   if (loading) {
     return (
