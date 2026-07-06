@@ -1265,7 +1265,7 @@ export default function RadarAvancado() {
                className={`px-4 py-2 rounded-lg text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'visao-cores' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
              >
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
-               Raio-X das Cores
+               Avançado
              </button>
              <a 
                 href="https://blaze.bet.br/pt/games/double"  
