@@ -33,6 +33,7 @@ export function VisaoCoresTab() {
   }>({ status: 'standby', step: 0, level: 0, stones: [] });
 
   const [iaPeriodFilter, setIaPeriodFilter] = useState<number>(3);
+  const [zonesPeriod, setZonesPeriod] = useState<number>(3);
   const parsedHistory = useMemo(() => history.map(r => ({ ...r, roll: parseInt(r.roll as string) })), [history]);
   const iaSignals = useMinutosIa(parsedHistory as any, iaPeriodFilter, new Set<number>(), true, false);
   const { scores: iaScores, stats: iaStats } = iaSignals;
@@ -404,8 +405,8 @@ export function VisaoCoresTab() {
   const zonesStats = useMemo(() => {
      if (history.length === 0) return { blocks: [], currentGap: 0 };
      
-     // Usar 3 horas (~750 pedras) para análise das Zonas Quentes
-     const rolls = history.slice(-750);
+     const sliceAmount = -(zonesPeriod * 250); // ~250 pedras por hora
+     const rolls = history.slice(sliceAmount);
      const whiteIndices = rolls.reduce((acc, r, i) => {
         const n = parseInt(r.roll as string);
         if (r.color?.includes('Branco') || n === 0) acc.push(i);
@@ -432,11 +433,33 @@ export function VisaoCoresTab() {
      ];
      
      const blocks = zones.map(z => {
-        let wins = gaps.filter(g => g >= z.s && g <= z.e).length;
-        let losses = gaps.filter(g => g > z.e).length;
+        let wins = 0;
+        let losses = 0;
+        
+        const outcomes: ('W'|'L')[] = [];
+        for (const g of gaps) {
+           if (g >= z.s && g <= z.e) { wins++; outcomes.push('W'); }
+           else if (g > z.e) { losses++; outcomes.push('L'); }
+        }
         
         if (currentGap >= z.e) {
            losses++;
+           outcomes.push('L');
+        }
+        
+        // Calcular Ciclos
+        const cycles: { type: 'W'|'L', count: number }[] = [];
+        for (const out of outcomes) {
+           if (cycles.length === 0) {
+              cycles.push({ type: out, count: 1 });
+           } else {
+              const last = cycles[cycles.length - 1];
+              if (last.type === out) {
+                 last.count++;
+              } else {
+                 cycles.push({ type: out, count: 1 });
+              }
+           }
         }
         
         const total = wins + losses;
@@ -446,11 +469,11 @@ export function VisaoCoresTab() {
         if (nextEnt >= z.s && nextEnt <= z.e) status = 'ativo';
         else if (nextEnt > z.e) status = 'passou';
         
-        return { ...z, wins, losses, total, winrate, status };
+        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-5) };
      });
      
      return { blocks, currentGap };
-  }, [history]);
+  }, [history, zonesPeriod]);
 
   useEffect(() => {
       if (history.length === 0) return;
@@ -773,9 +796,20 @@ export function VisaoCoresTab() {
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
               <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes</span>
             </div>
-            <span className="text-[10px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5">
-              Atraso Atual: <strong className="text-white text-[11px] ml-1">{zonesStats.currentGap}</strong>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5 whitespace-nowrap hidden sm:inline">
+                Atraso: <strong className="text-white text-[11px] ml-1">{zonesStats.currentGap}</strong>
+              </span>
+              <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-1 rounded outline-none cursor-pointer" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
+                <option value={1}>1h</option>
+                <option value={2}>2h</option>
+                <option value={3}>3h</option>
+                <option value={4}>4h</option>
+                <option value={6}>6h</option>
+                <option value={9}>9h</option>
+                <option value={12}>12h</option>
+              </select>
+            </div>
           </div>
           
           <div className="p-4 grid grid-cols-2 gap-3 flex-1 content-start">
@@ -808,6 +842,16 @@ export function VisaoCoresTab() {
                 <div className="flex justify-between mt-1 text-[8px] font-bold z-10 relative">
                   <span className="text-emerald-400/80">{z.wins} Win</span>
                   <span className="text-red-400/80">{z.losses} Loss</span>
+                </div>
+              
+                <div className="mt-1 pt-1 border-t border-white/5 flex gap-1 justify-end z-10 relative h-[18px]">
+                  {z.cycles.map((cy, ci) => (
+                     <div key={ci} className={`min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-[3px] text-[8px] font-black font-mono shadow-sm ${
+                        cy.type === 'W' ? 'bg-[#00c83a]/20 text-[#00c83a] border border-[#00c83a]/30' : 'bg-[#e51e3e]/15 text-[#e51e3e] border border-[#e51e3e]/20'
+                     }`}>
+                       {cy.count}
+                     </div>
+                  ))}
                 </div>
               </div>
             ))}
