@@ -818,7 +818,7 @@ export function VisaoCoresTab() {
               <span className="text-[9px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5 whitespace-nowrap hidden sm:inline">
                 Atraso: <strong className="text-white text-[11px] ml-1">{zonesStats.currentGap}</strong>
               </span>
-              <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-1 rounded outline-none cursor-pointer" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
+              <select className="bg-[#0b0e14] border border-white/10 text-white text-[11px] md:text-[9px] px-3 py-1.5 md:px-2 md:py-1 rounded outline-none cursor-pointer" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
                 <option value={1}>1h</option>
                 <option value={2}>2h</option>
                 <option value={3}>3h</option>
@@ -830,7 +830,7 @@ export function VisaoCoresTab() {
             </div>
           </div>
           
-          <div className="p-4 grid grid-cols-2 gap-3 flex-1 content-start">
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-3 flex-1 content-start">
             {zonesStats.blocks.map((z, i) => (
               <div key={i} className={`rounded-xl border px-3 pt-3 pb-5 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
                 z.status === 'ativo' ? 'bg-[#00c83a]/10 border-[#00c83a]/40 shadow-[0_0_15px_rgba(0,200,58,0.2)]' :

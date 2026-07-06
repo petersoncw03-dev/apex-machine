@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body suppressHydrationWarning className="min-h-full flex bg-[#050507] text-white">
+      <body suppressHydrationWarning className="min-h-full flex flex-col md:flex-row w-full bg-[#050507] text-white">
         <ClientLayout>
           <ConditionalSidebar />
           <main className="flex-1 min-h-screen overflow-auto">

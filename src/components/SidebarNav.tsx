@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
   Radio, BrainCircuit, BarChart3, FlaskConical, Bot, Zap,
-  LineChart, TrendingUp, Clock, ChevronLeft, ChevronRight,
+  LineChart, TrendingUp, Clock, ChevronLeft, ChevronRight, Menu,
   Database, Grid3X3, PlaySquare, Target, SlidersHorizontal,
   Pickaxe, LogOut, RefreshCcw, Home, BarChart2, Activity, Droplets, User
 } from 'lucide-react';
@@ -75,6 +75,19 @@ export default function SidebarNav() {
 
   return (
     <>
+      {/* Topbar Mobile */}
+      <div className="md:hidden flex items-center justify-between h-16 w-full bg-[#0b0e14] border-b border-white/5 px-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <LogoIcon />
+          <span className="text-sm font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#00ff41] to-emerald-400 leading-tight">
+            Apex Machine
+          </span>
+        </div>
+        <button onClick={() => setCollapsed(false)} className="text-white p-2 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors">
+          <Menu size={20} />
+        </button>
+      </div>
+
       {/* Placeholder para manter o espaço do menu na tela quando recolhido (desktop) */}
       <div className="w-16 shrink-0 h-screen hidden md:block" />
 
@@ -91,7 +104,7 @@ export default function SidebarNav() {
       />
 
       {/* Sidebar Fixa e Flutuante */}
-      <aside className={`fixed top-0 left-0 h-[100dvh] z-50 flex flex-col bg-[#050507] border-r border-white/[0.05] transition-all duration-300 ease-in-out shadow-2xl ${collapsed ? 'w-16' : 'w-64'}`}>
+      <aside className={`fixed top-0 left-0 h-[100dvh] z-50 flex flex-col bg-[#050507] border-r border-white/[0.05] transition-transform duration-300 ease-in-out shadow-2xl ${collapsed ? '-translate-x-full md:translate-x-0 md:w-16' : 'translate-x-0 w-64'}`}>
         
         {/* Header / Logo */}
         <div 
