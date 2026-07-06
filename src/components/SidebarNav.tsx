@@ -8,7 +8,7 @@ import {
   Radio, BrainCircuit, BarChart3, FlaskConical, Bot, Zap,
   LineChart, TrendingUp, Clock, ChevronLeft, ChevronRight,
   Database, Grid3X3, PlaySquare, Target, SlidersHorizontal,
-  Pickaxe, LogOut, RefreshCcw, Home, BarChart2, Activity, Droplets
+  Pickaxe, LogOut, RefreshCcw, Home, BarChart2, Activity, Droplets, User
 } from 'lucide-react';
 
 interface NavItem {
@@ -183,6 +183,21 @@ export default function SidebarNav() {
           </div>
 
           <div className="h-[1px] w-full bg-white/[0.05] my-1"></div>
+
+          {/* Minha Conta */}
+          <Link
+            href="/minha-conta"
+            title={collapsed ? 'Minha Conta' : undefined}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full ${
+              pathname === '/minha-conta'
+                ? 'bg-[#181a20] text-[#00ff41]' 
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03]'
+            } ${collapsed ? 'justify-center' : ''}`}
+            onClick={() => { if (!collapsed) setCollapsed(true); }}
+          >
+            <User size={18} className={pathname === '/minha-conta' ? 'text-[#00ff41]' : 'text-gray-400'} />
+            {!collapsed && <span className={`text-[13px] font-medium ${pathname === '/minha-conta' ? 'text-[#00ff41]' : ''}`}>Minha Conta</span>}
+          </Link>
 
           {/* Botão Sair */}
           <button
