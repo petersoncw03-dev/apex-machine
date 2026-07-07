@@ -1,0 +1,50 @@
+========================================================
+CHECKPOINT DE ARQUITETURA: MOTOR DE SINAIS (ROBO-ENGINE)
+========================================================
+
+CONTEXTO GERAL E OBJETIVO
+--------------------------------------------------------
+Estávamos trabalhando no projeto "RoboBlaze" (Next.js na Vercel + Banco Postgres na VPS).
+1. Já finalizamos com sucesso a implementação do sistema Freemium no `/painel-master` (travas de features e Modal de Upgrade aplicados e funcionando perfeitamente em build de produção).
+2. O novo objetivo é resolver um problema na aba "Radar Avançado": A ferramenta "Mestre de Confluência" (e também "Minutos da IA") perde o sincronismo quando o usuário dá F5, pois o cálculo das entradas (Step 1 a 6) é feito via React State no cliente.
+3. A Solução acordada: Criar um Microsserviço Node.js isolado (`robo-engine`) que rodará na VPS. Ele será o "Cérebro Central", fará os cálculos pesados, enviará alertas configuráveis para o Telegram, e mandará o estado pronto para a Vercel distribuir via Server-Sent Events (SSE).
+
+O QUE JÁ FOI FEITO NO ROBO-ENGINE
+--------------------------------------------------------
+- A pasta `../robo-engine` (ao lado de `robo-site`) foi criada.
+- Executamos `npm init -y` e instalamos as dependências necessárias: `pg`, `node-telegram-bot-api`, `dotenv`, `typescript`, `@types/node`, `@types/pg`, `ts-node`.
+- O arquivo `tsconfig.json` já está gerado.
+
+O QUE PRECISA SER PROGRAMADO NA PRÓXIMA SESSÃO (motor.ts)
+--------------------------------------------------------
+Sua primeira tarefa ao ler este documento é criar o arquivo principal `src/motor.ts` no `robo-engine`. Ele deve conter 5 Blocos fundamentais:
+
+BLOCO 1: GERENCIAMENTO DE MEMÓRIA E ESTADO (ANTI-TRAVAMENTO CPU)
+- O motor não pode vazar memória e derrubar a VPS. Para isso, usaremos uma "Sliding Window" (Janela Deslizante). 
+- Ele manterá APENAS as últimas 2.000 pedras em um Array `history`. A cada nova pedra recebida, faremos `history.push(pedra)` e, se `history.length > 2000`, faremos `history.shift()`.
+- O Motor terá objetos de estado em memória: `mestreState` (status, step, level, stones) e `placarDiario` (wins, losses).
+
+BLOCO 2: REGRAS DO TELEGRAM E PLACAR DA MEIA-NOITE
+- Deve existir uma constante/configuração no topo do arquivo para as regras de envio do Telegram:
+  * Regra Mestre de Confluência: Enviar sinal apenas se Nível de Força for >= 2 (ou 3).
+  * Regras IA Minutos: Enviar sinal APENAS SE (Qtd de entradas >= 2 AND Winrate >= 80%) OU (Qtd de entradas >= 3 AND Winrate >= 60%).
+- A cada rodada, o motor verifica se a Data virou (00:00). Se virou, envia um "Resumo do Dia (Wins x Losses)" pro Telegram e reseta a variável `placarDiario`.
+
+BLOCO 3: TRANSIÇÃO DOS ALGORITMOS (FRONT -> BACKEND)
+Você precisará ler o código atual do `robo-site` e transcrever a lógica pesada para o `robo-engine`:
+1. Algoritmo "Minutos da IA": Analisar a lógica que hoje está em `src/hooks/useMinutosIa.ts`.
+2. Algoritmo "Mestre de Confluência": Analisar a lógica que hoje está em `src/components/painel-master/VisaoCoresTab.tsx` (que consolida Zonas Quentes, Padrões, Casas Exatas e cruza com a IA).
+
+BLOCO 4: EVENT LOOP E POSTGRESQL LISTEN
+- O Motor precisa conectar ao banco via `pg` e rodar `LISTEN nova_pedra`.
+- Quando uma pedra chegar, ele atualiza o array de `history`, roda a lógica transcrita do Bloco 3 e avalia o status dos sinais.
+
+BLOCO 5: NOTIFY PARA O FRONTEND E API TELEGRAM
+- Se as regras de envio (Bloco 2) forem batidas, instanciar o `node-telegram-bot-api` e enviar os alertas de Entrada, e posteriormente, a confirmação de WIN/LOSS com base nos próximos resultados.
+- No final da avaliação de cada pedra, o Motor deve empacotar o estado completo (Sinal do Mestre e Dados da IA) em um JSON e fazer um `client.query('NOTIFY estado_motor, $1', [JSON.stringify(estado)])`.
+- O Next.js (Vercel) apenas receberá esse NOTIFY e empurrará o JSON pro usuário sem fazer nenhum cálculo.
+
+INSTRUÇÕES PARA A PRÓXIMA RESPOSTA DA IA:
+--------------------------------------------------------
+Ao ler este documento, reconheça a arquitetura imediatamente. Em seguida, solicite a visualização do arquivo `src/hooks/useMinutosIa.ts` e `src/components/painel-master/VisaoCoresTab.tsx` do `robo-site` para entender como a matemática atual funciona.
+Depois de entender a matemática, comece a escrever o arquivo `src/motor.ts` do `robo-engine` seguindo estritamente este plano, focando na otimização de CPU e na criação das regras do Telegram descritas.

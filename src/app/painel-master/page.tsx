@@ -8,6 +8,7 @@ import ResumoDiarioPanel from '@/components/painel-master/ResumoDiarioPanel';
 import AnalisePnlTab from '@/components/painel-master/AnalisePnlTab';
 import GraficoPnlPanel from '@/components/painel-master/GraficoPnlPanel';
 import { VisaoCoresTab } from '@/components/painel-master/VisaoCoresTab';
+import { useVip } from '@/hooks/useVip';
 
 interface Roll { color: string; roll: number; timestamp: string; id?: string; }
 
@@ -25,7 +26,7 @@ type SortDirection = 'desc' | 'asc' | null;
 
 
 export default function RadarAvancado() {
-  const [isVip] = useState(false); // TODO: Integrar com Auth Freemium
+  const { isVip } = useVip();
   const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'grafico' | 'analise-pnl' | 'visao-cores'>('home');
   const [histRealTime, setHistRealTime] = useState(true);
   const [histFixedCols, setHistFixedCols] = useState(false);
@@ -2157,6 +2158,7 @@ export default function RadarAvancado() {
                   histFixedCols={histFixedCols} setHistFixedCols={setHistFixedCols}
                   histReverse={histReverse} setHistReverse={setHistReverse}
                   histShowSeconds={histShowSeconds} setHistShowSeconds={setHistShowSeconds}
+                  isVip={isVip}
                 />
               ) : activeTab === 'resumos' ? (
                 <ResumoDiarioPanel globalData={globalData} />
@@ -2382,7 +2384,7 @@ function RealTimeClock() {
    return <>{time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</>;
 }
 
-function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, histFixedCols, setHistFixedCols, histReverse, setHistReverse, histShowSeconds, setHistShowSeconds }: any) {
+function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, histFixedCols, setHistFixedCols, histReverse, setHistReverse, histShowSeconds, setHistShowSeconds, isVip }: any) {
   const [frozenData, setFrozenData] = useState<any[]>([]);
   const [activeTool, setActiveTool] = useState<'filtros' | 'notificador' | 'validador'>('filtros');
   
