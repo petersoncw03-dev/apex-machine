@@ -29,13 +29,21 @@ export function useVip() {
           return;
         }
 
-        // Verifica se o plano é premium e se ainda não expirou
-        if (profile.plan === 'premium' && profile.plan_expires_at) {
-          const expiresAt = new Date(profile.plan_expires_at).getTime();
-          if (expiresAt > Date.now()) {
-            setIsVip(true);
+        const plan = (profile.plan || '').toLowerCase();
+        
+        // Verifica se o plano é premium
+        if (plan === 'premium' || plan === 'vip') {
+          if (profile.plan_expires_at) {
+            // Tem data de expiração, verifica se ainda é válida
+            const expiresAt = new Date(profile.plan_expires_at).getTime();
+            if (expiresAt > Date.now()) {
+              setIsVip(true);
+            } else {
+              setIsVip(false);
+            }
           } else {
-            setIsVip(false);
+            // É premium mas sem data de expiração (vitalício / dev)
+            setIsVip(true);
           }
         } else {
           setIsVip(false);
