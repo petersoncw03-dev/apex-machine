@@ -17,6 +17,13 @@ export function useVip() {
           return;
         }
 
+        // Whitelist do Admin - Nunca bloquear
+        if (user.email === 'peterson.cw@hotmail.com') {
+          setIsVip(true);
+          setLoadingVip(false);
+          return;
+        }
+
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('plan, plan_expires_at')
