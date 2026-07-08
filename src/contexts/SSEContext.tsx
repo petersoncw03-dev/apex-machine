@@ -69,6 +69,7 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
                     ...raw,
                     color: raw.color?.toString().charAt(0).toUpperCase() + raw.color?.toString().slice(1).toLowerCase(),
                     roll: raw.roll?.toString(),
+                    timestamp: raw.timestamp || raw.created_at,
                   };
                   const rollTime = new Date(roll.timestamp).getTime();
                   if (rollTime > latestTimeRef.current) {
@@ -89,6 +90,7 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
               ...raw,
               color: raw.color?.toString().charAt(0).toUpperCase() + raw.color?.toString().slice(1).toLowerCase(),
               roll: raw.roll?.toString(),
+              timestamp: raw.created_at || raw.timestamp || new Date().toISOString(),
             };
             const rollTime = new Date(roll.timestamp).getTime();
             if (rollTime > latestTimeRef.current) {
