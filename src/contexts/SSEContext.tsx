@@ -34,6 +34,7 @@ const SSEContext = createContext<SSEContextValue>({
 export function SSEProvider({ children }: { children: React.ReactNode }) {
   const [latestRoll, setLatestRoll] = useState<Roll | null>(null);
   const listenersRef = useRef<Set<Listener>>(new Set());
+  const latestTimeRef = useRef<number>(0);
 
   const subscribe = useCallback((fn: Listener) => {
     listenersRef.current.add(fn);
@@ -69,7 +70,11 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
                     color: raw.color?.toString().charAt(0).toUpperCase() + raw.color?.toString().slice(1).toLowerCase(),
                     roll: raw.roll?.toString(),
                   };
-                  listenersRef.current.forEach(fn => fn(roll));
+                  const rollTime = new Date(roll.timestamp).getTime();
+                  if (rollTime > latestTimeRef.current) {
+                    latestTimeRef.current = rollTime;
+                    listenersRef.current.forEach(fn => fn(roll));
+                  }
                 });
               }
             } catch(e) {}
@@ -85,6 +90,10 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
               color: raw.color?.toString().charAt(0).toUpperCase() + raw.color?.toString().slice(1).toLowerCase(),
               roll: raw.roll?.toString(),
             };
+            const rollTime = new Date(roll.timestamp).getTime();
+            if (rollTime > latestTimeRef.current) {
+              latestTimeRef.current = rollTime;
+            }
             setLatestRoll(roll);
             listenersRef.current.forEach(fn => fn(roll));
           } catch {}
