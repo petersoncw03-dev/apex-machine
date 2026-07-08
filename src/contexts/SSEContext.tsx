@@ -46,14 +46,35 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
     let retryDelay = 2000;      // começa em 2s
     const MAX_DELAY = 30000;    // máximo 30s entre tentativas
     let mounted = true;
+    let reconnectCount = 0;
 
     const connect = () => {
       if (!mounted) return;
       try {
         es = new EventSource('/api/events');
 
-        es.onopen = () => {
+        es.onopen = async () => {
           retryDelay = 2000; // reseta o backoff ao conectar com sucesso
+          if (reconnectCount > 0) {
+            console.log('[SSE Global] Reconectado! Buscando pedras perdidas...');
+            try {
+              const res = await fetch('/api/results?limit=20');
+              if (res.ok) {
+                const json = await res.json();
+                const data = json.data || [];
+                const sorted = data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                sorted.forEach((raw: any) => {
+                  const roll: Roll = {
+                    ...raw,
+                    color: raw.color?.toString().charAt(0).toUpperCase() + raw.color?.toString().slice(1).toLowerCase(),
+                    roll: raw.roll?.toString(),
+                  };
+                  listenersRef.current.forEach(fn => fn(roll));
+                });
+              }
+            } catch(e) {}
+          }
+          reconnectCount++;
         };
 
         es.onmessage = (event) => {

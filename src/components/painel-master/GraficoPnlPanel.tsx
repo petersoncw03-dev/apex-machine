@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries } from "lightweight-charts";
+import * as htmlToImage from 'html-to-image';
 
 function calcSMA(v: number[], p: number) { return v.map((_, i) => i < p - 1 ? null : v.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p); }
 function calcEMA(v: number[], p: number) { const k=2/(p+1); let e: number|null=null; return v.map((x,i)=>{ if(i<p-1)return null; e=e===null?v.slice(0,p).reduce((a,b)=>a+b,0)/p:x*k+e*(1-k); return parseFloat(e.toFixed(2)); }); }
@@ -81,6 +82,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   const [profit, setProfit] = useState(0);
   const [limit, setLimit] = useState(500);
   const [showPeriod, setShowPeriod] = useState(false);
+  const [toast, setToast] = useState<{show: boolean, msg: string, type: 'success' | 'error'}>({show: false, msg: "", type: 'success'});
   
   const activeData = globalData.slice(-limit);
 
@@ -204,6 +206,23 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   const zoomOut = () => { const r = chart.current?.timeScale().getVisibleLogicalRange(); if (!r) return; const c = (r.from + r.to) / 2, sz = (r.to - r.from) * 0.7; chart.current.timeScale().setVisibleLogicalRange({ from: c - sz, to: c + sz }); };
   const resetZoom = () => chart.current?.timeScale().fitContent();
 
+  const handlePrint = async () => {
+    if (!wrapRef.current) return;
+    try {
+      const dataUrl = await htmlToImage.toPng(wrapRef.current, { backgroundColor: '#050507', pixelRatio: 2 });
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const item = new ClipboardItem({ "image/png": blob });
+      await navigator.clipboard.write([item]);
+      setToast({ show: true, msg: "Print do gráfico tirado, compartilhe com amigos! 🚀", type: 'success' });
+      setTimeout(() => setToast(t => ({...t, show: false})), 3000);
+    } catch (e) {
+      console.error("Erro no html-to-image", e);
+      setToast({ show: true, msg: "Erro ao copiar o gráfico.", type: 'error' });
+      setTimeout(() => setToast(t => ({...t, show: false})), 3000);
+    }
+  };
+
   const FloatBtn = ({ onClick, children, active }: { onClick: () => void, children: React.ReactNode, active?: boolean }) => (
     <button onClick={onClick} className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-all backdrop-blur-md shadow-[0_4px_15px_rgba(0,98,255,0.2)] ${active ? 'bg-[#00c83a]/30 border-[#00c83a]/50 text-white' : 'bg-[#00c83a]/10 border-[#00c83a]/30 text-white hover:bg-[#00c83a]/30 hover:border-[#00c83a]/50'}`}>
       {children}
@@ -215,6 +234,13 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
       <style>{`
         #tv-attr-logo { display: none !important; opacity: 0 !important; pointer-events: none !important; }
       `}</style>
+      {/* TOAST NOTIFICATION */}
+      {toast.show && (
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full font-bold text-sm tracking-widest uppercase shadow-2xl border backdrop-blur-md transition-all animate-bounce flex items-center gap-2 ${toast.type === 'success' ? 'bg-[#00c83a]/20 border-[#00c83a] text-[#00c83a]' : 'bg-rose-500/20 border-rose-500 text-rose-500'}`}>
+          {toast.type === 'success' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
+          {toast.msg}
+        </div>
+      )}
       {/* HEADER PREMIUM */}
       <div className="px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] shrink-0 z-10">
         <div className="flex items-center gap-4">
@@ -243,7 +269,17 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
 
       {/* CHART WRAPPER */}
       <div ref={wrapRef} className="relative flex-1 bg-[#050507]">
-        <div ref={cRef} style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }} />
+        {/* WATERMARK APEX MACHINE */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-5 z-0 select-none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="w-48 h-48 text-[#00c83a] mb-2">
+            <path d="M3 3v18h18" />
+            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+          </svg>
+          <h1 className="text-[5rem] font-black tracking-tighter text-white leading-none">APEX MACHINE</h1>
+          <p className="text-[1.5rem] font-bold tracking-widest text-[#00c83a] uppercase mt-2">apexmachine.com.br</p>
+        </div>
+
+        <div ref={cRef} className="z-10" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }} />
 
         {/* FLOATING BUTTONS */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3">
@@ -266,6 +302,9 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
           </FloatBtn>
           <FloatBtn onClick={resetZoom}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+          </FloatBtn>
+          <FloatBtn onClick={handlePrint} title="Copiar Imagem">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </FloatBtn>
           <FloatBtn onClick={zoomIn}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>

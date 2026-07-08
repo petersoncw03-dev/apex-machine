@@ -23,7 +23,7 @@ export function VisaoCoresTab() {
   const { subscribe } = useSSE();
   const [history, setHistory] = useState<RollData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [radarMode, setRadarMode] = useState<'branco' | 'cor'>('branco');
+  const [radarMode, setRadarMode] = useState<'branco' | 'cor' | 'branco_3' | 'cor_1'>('branco');
   const lastProcessedIdRef = useRef<string | null>(null);
   const pendingNextStateRef = useRef<any>(null);
   const [signalState, setSignalState] = useState<{
@@ -177,7 +177,8 @@ export function VisaoCoresTab() {
   const radarStats = useMemo(() => {
     if (history.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
 
-    const targetMargin = radarMode === 'branco' ? 6 : 2;
+    const targetMargin = radarMode === 'branco' ? 6 : radarMode === 'branco_3' ? 3 : radarMode === 'cor_1' ? 1 : 2;
+    const isBrancoMode = radarMode.startsWith('branco');
     const sizes = [4, 5, 6];
     
     const getC = (r: RollData) => {
@@ -188,8 +189,8 @@ export function VisaoCoresTab() {
        return 'P';
     };
 
-    // 4 horas (~1000 pedras) para branco, 2 horas (~500 pedras) para cor
-    const sliceAmount = radarMode === 'branco' ? -1000 : -500;
+    // Branco: usa até 1200 pedras (10h). Cor: usa até 480 pedras (4h) para comportar o padrão de 6 pedras.
+    const sliceAmount = isBrancoMode ? -1200 : -480;
     const h2h = history.slice(sliceAmount);
     if (h2h.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
 
@@ -201,15 +202,20 @@ export function VisaoCoresTab() {
     const livePatterns: Record<number, any> = {};
 
     for (const size of sizes) {
+       const sliceSize = isBrancoMode 
+           ? (size === 4 ? 480 : size === 5 ? 720 : 1200) 
+           : (size === 4 ? 240 : size === 5 ? 360 : 480);
+       const currentRolls = rolls.slice(-sliceSize);
+
        const patMap = new Map<string, { win: number, loss: number, winV: number, lossV: number, winP: number, lossP: number, winL: number, lossL: number, winVL: number, lossVL: number, winPL: number, lossPL: number }>();
        
-       const liveSlice = rolls.slice(-size);
+       const liveSlice = currentRolls.slice(-size);
        const livePatStr = liveSlice.map(r => r.color).join('');
 
        // Extrair todos os padrões reais do histórico
-       for (let i = 0; i <= rolls.length - size - targetMargin; i++) {
-           const patStr = rolls.slice(i, i + size).map(r => r.color).join('');
-           const patLastNum = rolls[i + size - 1].num;
+       for (let i = 0; i <= currentRolls.length - size - targetMargin; i++) {
+           const patStr = currentRolls.slice(i, i + size).map(r => r.color).join('');
+           const patLastNum = currentRolls[i + size - 1].num;
            
            if (!patMap.has(patStr)) {
                patMap.set(patStr, { win:0, loss:0, winV:0, lossV:0, winP:0, lossP:0, winL:0, lossL:0, winVL:0, lossVL:0, winPL:0, lossPL:0 });
@@ -218,7 +224,7 @@ export function VisaoCoresTab() {
            
            let hitB = false, hitV = false, hitP = false;
            for (let m = 0; m < targetMargin; m++) {
-               const c = rolls[i + size + m].color;
+               const c = currentRolls[i + size + m].color;
                if (c === 'B') hitB = true;
                if (c === 'V') hitV = true;
                if (c === 'P') hitP = true;
@@ -240,12 +246,12 @@ export function VisaoCoresTab() {
           const pat = patStr.split('');
           const isLive = (patStr === livePatStr);
           
-          if (radarMode === 'branco') {
+          if (isBrancoMode) {
               const total = data.win + data.loss;
               if (total >= 3 || isLive) {
                  const winrate = total > 0 ? (data.win / total) * 100 : 0;
                  const wrL = (isLive && data.winL + data.lossL > 0) ? (data.winL / (data.winL + data.lossL)) * 100 : null;
-                 const statObj = { pat, target: 'B', win: data.win, loss: data.loss, winrate, wrL, total, isLive };
+                 const statObj = { pat, target: 'B', win: data.win, loss: data.loss, winrate, wrL, total, isLive, totalL: data.winL + data.lossL };
                  results[size].push(statObj);
                  if (isLive) livePatterns[size] = statObj;
               }
@@ -262,7 +268,7 @@ export function VisaoCoresTab() {
                  : ((data.winPL + data.lossPL > 0) ? (data.winPL / (data.winPL + data.lossPL)) * 100 : null);
                  
               if (total >= 3 || isLive) {
-                 const statObj = { pat, target, win, loss, winrate, wrL, total, isLive };
+                 const statObj = { pat, target, win, loss, winrate, wrL, total, isLive, totalL: target === 'V' ? data.winVL + data.lossVL : data.winPL + data.lossPL };
                  results[size].push(statObj);
                  if (isLive) livePatterns[size] = statObj;
               }
@@ -364,7 +370,7 @@ export function VisaoCoresTab() {
            
            const total = ce_stats[num].totals[c-1];
            if (total >= 5) {
-               if (radarMode === 'branco') {
+               if (isBrancoMode) {
                    const win = ce_stats[num].winB[c-1];
                    const sa = ce_stats[num].saB[c-1];
                    const winrate = (win / total) * 100;
@@ -406,7 +412,7 @@ export function VisaoCoresTab() {
   const zonesStats = useMemo(() => {
      if (history.length === 0) return { blocks: [], currentGap: 0 };
      
-     const sliceAmount = -(zonesPeriod * 250); // ~250 pedras por hora
+     const sliceAmount = -(zonesPeriod * 120); // ~120 pedras por hora
      const rolls = history.slice(sliceAmount);
      const whiteIndices = rolls.reduce((acc, r, i) => {
         const n = parseInt(r.roll as string);
@@ -1020,16 +1026,28 @@ export function VisaoCoresTab() {
             </div>
             <div className="flex gap-2">
               <button 
+                onClick={() => setRadarMode('branco_3')}
+                className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${radarMode === 'branco_3' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
+              >
+                Branco (3)
+              </button>
+              <button 
+                onClick={() => setRadarMode('cor_1')}
+                className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${radarMode === 'cor_1' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
+              >
+                Cor (1)
+              </button>
+              <button 
                 onClick={() => setRadarMode('branco')}
                 className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${radarMode === 'branco' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
               >
-                Branco (6 Entradas)
+                Branco (6)
               </button>
               <button 
                 onClick={() => setRadarMode('cor')}
                 className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${radarMode === 'cor' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
               >
-                Cor (2 Entradas)
+                Cor (2)
               </button>
             </div>
           </div>
@@ -1070,11 +1088,17 @@ export function VisaoCoresTab() {
                       <div className="flex flex-col gap-1 mt-1 pt-2 border-t border-white/5">
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] text-gray-500 uppercase tracking-widest">Geral</span>
-                          <span className={`text-[10px] font-black ${live.winrate >= 80 ? 'text-emerald-400' : 'text-white'}`}>{live.winrate.toFixed(1)}%</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-white font-bold">({live.total}x)</span>
+                            <span className={`text-[10px] font-black ${live.winrate >= 80 ? 'text-emerald-400' : 'text-white'}`}>{live.winrate.toFixed(1)}%</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] text-gray-500 uppercase tracking-widest">Finalizando c/ Nº {radarStats.lastNumber}</span>
-                          <span className={`text-[10px] font-black ${live.wrL !== null ? 'text-emerald-400' : 'text-gray-600'}`}>{live.wrL !== null ? `${live.wrL.toFixed(1)}%` : '-'}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-white font-bold">({live.totalL || 0}x)</span>
+                            <span className={`text-[10px] font-black ${live.wrL !== null ? 'text-emerald-400' : 'text-gray-600'}`}>{live.wrL !== null ? `${live.wrL.toFixed(1)}%` : '-'}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1094,7 +1118,10 @@ export function VisaoCoresTab() {
                    <div key={`ce-${i}`} className="flex items-center justify-between p-2 rounded-lg border transition-colors bg-[#1a1d24]/50 border-white/5">
                       <div className="flex items-center gap-3">
                          <StoneIcon n={c.num} size="sm" />
-                         <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">→ {c.casa}ª Casa</span>
+                         <div className="flex items-center gap-2">
+                           <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">→ {c.casa}ª Casa</span>
+                           <div className={`w-3 h-3 rounded-full border ${c.target === 'B' ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.4)] border-white' : c.target === 'V' ? 'bg-[#e51e3e] border-[#e51e3e]/50' : 'bg-[#1a1d24] border-gray-600'}`} title={c.target === 'B' ? 'Branco' : c.target === 'V' ? 'Vermelho' : 'Preto'}></div>
+                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                          <div className="flex flex-col items-center leading-none">
@@ -1103,7 +1130,7 @@ export function VisaoCoresTab() {
                          </div>
                          <div className="flex flex-col items-end leading-none min-w-[50px]">
                             <span className={`text-[12px] font-black ${c.target === 'B' ? 'text-white drop-shadow-sm' : c.target === 'V' ? 'text-[#e51e3e]' : 'text-gray-400'}`}>{c.winrate.toFixed(1)}%</span>
-                            <span className="text-[8px] text-gray-600 font-bold uppercase tracking-wider">{c.win}/{c.win + c.loss} {c.target === 'B' ? 'Win' : 'Hit'}</span>
+                            <span className="text-[9px] text-white font-bold uppercase tracking-wider mt-0.5">{c.win}/{c.win + c.loss} ({c.win + c.loss}x)</span>
                          </div>
                       </div>
                    </div>
@@ -1130,7 +1157,7 @@ export function VisaoCoresTab() {
                       <tr className="bg-white/[0.02] border-b border-white/5 text-[9px] font-bold uppercase text-gray-500 tracking-wider">
                         <th className="p-2 text-center w-8">#</th>
                         <th className="p-2 text-center">Padrão</th>
-                        <th className="p-2 text-center">Winrate Geral</th>
+                        <th className="p-2 text-center">Winrate (Ocorrências)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1152,8 +1179,11 @@ export function VisaoCoresTab() {
                             <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${stat.target === 'B' ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.4)] border-white' : stat.target === 'V' ? 'bg-[#e51e3e] border-[#e51e3e]/50' : 'bg-[#1a1d24] border-gray-600'}`}></div>
                           </div>
                           </td>
-                          <td className="p-2 text-center">
-                            <span className={`text-[10px] font-black ${stat.winrate >= 80 ? 'text-emerald-400' : 'text-gray-300'}`}>{stat.winrate.toFixed(1)}%</span>
+                          <td className="p-2">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-[10px] text-white font-bold">({stat.total}x)</span>
+                              <span className={`text-[10px] font-black ${stat.winrate >= 80 ? 'text-emerald-400' : 'text-gray-300'}`}>{stat.winrate.toFixed(1)}%</span>
+                            </div>
                           </td>
                         </tr>
                       ))}

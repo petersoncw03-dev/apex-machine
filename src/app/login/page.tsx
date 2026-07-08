@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff, Send, Cpu, UserPlus } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Send, Cpu, UserPlus, Gift } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -28,11 +29,20 @@ export default function LoginPage() {
     setErrorMsg('');
 
     if (isRegister) {
-       const { error } = await supabase.auth.signUp({ email, password });
+       const { error, data } = await supabase.auth.signUp({ email, password });
        if (error) {
          setErrorMsg(error.message);
          setLoading(false);
        } else {
+         if (inviteCode && data?.user) {
+            try {
+               await fetch('/api/gamification/code', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ code: inviteCode })
+               });
+            } catch (e) {}
+         }
          setErrorMsg('Cadastro realizado! Se o e-mail não tiver confirmação, já pode fazer o login.');
          setLoading(false);
          // Opcional: setIsRegister(false) para forçar o login agora
@@ -147,6 +157,7 @@ export default function LoginPage() {
 
           {/* Input Confirmar Senha */}
           {isRegister && (
+            <>
             <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
               <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Confirmar Senha</label>
               <div className="relative group">
@@ -163,6 +174,23 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+            
+            <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-300 mt-2">
+              <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Código VIP (Opcional)</label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#00ff41] transition-colors">
+                  <Gift size={16} />
+                </div>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  placeholder="Tem um código promocional?"
+                  className="w-full bg-black/50 border border-white/10 hover:border-white/20 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#00ff41]/50 focus:bg-[#00ff41]/[0.02] transition-all duration-300 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] uppercase"
+                />
+              </div>
+            </div>
+          </>
           )}
 
           {/* Links e Termos */}

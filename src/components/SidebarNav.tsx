@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { useVip } from '@/hooks/useVip';
 import {
   Radio, BrainCircuit, BarChart3, FlaskConical, Bot, Zap,
+  Lock,
   LineChart, TrendingUp, Clock, ChevronLeft, ChevronRight, Menu,
   Database, Grid3X3, PlaySquare, Target, SlidersHorizontal,
   Pickaxe, LogOut, RefreshCcw, Home, BarChart2, Activity, Droplets, User
@@ -55,6 +57,7 @@ export default function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(true);
+  const { isVip } = useVip();
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -138,38 +141,50 @@ export default function SidebarNav() {
               <div className="flex flex-col gap-1">
                 {section.items.map(item => {
                   const isActive = pathname === item.href;
+                  const isRestricted = item.href !== '/painel-master';
+                  const isLocked = isRestricted && !isVip;
                   
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
+                      href={isLocked ? '#' : item.href}
                       title={collapsed ? item.label : undefined}
-                      onClick={() => { if (!collapsed) setCollapsed(true); }}
+                      onClick={(e) => {
+                        if (isLocked) {
+                           e.preventDefault();
+                           alert('Ferramenta exclusiva VIP! Faça o upgrade do seu plano para acessar.');
+                           router.push('/planos');
+                           return;
+                        }
+                        if (!collapsed) setCollapsed(true);
+                      }}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group relative ${
                         isActive
                           ? 'bg-[#181a20] text-[#00ff41]' 
                           : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03]'
-                      } ${collapsed ? 'justify-center' : ''}`}
+                      } ${collapsed ? 'justify-center' : ''} ${isLocked ? 'opacity-50 hover:opacity-80' : ''}`}
                     >
                       <span className={`shrink-0 transition-colors ${isActive ? 'text-[#00ff41]' : 'text-gray-400 group-hover:text-gray-300'}`}>
                         {item.icon}
                       </span>
 
                       {!collapsed && (
-                        <span className={`text-[13px] font-medium truncate flex-1 ${isActive ? 'text-[#00ff41]' : ''}`}>
+                        <span className={`text-[13px] font-medium truncate flex-1 flex items-center gap-2 ${isActive ? 'text-[#00ff41]' : ''}`}>
                           {item.label}
+                          {isLocked && <Lock size={12} className="text-amber-500" />}
                         </span>
                       )}
 
                       {/* Bolinha indicador lateral */}
-                      {!collapsed && isActive && (
+                      {!collapsed && isActive && !isLocked && (
                         <div className="w-1.5 h-1.5 rounded-full bg-[#00ff41] shrink-0 shadow-[0_0_8px_rgba(0,255,65,0.8)]" />
                       )}
 
                       {/* Tooltip quando recolhido */}
                       {collapsed && (
-                        <div className="absolute left-full ml-2 px-2 py-1 bg-[#12141c] border border-white/10 rounded-lg text-xs text-white font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-2xl">
+                        <div className="absolute left-full ml-2 px-2 py-1 bg-[#12141c] border border-white/10 rounded-lg text-xs text-white font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-2xl flex items-center gap-2">
                           {item.label}
+                          {isLocked && <Lock size={10} className="text-amber-500" />}
                         </div>
                       )}
                     </Link>
