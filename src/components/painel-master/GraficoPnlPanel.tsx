@@ -223,8 +223,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     }
   };
 
-  const FloatBtn = ({ onClick, children, active }: { onClick: () => void, children: React.ReactNode, active?: boolean }) => (
-    <button onClick={onClick} className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-all backdrop-blur-md shadow-[0_4px_15px_rgba(0,98,255,0.2)] ${active ? 'bg-[#00c83a]/30 border-[#00c83a]/50 text-white' : 'bg-[#00c83a]/10 border-[#00c83a]/30 text-white hover:bg-[#00c83a]/30 hover:border-[#00c83a]/50'}`}>
+  const FloatBtn = ({ onClick, children, active, title }: { onClick: any, children: React.ReactNode, active?: boolean, title?: string }) => (
+    <button onClick={onClick} title={title} className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-all backdrop-blur-md shadow-[0_4px_15px_rgba(0,98,255,0.2)] ${active ? 'bg-[#00c83a]/30 border-[#00c83a]/50 text-white' : 'bg-[#00c83a]/10 border-[#00c83a]/30 text-white hover:bg-[#00c83a]/30 hover:border-[#00c83a]/50'}`}>
       {children}
     </button>
   );
