@@ -189,8 +189,8 @@ export function VisaoCoresTab() {
        return 'P';
     };
 
-    // Branco: usa até 1200 pedras (10h). Cor: usa até 480 pedras (4h) para comportar o padrão de 6 pedras.
-    const sliceAmount = isBrancoMode ? -1200 : -480;
+    // Branco: usa até 1440 pedras. Cor: usa até 480 pedras.
+    const sliceAmount = isBrancoMode ? -1440 : -480;
     const h2h = history.slice(sliceAmount);
     if (h2h.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
 
@@ -203,7 +203,7 @@ export function VisaoCoresTab() {
 
     for (const size of sizes) {
        const sliceSize = isBrancoMode 
-           ? (size === 4 ? 480 : size === 5 ? 720 : 1200) 
+           ? (size === 4 ? 600 : size === 5 ? 960 : 1440) 
            : (size === 4 ? 240 : size === 5 ? 360 : 480);
        const currentRolls = rolls.slice(-sliceSize);
 
@@ -212,7 +212,6 @@ export function VisaoCoresTab() {
        const liveSlice = currentRolls.slice(-size);
        const livePatStr = liveSlice.map(r => r.color).join('');
 
-       // Extrair todos os padrões reais do histórico
        for (let i = 0; i <= currentRolls.length - size - targetMargin; i++) {
            const patStr = currentRolls.slice(i, i + size).map(r => r.color).join('');
            const patLastNum = currentRolls[i + size - 1].num;
@@ -252,7 +251,10 @@ export function VisaoCoresTab() {
                  const winrate = total > 0 ? (data.win / total) * 100 : 0;
                  const wrL = (isLive && data.winL + data.lossL > 0) ? (data.winL / (data.winL + data.lossL)) * 100 : null;
                  const statObj = { pat, target: 'B', win: data.win, loss: data.loss, winrate, wrL, total, isLive, totalL: data.winL + data.lossL };
-                 results[size].push(statObj);
+                 
+                 if (!patStr.includes('B')) {
+                     results[size].push(statObj);
+                 }
                  if (isLive) livePatterns[size] = statObj;
               }
           } else {
@@ -269,7 +271,10 @@ export function VisaoCoresTab() {
                  
               if (total >= 3 || isLive) {
                  const statObj = { pat, target, win, loss, winrate, wrL, total, isLive, totalL: target === 'V' ? data.winVL + data.lossVL : data.winPL + data.lossPL };
-                 results[size].push(statObj);
+                 
+                 if (!patStr.includes('B')) {
+                     results[size].push(statObj);
+                 }
                  if (isLive) livePatterns[size] = statObj;
               }
           }
