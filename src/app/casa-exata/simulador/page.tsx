@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useMemo, Fragment } from 'react';
+import { useState, useRef, useMemo, Fragment, useDeferredValue } from 'react';
 import { Target, Clock, Activity, Download, Play, StopCircle, RefreshCw, BarChart3 } from 'lucide-react';
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 
@@ -29,9 +29,12 @@ export default function CasaExataSimulador() {
   const [daysToFetch, setDaysToFetch] = useState(3);
   const [lookbackHours, setLookbackHours] = useState(12);
   const [casasLimit, setCasasLimit] = useState(10);
+  const [numEntradas, setNumEntradas] = useState(1);
+    const deferredNumEntradas = useDeferredValue(numEntradas);
   const [targetMode, setTargetMode] = useState<'branco' | 'cores'>('branco');
   
-  const [minHitsFilter, setMinHitsFilter] = useState(20);
+  const [minConfluencia, setMinConfluencia] = useState(1);
+    const [minHitsFilter, setMinHitsFilter] = useState(20);
   const [maxHitsFilter, setMaxHitsFilter] = useState(100);
   const [minSaFilter, setMinSaFilter] = useState(0);
   const [maxSaFilter, setMaxSaFilter] = useState(999);
@@ -90,7 +93,17 @@ export default function CasaExataSimulador() {
       let currentSA = 0;
       let maxSA = 0;
 
-      const pendingPreds: Record<number, { white: boolean, red: boolean, black: boolean }> = {};
+            interface ActiveCycle {
+        id: string;
+        type: 'white' | 'red' | 'black';
+        startT: number;
+        length: number;
+        currentShot: number;
+        resolved: boolean;
+        zoneApproved?: boolean;
+      }
+      let activeCycles: ActiveCycle[] = [];
+      let nextCycleId = 1;
       
       let cycleHistory: { type: 'W' | 'L', count: number }[] = [];
       let currentCycleType: 'W' | 'L' | null = null;
@@ -102,83 +115,150 @@ export default function CasaExataSimulador() {
 
         const latestStone = fullData[T];
 
-        // 1. Resolve PREVIOUS predictions against CURRENT stone
-        const activePreds = pendingPreds[T] || { white: false, red: false, black: false };
-        delete pendingPreds[T]; // Libera a memória da fila
+        // 1. Process active cycles for CURRENT stone T
+                let currentActiveCount = 0;
+        let whiteCount = 0;
+        let redCount = 0;
+        let blackCount = 0;
 
-        
-        // ZONA DE CONFIRMAÇÃO (PRÉ-ENTRADA)
-        // Ignora T-1 (pedra atual), olha de T-2 até T-1-zoneRaio
-        let zoneApproved = true;
-        if (enableZone && (activePreds.white || activePreds.red || activePreds.black)) {
-            let brancoCount = 0;
-            const startIdx = T - 1 - zoneRaio;
-            const endIdx = T - 2;
-            if (startIdx >= 0) {
-                for (let z = startIdx; z <= endIdx; z++) {
-                    const zRoll = fullData[z];
-                    if (zRoll && (zRoll.color.includes('Branco') || parseInt(zRoll.roll) === 0)) {
-                        brancoCount++;
-                    }
-                }
-                if (brancoCount < zoneMin || brancoCount > zoneMax) {
-                    zoneApproved = false;
-                }
-            } else {
-                zoneApproved = false; // Sem dados suficientes para olhar para trás
+        for (let cycle of activeCycles) {
+            if (cycle.resolved) continue;
+            const currentT = cycle.startT + cycle.currentShot;
+            if (currentT === T) {
+                currentActiveCount++;
+                if (cycle.type === 'white') whiteCount++;
+                if (cycle.type === 'red') redCount++;
+                if (cycle.type === 'black') blackCount++;
             }
         }
 
-        if ((activePreds.white || activePreds.red || activePreds.black) && zoneApproved) {
+        let isWhiteBet = whiteCount >= minConfluencia;
+        let isRedBet = redCount >= minConfluencia;
+        let isBlackBet = blackCount >= minConfluencia;
+        
+        let conflictCancelled = false;
+        let cancelledCycleType = '';
+        if (targetMode === 'cores' && isRedBet && isBlackBet) {
+            if (redCount > blackCount) {
+                isBlackBet = false;
+                cancelledCycleType = 'black';
+            } else if (blackCount > redCount) {
+                isRedBet = false;
+                cancelledCycleType = 'red';
+            } else {
+                isRedBet = false;
+                isBlackBet = false;
+                conflictCancelled = true;
+            }
+        }
+        
+        let anyWin = false;
+        let anyLoss = false;
+        
+        let zoneApproved = true;
+        if (enableZone && (isWhiteBet || isRedBet || isBlackBet)) {
+            let brancosInZone = 0;
+            for (let z = 1; z <= zoneRaio; z++) {
+                const pastIdx = T - z;
+                if (pastIdx >= 0 && pastIdx < fullData.length) {
+                    const pastStone = fullData[pastIdx];
+                    if (pastStone.color.includes('Branco') || pastStone.roll === '0') brancosInZone++;
+                }
+            }
+            if (brancosInZone < zoneMin || brancosInZone > zoneMax) {
+                zoneApproved = false;
+            }
+        }
 
-           let hit = false;
-           if (activePreds.white && latestStone.color.includes('Branco')) hit = true;
-           if (activePreds.red && latestStone.color.includes('Vermelho')) hit = true;
-           if (activePreds.black && latestStone.color.includes('Preto')) hit = true;
+        if (zoneApproved && (isWhiteBet || isRedBet || isBlackBet)) {
+            let hit = false;
+            if (isWhiteBet && (latestStone.color.includes('Branco') || latestStone.roll === '0')) hit = true;
+            if (isRedBet && (latestStone.color.includes('Vermelho') || (parseInt(latestStone.roll as string) >= 1 && parseInt(latestStone.roll as string) <= 7))) hit = true;
+            if (isBlackBet && (latestStone.color.includes('Preto') || (parseInt(latestStone.roll as string) >= 8 && parseInt(latestStone.roll as string) <= 14))) hit = true;
+            
+            if (hit) {
+                anyWin = true;
+            } else {
+                anyLoss = true;
+            }
+        }
+        
+        // Avança as "Ghost Signals" independentemente da aposta ter sido feita
+        for (let cycle of activeCycles) {
+            if (cycle.resolved) continue;
+            
+            const currentT = cycle.startT + cycle.currentShot;
+            if (currentT === T) {
+                if (conflictCancelled && (cycle.type === 'red' || cycle.type === 'black')) {
+                    cycle.resolved = true;
+                    continue;
+                }
+                if (cancelledCycleType === cycle.type) {
+                    cycle.resolved = true;
+                    continue;
+                }
+                
+                let hitTarget = false;
+                if (cycle.type === 'white' && (latestStone.color.includes('Branco') || latestStone.roll === '0')) hitTarget = true;
+                if (cycle.type === 'red' && (latestStone.color.includes('Vermelho') || (parseInt(latestStone.roll as string) >= 1 && parseInt(latestStone.roll as string) <= 7))) hitTarget = true;
+                if (cycle.type === 'black' && (latestStone.color.includes('Preto') || (parseInt(latestStone.roll as string) >= 8 && parseInt(latestStone.roll as string) <= 14))) hitTarget = true;
+                
+                if (hitTarget) {
+                    cycle.resolved = true;
+                } else {
+                    cycle.currentShot++;
+                    if (cycle.currentShot >= cycle.length) {
+                        cycle.resolved = true;
+                    }
+                }
+            }
+        }
+        
+        activeCycles = activeCycles.filter(c => !c.resolved);
 
-           totalSignals++;
-           if (hit) {
-              wins++;
-              consecutiveWins++;
-              if (consecutiveWins > maxConsecutiveWins) maxConsecutiveWins = consecutiveWins;
-              
-              consecutiveLosses = 0;
-              currentSA = 0;
-              
-              if (currentCycleType === 'L') {
-                 cycleHistory.push({ type: 'L', count: currentCycleCount });
-                 currentCycleType = 'W';
-                 currentCycleCount = 1;
-              } else {
-                 currentCycleType = 'W';
-                 currentCycleCount++;
-              }
-           } else {
-              losses++;
-              consecutiveLosses++;
-              currentSA++;
-              
-              if (consecutiveLosses > 0 && consecutiveLosses % lossLimitTracker === 0) timesExceededLossLimit++;
+        if (anyWin || anyLoss) {
+            totalSignals++;
+            if (anyWin) {
+                wins++;
+                consecutiveWins++;
+                if (consecutiveWins > maxConsecutiveWins) maxConsecutiveWins = consecutiveWins;
+                
+                consecutiveLosses = 0;
+                currentSA = 0;
+                
+                if (currentCycleType === 'L') {
+                   cycleHistory.push({ type: 'L', count: currentCycleCount });
+                   currentCycleType = 'W';
+                   currentCycleCount = 1;
+                } else {
+                   currentCycleType = 'W';
+                   currentCycleCount++;
+                }
+            } else if (anyLoss) {
+                losses++;
+                consecutiveLosses++;
+                currentSA++;
+                
+                if (consecutiveLosses > 0 && consecutiveLosses % lossLimitTracker === 0) timesExceededLossLimit++;
 
-              if (currentSA > maxSA) maxSA = currentSA;
-              if (consecutiveLosses > maxConsecutiveLosses) maxConsecutiveLosses = consecutiveLosses;
-              consecutiveWins = 0;
-              
-              if (currentCycleType === 'W') {
-                 cycleHistory.push({ type: 'W', count: currentCycleCount });
-                 currentCycleType = 'L';
-                 currentCycleCount = 1;
-              } else if (currentCycleType === null) {
-                 currentCycleType = 'L';
-                 currentCycleCount = 1;
-              } else {
-                 currentCycleCount++;
-              }
-           }
+                if (currentSA > maxSA) maxSA = currentSA;
+                if (consecutiveLosses > maxConsecutiveLosses) maxConsecutiveLosses = consecutiveLosses;
+                consecutiveWins = 0;
+                
+                if (currentCycleType === 'W') {
+                   cycleHistory.push({ type: 'W', count: currentCycleCount });
+                   currentCycleType = 'L';
+                   currentCycleCount = 1;
+                } else if (currentCycleType === null) {
+                   currentCycleType = 'L';
+                   currentCycleCount = 1;
+                } else {
+                   currentCycleCount++;
+                }
+            }
         }
 
         // 2. Build the snapshot window ending at T
-        // We look from T - lookbackRecords to T
         const analysisData = fullData.slice(T - lookbackRecords, T + 1);
 
         const totalsGrid = Array(15).fill(0).map(() => Array(casasLimit).fill(0));
@@ -192,43 +272,63 @@ export default function CasaExataSimulador() {
         const blackSaGrid = Array(15).fill(0).map(() => Array(casasLimit).fill(0));
         const blackHitsGrid = Array(15).fill(0).map(() => Array(casasLimit).fill(0));
 
-        // Calculando padrões para a janela
         for (let i = 0; i < analysisData.length; i++) {
-          const currentRoll = analysisData[i];
-          const isBranco = currentRoll.color.includes('Branco') || currentRoll.roll === '0';
-          const isRed = currentRoll.color.includes('Vermelho') || (parseInt(currentRoll.roll as string) >= 1 && parseInt(currentRoll.roll as string) <= 7);
-          const isBlack = currentRoll.color.includes('Preto') || (parseInt(currentRoll.roll as string) >= 8 && parseInt(currentRoll.roll as string) <= 14);
-
+          const triggerRollNumber = parseInt(analysisData[i].roll as string);
+          if (isNaN(triggerRollNumber) || triggerRollNumber < 0 || triggerRollNumber > 14) continue;
+    
           for (let c = 1; c <= casasLimit; c++) {
-            const pastIdx = i - c;
-            if (pastIdx >= 0) {
-              const pastRollNumber = parseInt(analysisData[pastIdx].roll as string);
-              if (!isNaN(pastRollNumber) && pastRollNumber >= 0 && pastRollNumber <= 14) {
-                totalsGrid[pastRollNumber][c - 1]++;
-                
-                if (isBranco) {
-                  brancoSaGrid[pastRollNumber][c - 1] = 0;
-                  brancoHitsGrid[pastRollNumber][c - 1]++;
-                  redSaGrid[pastRollNumber][c - 1]++;
-                  if (redSaGrid[pastRollNumber][c - 1] > redSmGrid[pastRollNumber][c - 1]) redSmGrid[pastRollNumber][c - 1] = redSaGrid[pastRollNumber][c - 1];
-                  blackSaGrid[pastRollNumber][c - 1]++;
-                  if (blackSaGrid[pastRollNumber][c - 1] > blackSmGrid[pastRollNumber][c - 1]) blackSmGrid[pastRollNumber][c - 1] = blackSaGrid[pastRollNumber][c - 1];
-                } else if (isRed) {
-                  brancoSaGrid[pastRollNumber][c - 1]++;
-                  if (brancoSaGrid[pastRollNumber][c - 1] > brancoSmGrid[pastRollNumber][c - 1]) brancoSmGrid[pastRollNumber][c - 1] = brancoSaGrid[pastRollNumber][c - 1];
-                  redSaGrid[pastRollNumber][c - 1] = 0;
-                  redHitsGrid[pastRollNumber][c - 1]++;
-                  blackSaGrid[pastRollNumber][c - 1]++;
-                  if (blackSaGrid[pastRollNumber][c - 1] > blackSmGrid[pastRollNumber][c - 1]) blackSmGrid[pastRollNumber][c - 1] = blackSaGrid[pastRollNumber][c - 1];
-                } else if (isBlack) {
-                  brancoSaGrid[pastRollNumber][c - 1]++;
-                  if (brancoSaGrid[pastRollNumber][c - 1] > brancoSmGrid[pastRollNumber][c - 1]) brancoSmGrid[pastRollNumber][c - 1] = brancoSaGrid[pastRollNumber][c - 1];
-                  blackSaGrid[pastRollNumber][c - 1] = 0;
-                  blackHitsGrid[pastRollNumber][c - 1]++;
-                  redSaGrid[pastRollNumber][c - 1]++;
-                  if (redSaGrid[pastRollNumber][c - 1] > redSmGrid[pastRollNumber][c - 1]) redSmGrid[pastRollNumber][c - 1] = redSaGrid[pastRollNumber][c - 1];
+            if (i + c > analysisData.length - 1) continue; 
+            
+            let hasBranco = false;
+            let hasRed = false;
+            let hasBlack = false;
+            
+            let maxAvailableEntries = Math.min(deferredNumEntradas, analysisData.length - (i + c));
+            if (maxAvailableEntries < 1) continue; 
+            
+            for (let e = 0; e < maxAvailableEntries; e++) {
+              const targetRoll = analysisData[i + c + e];
+              if (targetRoll.color.includes('Branco') || targetRoll.roll === '0') hasBranco = true;
+              if (targetRoll.color.includes('Vermelho') || (parseInt(targetRoll.roll as string) >= 1 && parseInt(targetRoll.roll as string) <= 7)) hasRed = true;
+              if (targetRoll.color.includes('Preto') || (parseInt(targetRoll.roll as string) >= 8 && parseInt(targetRoll.roll as string) <= 14)) hasBlack = true;
+            }
+            
+            const isWindowClosed = (maxAvailableEntries === deferredNumEntradas);
+
+            let countedTotal = false;
+
+            if (hasBranco || isWindowClosed) {
+                totalsGrid[triggerRollNumber][c - 1]++;
+                countedTotal = true;
+                if (hasBranco) {
+                    brancoSaGrid[triggerRollNumber][c - 1] = 0;
+                    brancoHitsGrid[triggerRollNumber][c - 1]++;
+                } else {
+                    brancoSaGrid[triggerRollNumber][c - 1]++;
+                    if (brancoSaGrid[triggerRollNumber][c - 1] > brancoSmGrid[triggerRollNumber][c - 1]) brancoSmGrid[triggerRollNumber][c - 1] = brancoSaGrid[triggerRollNumber][c - 1];
                 }
-              }
+            }
+
+            if (hasRed || isWindowClosed) {
+                if (!countedTotal) { totalsGrid[triggerRollNumber][c - 1]++; countedTotal = true; }
+                if (hasRed) {
+                    redSaGrid[triggerRollNumber][c - 1] = 0;
+                    redHitsGrid[triggerRollNumber][c - 1]++;
+                } else {
+                    redSaGrid[triggerRollNumber][c - 1]++;
+                    if (redSaGrid[triggerRollNumber][c - 1] > redSmGrid[triggerRollNumber][c - 1]) redSmGrid[triggerRollNumber][c - 1] = redSaGrid[triggerRollNumber][c - 1];
+                }
+            }
+
+            if (hasBlack || isWindowClosed) {
+                if (!countedTotal) { totalsGrid[triggerRollNumber][c - 1]++; countedTotal = true; }
+                if (hasBlack) {
+                    blackSaGrid[triggerRollNumber][c - 1] = 0;
+                    blackHitsGrid[triggerRollNumber][c - 1]++;
+                } else {
+                    blackSaGrid[triggerRollNumber][c - 1]++;
+                    if (blackSaGrid[triggerRollNumber][c - 1] > blackSmGrid[triggerRollNumber][c - 1]) blackSmGrid[triggerRollNumber][c - 1] = blackSaGrid[triggerRollNumber][c - 1];
+                }
             }
           }
         }
@@ -241,26 +341,25 @@ export default function CasaExataSimulador() {
               const total = totalsGrid[currentStoneNum][c];
               if (total === 0) continue;
               
-              const targetT = T + c + 1;
+              const targetT = T + c + 1; // start of the target sequence
+              const isFutureTarget = targetT > T;
 
-              if (targetMode === 'branco') {
+              if (isFutureTarget && targetMode === 'branco') {
                  const hits = brancoHitsGrid[currentStoneNum][c];
                  const sa = brancoSaGrid[currentStoneNum][c];
                  const sm = brancoSmGrid[currentStoneNum][c];
                  const perc = (hits / total) * 100;
                  
                  if (perc >= minHitsFilter && perc <= maxHitsFilter && sa >= minSaFilter && sa <= maxSaFilter && sm >= minSmFilter) {
-                    if (!pendingPreds[targetT]) pendingPreds[targetT] = { white: false, red: false, black: false };
-                    pendingPreds[targetT].white = true;
+                    activeCycles.push({ id: `${nextCycleId++}`, type: 'white', startT: targetT, length: deferredNumEntradas, currentShot: 0, resolved: false });
                  }
-              } else {
+              } else if (isFutureTarget) {
                  const rHits = redHitsGrid[currentStoneNum][c];
                  const rSa = redSaGrid[currentStoneNum][c];
                  const rSm = redSmGrid[currentStoneNum][c];
                  const rPerc = (rHits / total) * 100;
                  if (rPerc >= minHitsFilter && rPerc <= maxHitsFilter && rSa >= minSaFilter && rSa <= maxSaFilter && rSm >= minSmFilter) {
-                    if (!pendingPreds[targetT]) pendingPreds[targetT] = { white: false, red: false, black: false };
-                    pendingPreds[targetT].red = true;
+                    activeCycles.push({ id: `${nextCycleId++}`, type: 'red', startT: targetT, length: deferredNumEntradas, currentShot: 0, resolved: false });
                  }
                  
                  const bHits = blackHitsGrid[currentStoneNum][c];
@@ -268,8 +367,7 @@ export default function CasaExataSimulador() {
                  const bSm = blackSmGrid[currentStoneNum][c];
                  const bPerc = (bHits / total) * 100;
                  if (bPerc >= minHitsFilter && bPerc <= maxHitsFilter && bSa >= minSaFilter && bSa <= maxSaFilter && bSm >= minSmFilter) {
-                    if (!pendingPreds[targetT]) pendingPreds[targetT] = { white: false, red: false, black: false };
-                    pendingPreds[targetT].black = true;
+                    activeCycles.push({ id: `${nextCycleId++}`, type: 'black', startT: targetT, length: deferredNumEntradas, currentShot: 0, resolved: false });
                  }
               }
            }
@@ -396,7 +494,17 @@ Gerado em: ${new Date().toLocaleString()}
            </select>
         </div>
 
-        {/* Casas Limit */}
+                {/* Entradas */}
+        <div className="bg-[#12141c] p-4 rounded-xl border border-white/10 shadow-lg flex flex-col gap-2">
+           <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Entradas</label>
+           <input 
+              type="number"
+              min="1" max="20"
+              value={numEntradas} onChange={(e) => setNumEntradas(Number(e.target.value) || 1)} disabled={simulating}
+              className="bg-[#0a0a0f] text-white border border-white/5 rounded-lg p-2 font-bold focus:border-white outline-none"
+           />
+        </div>
+{/* Casas Limit */}
         <div className="bg-[#12141c] p-4 rounded-xl border border-white/10 shadow-lg flex flex-col gap-2">
            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Limite de Casas</label>
            <select 
@@ -427,7 +535,15 @@ Gerado em: ${new Date().toLocaleString()}
             <Target size={16} className="text-red-500" /> Gatilhos de Disparo
          </h3>
          
-         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="flex flex-col gap-1">
+               <label className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Mín Confluência</label>
+               <input 
+                 type="number" min="1" max="50" disabled={simulating}
+                 className="w-full bg-[#0a0a0f] border border-blue-500/30 text-white px-3 py-2 rounded-lg outline-none font-black text-lg focus:border-blue-500 transition-colors"
+                 value={minConfluencia} onChange={e => setMinConfluencia(Number(e.target.value))}
+               />
+            </div>
             <div className="flex flex-col gap-1">
                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Assert. Min-Max (%)</label>
                <div className="flex gap-2">

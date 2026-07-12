@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries } from "lightweight-charts";
 import * as htmlToImage from 'html-to-image';
+import { useSSE } from '@/contexts/SSEContext';
 
 function calcSMA(v: number[], p: number) { return v.map((_, i) => i < p - 1 ? null : v.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p); }
 function calcEMA(v: number[], p: number) { const k=2/(p+1); let e: number|null=null; return v.map((x,i)=>{ if(i<p-1)return null; e=e===null?v.slice(0,p).reduce((a,b)=>a+b,0)/p:x*k+e*(1-k); return parseFloat(e.toFixed(2)); }); }
@@ -32,28 +33,33 @@ const TFS = [
 ];
 const LIMITS = [200, 500, 1000, 1500, 2000, 3000, 5000, 10000];
 
-function buildTick(data: Roll[]) {
+function buildTick(data: Roll[], eurRate: number) {
   let acc = 0; const times: number[] = [];
   return data.map(r => {
-    let t = Math.floor(new Date(r.timestamp).getTime() / 1000);
+    const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
+    let t = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
     if (times.length && t <= times[times.length - 1]) t = times[times.length - 1] + 1;
     times.push(t);
     const prev = acc;
-    acc = parseFloat((acc + parseFloat(String(r.house_profit || 0))).toFixed(2));
+    const profit = parseFloat(String(r.house_profit || 0)) * eurRate;
+    acc = parseFloat((acc + profit).toFixed(2));
     const c = CMAP[r.color?.toUpperCase()] ?? "#555566";
-    return { candle: { time: t, open: prev, high: Math.max(prev, acc), low: Math.min(prev, acc), close: acc, color: c, wickColor: c, borderColor: c }, acc, time: t };
+    return { candle: { time: t as Time, open: prev, high: Math.max(prev, acc), low: Math.min(prev, acc), close: acc, color: c, wickColor: c, borderColor: c }, acc, time: t };
   });
 }
 
-function buildAgg(data: Roll[], minutes: number) {
+function buildAgg(data: Roll[], minutes: number, eurRate: number) {
   let acc = 0; const bMap = new Map<number, { open: number, high: number, low: number, close: number }>();
   const bOrder: number[] = [];
+  const interval = minutes * 60;
   data.forEach(r => {
-    const ms = new Date(r.timestamp).getTime();
-    const bs = Math.floor(ms / (minutes * 60000)) * (minutes * 60);
-    acc = parseFloat((acc + parseFloat(String(r.house_profit || 0))).toFixed(2));
+    const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
+    const t = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
+    const bs = Math.floor(t / interval) * interval;
+    const profit = parseFloat(String(r.house_profit || 0)) * eurRate;
+    acc = parseFloat((acc + profit).toFixed(2));
     if (!bMap.has(bs)) {
-      bMap.set(bs, { open: acc - (parseFloat(String(r.house_profit || 0))), high: acc, low: acc, close: acc });
+      bMap.set(bs, { open: acc - profit, high: acc, low: acc, close: acc });
       bOrder.push(bs);
     } else {
       const b = bMap.get(bs)!;
@@ -62,8 +68,192 @@ function buildAgg(data: Roll[], minutes: number) {
   });
   return bOrder.map(bs => {
     const b = bMap.get(bs)!; const up = b.close >= b.open; const c = up ? "#e51e3e" : "rgba(200,200,220,0.8)";
-    return { candle: { time: bs as number, open: b.open, high: b.high, low: b.low, close: b.close, color: c, wickColor: c, borderColor: c }, acc: b.close, time: bs };
+    return { candle: { time: bs as Time, open: b.open, high: b.high, low: b.low, close: b.close, color: c, wickColor: c, borderColor: c }, acc: b.close, time: bs };
   });
+}
+
+function LiveBettingStatus() {
+  const [status, setStatus] = useState("Conectando...");
+  const [red, setRed] = useState({ amt: 0, count: 0 });
+  const [white, setWhite] = useState({ amt: 0, count: 0 });
+  const [black, setBlack] = useState({ amt: 0, count: 0 });
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [result, setResult] = useState<{color: number, payout: number} | null>(null);
+  const { eurRate } = useSSE();
+
+  const timerRef = useRef<any>(null);
+  const pingRef = useRef<any>(null);
+
+  useEffect(() => {
+    let ws: WebSocket;
+    
+    const connect = () => {
+      ws = new WebSocket("wss://api-gaming.blaze.bet.br/replication/?EIO=3&transport=websocket");
+      
+      ws.onopen = () => {
+        setStatus("Aguardando...");
+        ws.send("40");
+        ws.send('420["cmd",{"id":"subscribe","payload":{"room":"double_room_1"}}]');
+        pingRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) ws.send("2");
+        }, 20000);
+      };
+      
+      ws.onmessage = (e) => {
+        const msg = e.data;
+        if (msg === "2") { ws.send("3"); return; }
+        if (!msg.startsWith("42")) return;
+        
+        try {
+          const raw = msg.substring(msg.indexOf("["));
+          const data = JSON.parse(raw);
+          if (data && data.length >= 2) {
+            const ev = data[1];
+            if (ev.id === "double.tick" || ev.id === "double.update") {
+               const p = ev.payload;
+               if (p.status === "waiting") {
+                  setStatus("Apostas Abertas");
+                  setResult(null);
+                  if (!timerRef.current) {
+                     setTimeLeft(15);
+                     timerRef.current = setInterval(() => setTimeLeft(t => t > 0 ? t - 1 : 0), 1000);
+                  }
+               } else if (p.status === "rolling") {
+                  setStatus("Girando...");
+                  clearInterval(timerRef.current);
+                  timerRef.current = null;
+                  setTimeLeft(0);
+
+                  if (p.color !== undefined && p.color !== null) {
+                     const c = p.color;
+                     let payout = 0;
+                     if (c === 1) payout = parseFloat(p.total_red_eur_bet || "0") * eurRate * 2;
+                     if (c === 2) payout = parseFloat(p.total_black_eur_bet || "0") * eurRate * 2;
+                     if (c === 0) payout = parseFloat(p.total_white_eur_bet || "0") * eurRate * 14;
+                     setResult({ color: c, payout });
+                  }
+               } else if (p.status === "complete") {
+                  setStatus("Rodada Finalizada");
+                  clearInterval(timerRef.current);
+                  timerRef.current = null;
+                  setTimeLeft(0);
+                  
+                  if (p.color !== undefined && p.color !== null) {
+                     const c = p.color;
+                     let payout = 0;
+                     if (c === 1) payout = parseFloat(p.total_red_eur_bet || "0") * eurRate * 2;
+                     if (c === 2) payout = parseFloat(p.total_black_eur_bet || "0") * eurRate * 2;
+                     if (c === 0) payout = parseFloat(p.total_white_eur_bet || "0") * eurRate * 14;
+                     setResult({ color: c, payout });
+                  }
+               }
+               
+               if (p.total_red_eur_bet !== undefined) {
+                  setRed({ amt: parseFloat(p.total_red_eur_bet) * eurRate, count: p.total_red_bets_placed || 0 });
+                  setWhite({ amt: parseFloat(p.total_white_eur_bet) * eurRate, count: p.total_white_bets_placed || 0 });
+                  setBlack({ amt: parseFloat(p.total_black_eur_bet) * eurRate, count: p.total_black_bets_placed || 0 });
+               }
+            }
+          }
+        } catch (err) {}
+      };
+      
+      ws.onclose = () => {
+        clearInterval(pingRef.current);
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        setTimeout(connect, 2000);
+      };
+    };
+    
+    connect();
+    
+    return () => {
+      clearInterval(pingRef.current);
+      clearInterval(timerRef.current);
+      if (ws) ws.close();
+    };
+  }, [eurRate]);
+
+  const totalAmt = red.amt + white.amt + black.amt;
+  const getPct = (amt: number) => totalAmt > 0 ? (amt / totalAmt) * 100 : 0;
+
+  return (
+    <div className="bg-[#12141c] border-b border-[#00c83a]/20 px-4 py-2 flex flex-col gap-2 shrink-0 shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-20">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status da Rodada:</span>
+          <div className="text-white font-black text-xs uppercase tracking-wider flex items-center gap-2">
+            {status === "Apostas Abertas" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>}
+            {status === "Girando..." && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>}
+            {status}
+          </div>
+        </div>
+        {status === "Apostas Abertas" && timeLeft > 0 && (
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#0a0a0f] border border-white/10 text-[10px] font-bold text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]">{timeLeft}</div>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-3 gap-6">
+        <div className={`flex flex-col gap-1.5 p-1.5 rounded-lg transition-colors ${result?.color === 1 ? 'bg-[#f12c4c]/20 border border-[#f12c4c]/50 shadow-[0_0_15px_rgba(241,44,76,0.2)]' : 'border border-transparent'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded bg-[#f12c4c] flex shrink-0 shadow-[0_0_8px_rgba(241,44,76,0.3)]"></div>
+              <div className="flex flex-col">
+                <span className="text-white font-black text-[12px] leading-tight">R$ {red.amt.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+                <span className="text-slate-500 text-[9px] font-bold uppercase tracking-wider">{red.count} apostas</span>
+              </div>
+            </div>
+            {result?.color === 1 && (
+              <span className="text-[#f12c4c] font-black text-[10px] bg-[#f12c4c]/10 px-1.5 py-0.5 rounded shadow-sm">+ R$ {result.payout.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+            )}
+          </div>
+          <div className="h-1 w-full bg-[#0a0a0f] rounded-full overflow-hidden shadow-inner">
+            <div className="h-full bg-gradient-to-r from-[#f12c4c]/50 to-[#f12c4c] rounded-full transition-all duration-300" style={{ width: `${getPct(red.amt)}%` }}></div>
+          </div>
+        </div>
+
+        <div className={`flex flex-col gap-1.5 p-1.5 rounded-lg transition-colors ${result?.color === 0 ? 'bg-white/20 border border-white/50 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'border border-transparent'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded bg-white flex shrink-0 items-center justify-center shadow-[0_0_10px_rgba(255,255,255,0.3)] overflow-hidden">
+                <img src="/blaze-white.png" alt="W" className="w-[14px] h-[14px] object-contain" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-white font-black text-[12px] leading-tight">R$ {white.amt.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+                <span className="text-slate-500 text-[9px] font-bold uppercase tracking-wider">{white.count} apostas</span>
+              </div>
+            </div>
+            {result?.color === 0 && (
+              <span className="text-white font-black text-[10px] bg-white/10 px-1.5 py-0.5 rounded shadow-sm">+ R$ {result.payout.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+            )}
+          </div>
+          <div className="h-1 w-full bg-[#0a0a0f] rounded-full overflow-hidden shadow-inner">
+            <div className="h-full bg-gradient-to-r from-white/50 to-white rounded-full transition-all duration-300" style={{ width: `${getPct(white.amt)}%` }}></div>
+          </div>
+        </div>
+
+        <div className={`flex flex-col gap-1.5 p-1.5 rounded-lg transition-colors ${result?.color === 2 ? 'bg-slate-500/20 border border-slate-500/50 shadow-[0_0_15px_rgba(100,116,139,0.2)]' : 'border border-transparent'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded bg-[#262831] border border-white/20 flex shrink-0 shadow-lg"></div>
+              <div className="flex flex-col">
+                <span className="text-white font-black text-[12px] leading-tight">R$ {black.amt.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+                <span className="text-slate-500 text-[9px] font-bold uppercase tracking-wider">{black.count} apostas</span>
+              </div>
+            </div>
+            {result?.color === 2 && (
+              <span className="text-slate-300 font-black text-[10px] bg-slate-500/20 px-1.5 py-0.5 rounded shadow-sm">+ R$ {result.payout.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+            )}
+          </div>
+          <div className="h-1 w-full bg-[#0a0a0f] rounded-full overflow-hidden shadow-inner">
+            <div className="h-full bg-gradient-to-r from-slate-600 to-slate-400 rounded-full transition-all duration-300" style={{ width: `${getPct(black.amt)}%` }}></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
 }
 
 export default function GraficoPnlPanel({ globalData, isVip = false }: { globalData: Roll[], isVip?: boolean }) {
@@ -72,6 +262,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   const chart = useRef<any>(null), candle = useRef<any>(null);
   const sMap = useRef<Map<string, any>>(new Map());
   const cidx = useRef(0);
+  const { eurRate } = useSSE();
 
   const [tf, setTf] = useState("tick");
   const [inds, setInds] = useState<Ind[]>([]);
@@ -119,8 +310,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
 
   const getBuilt = useCallback((data: Roll[]) => {
     const tfObj = TFS.find(t => t.k === tf)!;
-    return tfObj.m === 0 ? buildTick(data) : buildAgg(data, tfObj.m);
-  }, [tf]);
+    return tfObj.m === 0 ? buildTick(data, eurRate) : buildAgg(data, tfObj.m, eurRate);
+  }, [tf, eurRate]);
 
   const updateInds = useCallback((accumulated: number[], times: number[], indList: Ind[]) => {
     indList.forEach(ind => {
@@ -334,6 +525,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
           ))}
         </div>
       </div>
+
+      <LiveBettingStatus />
 
       {/* CHART WRAPPER */}
       <div ref={wrapRef} className="relative flex-1 bg-[#050507]">

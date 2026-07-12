@@ -15,21 +15,24 @@ function getCC(r:TickerData):CC{const n=parseInt(r.roll as string);if(r.color.in
 
 export default function PatternBuilder({data}:{data:TickerData[]}){
   const[pattern,setPattern]=useState<Item[]>([]);
-  const[gales,setGales]=useState(3);
+  const[entradas,setEntradas]=useState(1);
+  const[gales,setGales]=useState(2);
   const[target,setTarget]=useState<Target>('B');
+  const[protectWhite,setProtectWhite]=useState(false);
   const[periodDays,setPeriodDays]=useState(3);
   const[historicalData,setHistoricalData]=useState<TickerData[]>([]);
   const[loadingHistory,setLoadingHistory]=useState(false);
-  const[results,setResults]=useState<{triggers:number;wins:number;losses:number;galeDist:number[];sm:number;sa:number;pa:number;pm:number;winStreak:number;lossStreak:number;recentWins:boolean[]}|null>(null);
+  const[results,setResults]=useState<{triggers:number;wins:number;losses:number;galeDist:number[];sm:number;sa:number;pa:number;pm:number;winStreak:number;lossStreak:number;recentWins:{win:boolean,count:number}[]}|null>(null);
+  const[cycleMode,setCycleMode]=useState<'GALE'|'ENTRADA'>('GALE');
 
 
   useEffect(() => {
     const fetchHistory = async () => {
       setLoadingHistory(true);
       try {
-        const res = await fetch(`/api/results/period?hours=${periodDays * 24}`);
+        const res = await fetch(`/api/results/period?hours=${periodDays * 24}&compact=true`);
         const j = await res.json();
-        if (j.data) {
+        if (j.data && j.data.length > 0) {
            const mapped = j.data.map((r:any) => ({
              ...r, 
              color: r.color ? String(r.color).charAt(0).toUpperCase() + String(r.color).slice(1).toLowerCase() : 'Branco', 
@@ -46,24 +49,98 @@ export default function PatternBuilder({data}:{data:TickerData[]}){
     fetchHistory();
   }, [periodDays]);
 
-  const analyze=()=>{
+  const analyze=(modeOverride?: 'GALE'|'ENTRADA')=>{
     if(!pattern.length||!historicalData.length)return;
     const slice=historicalData;
     const cc=slice.map(getCC);
     const rolls=slice.map(r=>parseInt(r.roll as string));
-    let triggers=0,wins=0,losses=0,sa=0,sm=0,pa=0,pm=0,winStreak=0,maxWS=0;
-    const galeDist=Array(gales).fill(0);
-    const recentWins:boolean[]=[];
-    for(let i=pattern.length-1;i<slice.length-gales;i++){
+    const currentMode = modeOverride || cycleMode;
+    
+    const checkWin = (c: CC) => {
+        let isW = c === target;
+        if (target === 'A') isW = (c==='V'||c==='P');
+        if (protectWhite && (target === 'V' || target === 'P') && c === 'B') isW = true;
+        return isW;
+    };
+
+    const triggerIndices: number[] = [];
+    for(let i=pattern.length-1; i<slice.length-entradas; i++){
       let match=true;
-      for(let p=0;p<pattern.length;p++){const di=i-(pattern.length-1)+p;const it=pattern[p];if(it.kind==='color'&&cc[di]!==it.val){match=false;break;}if(it.kind==='number'&&rolls[di]!==it.val){match=false;break;}if(it.kind==='wildcard'&&it.val==='DUAL'&&(cc[di]!=='V'&&cc[di]!=='P')){match=false;break;}}
-      if(!match)continue;
-      triggers++;let won=false;
-      for(let g=0;g<gales;g++){const ni=i+1+g;if(ni>=slice.length)break;if(target==='A' ? (cc[ni]==='V'||cc[ni]==='P') : cc[ni]===target){wins++;galeDist[g]++;won=true;sa=0;winStreak++;pa++;if(pa>pm)pm=pa;if(winStreak>maxWS)maxWS=winStreak;break;}}
-      if(!won){losses++;sa++;if(sa>sm)sm=sa;pa=0;winStreak=0;}
-      recentWins.push(won);
+      for(let p=0;p<pattern.length;p++){
+          const di=i-(pattern.length-1)+p;const it=pattern[p];
+          if(it.kind==='color'&&cc[di]!==it.val){match=false;break;}
+          if(it.kind==='number'&&rolls[di]!==it.val){match=false;break;}
+          if(it.kind==='wildcard'&&it.val==='DUAL'&&(cc[di]!=='V'&&cc[di]!=='P')){match=false;break;}
+          if(it.kind==='wildcard'&&it.val==='TRI'&&(cc[di]==='B')){match=false;break;}
+      }
+      if(match) triggerIndices.push(i);
     }
-    setResults({triggers,wins,losses,galeDist,sm,sa,pa,pm,winStreak:maxWS,lossStreak:sm,recentWins:recentWins.slice(-20)});
+
+    let triggers=0,wins=0,losses=0,sa=0,sm=0,pa=0,pm=0,winStreak=0,maxWS=0;
+    const recentWins:boolean[]=[];
+    let finalGaleDist: number[] = [];
+    let lastBusyIndex = -1;
+
+    if (currentMode === 'ENTRADA') {
+        finalGaleDist = Array(entradas).fill(0);
+        for (const t of triggerIndices) {
+            if (t <= lastBusyIndex) continue;
+            let won = false;
+            for (let g = 0; g < entradas; g++) {
+                const ni = t + 1 + g;
+                if (ni >= slice.length) break;
+                lastBusyIndex = ni;
+                if (checkWin(cc[ni])) {
+                    wins++; finalGaleDist[g]++; won = true; sa=0; winStreak++; pa++; if(pa>pm)pm=pa; if(winStreak>maxWS)maxWS=winStreak; break;
+                }
+            }
+            if(!won){losses++;sa++;if(sa>sm)sm=sa;pa=0;winStreak=0;}
+            recentWins.push(won);
+            triggers++;
+        }
+    } else {
+        finalGaleDist = Array(gales + 1).fill(0);
+        let currentGaleLevel = 0;
+        for (let i = 0; i < triggerIndices.length; i++) {
+            const t = triggerIndices[i];
+            if (t <= lastBusyIndex) continue;
+            let wonInThisTrigger = false;
+            for (let g = 0; g < entradas; g++) {
+                const ni = t + 1 + g;
+                if (ni >= slice.length) break;
+                lastBusyIndex = ni;
+                if (checkWin(cc[ni])) { wonInThisTrigger = true; break; }
+            }
+            
+            if (wonInThisTrigger) {
+                wins++; finalGaleDist[currentGaleLevel]++; sa=0; winStreak++; pa++; if(pa>pm)pm=pa; if(winStreak>maxWS)maxWS=winStreak;
+                recentWins.push(true);
+                triggers++;
+                currentGaleLevel = 0;
+            } else {
+                if (currentGaleLevel >= gales) {
+                    losses++; sa++; if(sa>sm)sm=sa; pa=0; winStreak=0;
+                    recentWins.push(false);
+                    triggers++;
+                    currentGaleLevel = 0;
+                } else {
+                    currentGaleLevel++;
+                }
+            }
+        }
+    }
+
+    const groupedWins: {win:boolean, count:number}[] = [];
+    if (recentWins.length > 0) {
+       let curr = recentWins[0], count = 1;
+       for (let i = 1; i < recentWins.length; i++) {
+          if (recentWins[i] === curr) count++;
+          else { groupedWins.push({win:curr, count}); curr = recentWins[i]; count = 1; }
+       }
+       groupedWins.push({win:curr, count});
+    }
+
+    setResults({triggers,wins,losses,galeDist:finalGaleDist,sm,sa,pa,pm,winStreak:maxWS,lossStreak:sm,recentWins:groupedWins.slice(-20)});
   };
 
   const wr=results?(results.wins/(results.wins+results.losses||1)*100):0;
@@ -89,7 +166,7 @@ export default function PatternBuilder({data}:{data:TickerData[]}){
             {!pattern.length&&<span className="text-gray-500 text-xs italic font-semibold">Monte seu padrão clicando nas opções abaixo...</span>}
             {pattern.map((it,i)=><motion.div key={i} initial={{scale:0}} animate={{scale:1}} className="shrink-0 relative group">
               <button onClick={() => setPattern(p => p.filter((_, idx) => idx !== i))} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full text-white text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110">✕</button>
-              {it.kind==='number' ? <GlobalStoneIcon n={it.val} size="sm" /> : it.kind==='wildcard' ? <div className="w-7 h-7 rounded-lg border flex items-center justify-center font-black text-[7px] text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)] border-white/20" style={{ background: it.val === 'DUAL' ? 'linear-gradient(to right, #dc2626 50%, #27272a 50%)' : 'linear-gradient(to right, #dc2626 33.33%, #ffffff 33.33%, #ffffff 66.66%, #27272a 66.66%)' }}>{it.val}</div> : it.val==='B' ? <GlobalStoneIcon n={0} size="sm" /> : <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-black text-[10px] ${it.val==='V'?'bg-red-600/80 border-red-500/50 text-white':'bg-zinc-800/80 border-zinc-600/50 text-white'}`}>{it.val}</div>}
+              {it.kind==='number' ? <GlobalStoneIcon n={it.val} size="sm" /> : it.kind==='wildcard' ? <div className="w-7 h-7 rounded-lg border flex items-center justify-center font-black text-[7px] text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)] border-white/20" style={{ background: it.val === 'DUAL' ? 'linear-gradient(to right, #dc2626 50%, #27272a 50%)' : 'linear-gradient(to right, #dc2626 33.33%, #ffffff 33.33%, #ffffff 66.66%, #27272a 66.66%)' }}></div> : it.val==='B' ? <GlobalStoneIcon n={0} size="sm" /> : <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-black text-[10px] ${it.val==='V'?'bg-red-600/80 border-red-500/50 text-white':'bg-zinc-800/80 border-zinc-600/50 text-white'}`}>{it.val}</div>}
             </motion.div>)}
           </div>
           {/* Colors */}
@@ -98,8 +175,8 @@ export default function PatternBuilder({data}:{data:TickerData[]}){
             <button onClick={()=>setPattern(p=>[...p,{kind:'color',val:'V'}])} className="flex-1 py-2 rounded-lg bg-red-700/80 text-white font-black text-[9px] hover:bg-red-600 transition-all">V</button>
             <button onClick={()=>setPattern(p=>[...p,{kind:'color',val:'P'}])} className="flex-1 py-2 rounded-lg bg-zinc-700 text-white font-black text-[9px] hover:bg-zinc-600 transition-all">P</button>
             <button onClick={()=>setPattern(p=>[...p,{kind:'color',val:'B'}])} className="flex-1 py-1 rounded-lg bg-white text-black flex items-center justify-center hover:bg-gray-100 transition-all"><GlobalStoneIcon n={0} size="sm" /></button>
-            <button onClick={()=>setPattern(p=>[...p,{kind:'wildcard',val:'DUAL'}])} className="flex-1 py-2 rounded-lg text-white font-black text-[7px] hover:opacity-80 transition-all drop-shadow-md" style={{ background: 'linear-gradient(to right, #dc2626 50%, #27272a 50%)' }}>DUAL</button>
-            <button onClick={()=>setPattern(p=>[...p,{kind:'wildcard',val:'TRI'}])} className="flex-1 py-2 rounded-lg text-white font-black text-[7px] hover:opacity-80 transition-all drop-shadow-md" style={{ background: 'linear-gradient(to right, #dc2626 33.33%, #d4d4d8 33.33%, #d4d4d8 66.66%, #27272a 66.66%)' }}>TRI</button>
+            <button onClick={()=>setPattern(p=>[...p,{kind:'wildcard',val:'DUAL'}])} className="flex-1 py-2 rounded-lg text-white font-black text-[7px] hover:opacity-80 transition-all drop-shadow-md" style={{ background: 'linear-gradient(to right, #dc2626 50%, #27272a 50%)' }}></button>
+            <button onClick={()=>setPattern(p=>[...p,{kind:'wildcard',val:'TRI'}])} className="flex-1 py-2 rounded-lg text-white font-black text-[7px] hover:opacity-80 transition-all drop-shadow-md" style={{ background: 'linear-gradient(to right, #dc2626 33.33%, #d4d4d8 33.33%, #d4d4d8 66.66%, #27272a 66.66%)' }}></button>
           </div>
           {/* Numbers */}
           <div className="text-[8px] text-gray-600 uppercase tracking-widest mb-1">Números</div>
@@ -113,15 +190,20 @@ export default function PatternBuilder({data}:{data:TickerData[]}){
           </div>
         </div>
 
-        {/* Gales */}
+        {/* Entradas / Gales */}
         <div className="bg-[#0d0f1a] border border-white/10 rounded-xl p-3">
-          <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-2 font-bold">Gales (G0 = entrada)</div>
+          <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-2 font-bold">Entradas</div>
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={()=>setEntradas(g=>Math.max(1,g-1))} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10"><Minus size={12}/></button>
+            <span className="text-xl font-black">{entradas}</span>
+            <button onClick={()=>setEntradas(g=>g+1)} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10"><Plus size={12}/></button>
+          </div>
+          <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-2 font-bold border-t border-white/5 pt-2">Gales</div>
           <div className="flex items-center justify-between">
-            <button onClick={()=>setGales(g=>Math.max(1,g-1))} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10"><Minus size={12}/></button>
-            <span className="text-2xl font-black">{gales}</span>
+            <button onClick={()=>setGales(g=>Math.max(0,g-1))} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10"><Minus size={12}/></button>
+            <span className="text-xl font-black">{gales}</span>
             <button onClick={()=>setGales(g=>g+1)} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10"><Plus size={12}/></button>
           </div>
-          <div className="text-[8px] text-gray-700 text-center mt-1">G0 → G{gales-1}</div>
         </div>
 
         {/* Period */}
@@ -152,15 +234,20 @@ export default function PatternBuilder({data}:{data:TickerData[]}){
         {/* Target */}
         <div className="bg-[#0d0f1a] border border-white/10 rounded-xl p-3">
           <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-2 font-bold">Buscar</div>
-          <div className="flex flex-col gap-1">
-            {([['B','⚪ Branco'],['V','🔴 Vermelho'],['P','⚫ Preto'],['A','🌓 Ambos (V/P)']] as const).map(([v,l])=>(
+          <div className="flex flex-col gap-1 mb-2">
+            {([['B','⚪ Branco'],['V','🔴 Vermelho'],['P','⚫ Preto']] as const).map(([v,l])=>(
               <button key={v} onClick={()=>setTarget(v)} className={`px-2 py-1.5 rounded-lg text-[10px] font-black transition-all border ${target===v?'bg-white/10 border-white/30 text-white':'border-white/5 text-gray-500 hover:text-gray-300'}`}>{l}</button>
             ))}
           </div>
+          {(target==='V'||target==='P') && (
+            <button onClick={()=>setProtectWhite(!protectWhite)} className={`w-full px-2 py-1.5 rounded-lg text-[10px] font-black transition-all border flex items-center justify-center gap-2 ${protectWhite?'bg-blue-600/20 border-blue-500/50 text-blue-400':'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300'}`}>
+              <div className={`w-3 h-3 rounded-sm border ${protectWhite?'bg-blue-500 border-blue-400':'border-gray-500'}`}/> Proteção no Branco
+            </button>
+          )}
         </div>
 
         {/* Analyze */}
-        <button onClick={analyze} disabled={!pattern.length}
+        <button onClick={() => analyze()} disabled={!pattern.length}
           className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-black text-xs uppercase tracking-widest disabled:opacity-30 hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
           <Play size={14}/> Analisar
         </button>
@@ -196,18 +283,17 @@ export default function PatternBuilder({data}:{data:TickerData[]}){
               </div>
 
               {/* Stats grid */}
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-1.5">
                 {[
                   {l:'SM',v:results.sm,c:results.sm<=3?'text-green-400':results.sm<=6?'text-yellow-400':'text-red-400',d:'Máx. Loss Seq.'},
                   {l:'SA',v:results.sa,c:results.sa===0?'text-green-400':results.sa<=3?'text-yellow-400':'text-red-400',d:'Loss Atual'},
-                  {l:'Risco',v:risk?.l,c:risk?.c,d:'Nível de risco'},
-                  {l:'PA',v:`${results.pa} / ${results.pm}`,c:results.pa>0?'text-green-400':'text-gray-500',d:'Precisão do Padrão'},
-                  {l:'Ciclos',v:results.triggers,c:'text-blue-400',d:'Total gatilhos'},
+                  {l:'Risco',v:risk?.l,c:risk?.c,d:'Nível de Risco'},
+                  {l:'PA',v:`${results.pa} / ${results.pm}`,c:results.pa>0?'text-green-400':'text-gray-500',d:'PAG. SEQUÊNCIA'},
+                  {l:'Ciclos',v:results.triggers,c:'text-blue-400',d:'Total Gatilhos'},
                 ].map(({l,v,c,d})=>(
-                  <div key={l} className="bg-[#0d0f1a] border border-white/10 rounded-xl p-3 text-center">
-                    <div className="text-[8px] text-gray-600 uppercase tracking-widest">{d}</div>
-                    <div className={`text-xl font-black mt-1 ${c}`}>{v}</div>
-                    <div className="text-[9px] text-gray-500 font-bold">{l}</div>
+                  <div key={l} className="bg-[#0d0f1a] border border-white/10 rounded-xl p-2 flex flex-col justify-center items-center text-center">
+                    <div className="text-[8px] text-gray-500 uppercase tracking-widest leading-tight mb-1">{d}</div>
+                    <div className={`text-sm font-black ${c}`}>{v}</div>
                   </div>
                 ))}
               </div>
@@ -225,7 +311,7 @@ export default function PatternBuilder({data}:{data:TickerData[]}){
                         <div className="w-full bg-white/5 rounded-md flex items-end overflow-hidden" style={{height:'50px'}}>
                           <motion.div initial={{height:0}} animate={{height:`${bar}%`}} className="w-full bg-gradient-to-t from-purple-700 to-pink-500 rounded-md"/>
                         </div>
-                        <span className="text-[9px] text-gray-500 font-bold">G{g}</span>
+                        <span className="text-[9px] text-gray-500 font-bold">{cycleMode === 'ENTRADA' ? `E${g+1}` : `G${g}`}</span>
                         <span className="text-[8px] text-gray-700">{pct.toFixed(0)}%</span>
                       </div>
                     );
@@ -243,11 +329,17 @@ export default function PatternBuilder({data}:{data:TickerData[]}){
 
               {/* Recent history */}
               <div className="bg-[#0d0f1a] border border-white/10 rounded-xl p-4">
-                <div className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Últimas {results.recentWins.length} Ocorrências</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 flex items-center justify-between">
+                   <span>Últimos 20 Ciclos</span>
+                   <div className="flex bg-black/40 border border-white/10 rounded-lg p-0.5">
+                      <button onClick={()=>{setCycleMode('ENTRADA'); analyze('ENTRADA');}} className={`px-2 py-1 text-[8px] font-bold rounded-md uppercase transition-colors ${cycleMode==='ENTRADA'?'bg-white/10 text-white':'text-gray-500 hover:text-gray-300'}`}>Por Entrada</button>
+                      <button onClick={()=>{setCycleMode('GALE'); analyze('GALE');}} className={`px-2 py-1 text-[8px] font-bold rounded-md uppercase transition-colors ${cycleMode==='GALE'?'bg-white/10 text-white':'text-gray-500 hover:text-gray-300'}`}>Por Gale</button>
+                   </div>
+                </div>
                 <div className="flex gap-1.5 flex-wrap">
-                  {results.recentWins.map((w,i)=>(
-                    <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border ${w?'bg-green-600/20 border-green-500/40 text-green-400':'bg-red-600/20 border-red-500/40 text-red-400'}`}>
-                      {w?'W':'L'}
+                  {results.recentWins.map((grp,i)=>(
+                    <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-black border ${grp.win?'bg-green-600/20 border-green-500/40 text-green-400':'bg-red-600/20 border-red-500/40 text-red-400'}`}>
+                      {grp.count}
                     </div>
                   ))}
                 </div>

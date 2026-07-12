@@ -11,6 +11,7 @@ export default function DuplaExataPage() {
   const [loading, setLoading] = useState(true);
   
   // Filtros
+  const [numEntradas, setNumEntradas] = useState(1);
   const [casasLimit, setCasasLimit] = useState(15);
   const [periodHours, setPeriodHours] = useState(24);
   const [targetMode, setTargetMode] = useState<'branco' | 'cores'>('branco');
@@ -29,7 +30,7 @@ export default function DuplaExataPage() {
      let text = '';
      for (const st of stats) {
         const spaces = Array(st.casa - 1).fill('@').join(' ');
-        const targetStr = st.cor === 'branco' ? 'branco g0' : st.cor === 'red' ? 'vermelho g0' : 'preto g0';
+        const targetStr = st.cor === 'branco' ? `branco g${numEntradas - 1}` : st.cor === 'red' ? `vermelho g${numEntradas - 1}` : `preto g${numEntradas - 1}`;
         const str = spaces ? `${st.p1} ${st.p2} ${spaces} = ${targetStr}` : `${st.p1} ${st.p2} = ${targetStr}`;
         text += str + '\n';
      }
@@ -44,7 +45,7 @@ export default function DuplaExataPage() {
 
   const handleCopyPattern = (st: any) => {
       const spaces = Array(st.casa - 1).fill('@').join(' ');
-      const targetStr = st.cor === 'branco' ? 'branco g0' : st.cor === 'red' ? 'vermelho g0' : 'preto g0';
+      const targetStr = st.cor === 'branco' ? `branco g${numEntradas - 1}` : st.cor === 'red' ? `vermelho g${numEntradas - 1}` : `preto g${numEntradas - 1}`;
       const str = spaces ? `${st.p1} ${st.p2} ${spaces} = ${targetStr}` : `${st.p1} ${st.p2} = ${targetStr}`;
       navigator.clipboard.writeText(str);
       const key = `${st.p1}-${st.p2}-${st.casa}-${st.cor}`;
@@ -142,33 +143,55 @@ export default function DuplaExataPage() {
                 const key = `${trig1}-${trig2}`;
                 const st = getPairData(key);
 
-                st.totals[c - 1]++;
-                
-                // Branco
-                if (isBranco) {
-                    st.branco.sa[c - 1] = 0;
-                    st.branco.hits[c - 1]++;
-                } else {
-                    st.branco.sa[c - 1]++;
-                    if (st.branco.sa[c - 1] > st.branco.sm[c - 1]) st.branco.sm[c - 1] = st.branco.sa[c - 1];
+                let hasBranco = false;
+                let hasRed = false;
+                let hasBlack = false;
+
+                let maxAvailableEntries = Math.min(numEntradas, data.length - pairIndex2 - c);
+                if (maxAvailableEntries < 1) continue;
+
+                for (let e = 0; e < maxAvailableEntries; e++) {
+                  const targetRoll = data[pairIndex2 + c + e];
+                  if (targetRoll.color.includes('Branco') || targetRoll.roll === '0') hasBranco = true;
+                  if (targetRoll.color.includes('Vermelho') || (parseInt(targetRoll.roll) >= 1 && parseInt(targetRoll.roll) <= 7)) hasRed = true;
+                  if (targetRoll.color.includes('Preto') || (parseInt(targetRoll.roll) >= 8 && parseInt(targetRoll.roll) <= 14)) hasBlack = true;
                 }
 
-                // Cores
-                if (isBranco) {
-                    st.red.sa[c - 1]++;
-                    if (st.red.sa[c - 1] > st.red.sm[c - 1]) st.red.sm[c - 1] = st.red.sa[c - 1];
-                    st.black.sa[c - 1]++;
-                    if (st.black.sa[c - 1] > st.black.sm[c - 1]) st.black.sm[c - 1] = st.black.sa[c - 1];
-                } else if (isRed) {
-                    st.red.sa[c - 1] = 0;
-                    st.red.hits[c - 1]++;
-                    st.black.sa[c - 1]++;
-                    if (st.black.sa[c - 1] > st.black.sm[c - 1]) st.black.sm[c - 1] = st.black.sa[c - 1];
-                } else if (isBlack) {
-                    st.black.sa[c - 1] = 0;
-                    st.black.hits[c - 1]++;
-                    st.red.sa[c - 1]++;
-                    if (st.red.sa[c - 1] > st.red.sm[c - 1]) st.red.sm[c - 1] = st.red.sa[c - 1];
+                const isWindowClosed = (maxAvailableEntries === numEntradas);
+                let countedTotal = false;
+
+                if (hasBranco || isWindowClosed) {
+                    st.totals[c - 1]++;
+                    countedTotal = true;
+                    if (hasBranco) {
+                        st.branco.sa[c - 1] = 0;
+                        st.branco.hits[c - 1]++;
+                    } else {
+                        st.branco.sa[c - 1]++;
+                        if (st.branco.sa[c - 1] > st.branco.sm[c - 1]) st.branco.sm[c - 1] = st.branco.sa[c - 1];
+                    }
+                }
+
+                if (hasRed || isWindowClosed) {
+                    if (!countedTotal) { st.totals[c - 1]++; countedTotal = true; }
+                    if (hasRed) {
+                        st.red.sa[c - 1] = 0;
+                        st.red.hits[c - 1]++;
+                    } else {
+                        st.red.sa[c - 1]++;
+                        if (st.red.sa[c - 1] > st.red.sm[c - 1]) st.red.sm[c - 1] = st.red.sa[c - 1];
+                    }
+                }
+
+                if (hasBlack || isWindowClosed) {
+                    if (!countedTotal) { st.totals[c - 1]++; countedTotal = true; }
+                    if (hasBlack) {
+                        st.black.sa[c - 1] = 0;
+                        st.black.hits[c - 1]++;
+                    } else {
+                        st.black.sa[c - 1]++;
+                        if (st.black.sa[c - 1] > st.black.sm[c - 1]) st.black.sm[c - 1] = st.black.sa[c - 1];
+                    }
                 }
             }
         }
@@ -224,7 +247,7 @@ export default function DuplaExataPage() {
     });
     return results;
 
-  }, [data, casasLimit, targetMode, scanSortBy, minSaFilter, minSmFilter, minPercFilter]);
+  }, [data, casasLimit, targetMode, scanSortBy, minSaFilter, minSmFilter, minPercFilter, numEntradas]);
 
   return (
     <main className="min-h-screen p-4 md:p-8 max-w-full w-full mx-auto flex flex-col gap-6 bg-[#030303]">
@@ -236,9 +259,6 @@ export default function DuplaExataPage() {
                <Target className="text-red-500" />
                Dupla Exata
              </h2>
-             <a href="/dupla-exata/simulador" className="bg-[#12141c] border border-white/10 hover:border-white/20 text-xs font-bold px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-               <FlaskConical size={14} /> Simulador
-             </a>
           </div>
           <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Laboratório Temporal</span>
         </div>
@@ -263,6 +283,17 @@ export default function DuplaExataPage() {
                    <option value="branco">BRANCOS</option>
                    <option value="cores">CORES</option>
                 </select>
+             </div>
+             <div className="flex flex-col gap-1">
+                <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Entradas</label>
+                <input 
+                   type="number" 
+                   min="1" 
+                   max="20"
+                   value={numEntradas} 
+                   onChange={(e) => setNumEntradas(Number(e.target.value) || 1)}
+                   className="w-16 bg-[#0a0a0f] text-white px-2 py-1 rounded border border-white/10 text-xs font-bold outline-none focus:border-red-500 text-center"
+                />
              </div>
              <div className="flex flex-col gap-1">
                 <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Casas</label>

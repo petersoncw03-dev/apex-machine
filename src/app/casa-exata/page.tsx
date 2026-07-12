@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef, useCallback, Fragment, memo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback, Fragment, memo, useDeferredValue } from 'react';
 import { TickerData } from '@/components/Ticker';
 import { Target, Copy, FlaskConical } from 'lucide-react';
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
@@ -31,6 +31,8 @@ export default function CasaExataPage() {
   
   // Filters
   const [casasLimit, setCasasLimit] = useState(15);
+  const [numEntradas, setNumEntradas] = useState(1);
+  const deferredNumEntradas = useDeferredValue(numEntradas);
   const [periodHours, setPeriodHours] = useState(12);
 
   const [scoreboard, setScoreboard] = useState<Scoreboard>({ wins: 0, losses: 0 });
@@ -129,39 +131,56 @@ export default function CasaExataPage() {
         if (pastIdx >= 0) {
           const pastRollNumber = parseInt(analysisData[pastIdx].roll as string);
           if (!isNaN(pastRollNumber) && pastRollNumber >= 0 && pastRollNumber <= 14) {
-            totalsGrid[pastRollNumber][c - 1]++;
             
-            // Branco Update
-            if (isBranco) {
-              brancoSaGrid[pastRollNumber][c - 1] = 0;
-              brancoHitsGrid[pastRollNumber][c - 1]++;
-            } else {
-              brancoSaGrid[pastRollNumber][c - 1]++;
-              if (brancoSaGrid[pastRollNumber][c - 1] > brancoSmGrid[pastRollNumber][c - 1]) {
-                brancoSmGrid[pastRollNumber][c - 1] = brancoSaGrid[pastRollNumber][c - 1];
-              }
+            let hasBranco = false;
+            let hasRed = false;
+            let hasBlack = false;
+            
+            let maxAvailableEntries = Math.min(deferredNumEntradas, analysisData.length - pastIdx - c);
+            if (maxAvailableEntries < 1) continue; 
+            
+            for (let e = 0; e < maxAvailableEntries; e++) {
+              const targetRoll = analysisData[pastIdx + c + e];
+              if (targetRoll.color.includes('Branco') || targetRoll.roll === '0') hasBranco = true;
+              if (targetRoll.color.includes('Vermelho') || (parseInt(targetRoll.roll as string) >= 1 && parseInt(targetRoll.roll as string) <= 7)) hasRed = true;
+              if (targetRoll.color.includes('Preto') || (parseInt(targetRoll.roll as string) >= 8 && parseInt(targetRoll.roll as string) <= 14)) hasBlack = true;
+            }
+            
+            const isWindowClosed = (maxAvailableEntries === deferredNumEntradas);
+            let countedTotal = false;
+
+            if (hasBranco || isWindowClosed) {
+                totalsGrid[pastRollNumber][c - 1]++;
+                countedTotal = true;
+                if (hasBranco) {
+                    brancoSaGrid[pastRollNumber][c - 1] = 0;
+                    brancoHitsGrid[pastRollNumber][c - 1]++;
+                } else {
+                    brancoSaGrid[pastRollNumber][c - 1]++;
+                    if (brancoSaGrid[pastRollNumber][c - 1] > brancoSmGrid[pastRollNumber][c - 1]) brancoSmGrid[pastRollNumber][c - 1] = brancoSaGrid[pastRollNumber][c - 1];
+                }
             }
 
-            // Cores Update
-            if (isBranco) {
-               // Branco is loss for both red and black
-               redSaGrid[pastRollNumber][c - 1]++;
-               if (redSaGrid[pastRollNumber][c - 1] > redSmGrid[pastRollNumber][c - 1]) redSmGrid[pastRollNumber][c - 1] = redSaGrid[pastRollNumber][c - 1];
+            if (hasRed || isWindowClosed) {
+                if (!countedTotal) { totalsGrid[pastRollNumber][c - 1]++; countedTotal = true; }
+                if (hasRed) {
+                    redSaGrid[pastRollNumber][c - 1] = 0;
+                    redHitsGrid[pastRollNumber][c - 1]++;
+                } else {
+                    redSaGrid[pastRollNumber][c - 1]++;
+                    if (redSaGrid[pastRollNumber][c - 1] > redSmGrid[pastRollNumber][c - 1]) redSmGrid[pastRollNumber][c - 1] = redSaGrid[pastRollNumber][c - 1];
+                }
+            }
 
-               blackSaGrid[pastRollNumber][c - 1]++;
-               if (blackSaGrid[pastRollNumber][c - 1] > blackSmGrid[pastRollNumber][c - 1]) blackSmGrid[pastRollNumber][c - 1] = blackSaGrid[pastRollNumber][c - 1];
-            } else if (isRed) {
-               redSaGrid[pastRollNumber][c - 1] = 0;
-               redHitsGrid[pastRollNumber][c - 1]++;
-               
-               blackSaGrid[pastRollNumber][c - 1]++;
-               if (blackSaGrid[pastRollNumber][c - 1] > blackSmGrid[pastRollNumber][c - 1]) blackSmGrid[pastRollNumber][c - 1] = blackSaGrid[pastRollNumber][c - 1];
-            } else if (isBlack) {
-               blackSaGrid[pastRollNumber][c - 1] = 0;
-               blackHitsGrid[pastRollNumber][c - 1]++;
-               
-               redSaGrid[pastRollNumber][c - 1]++;
-               if (redSaGrid[pastRollNumber][c - 1] > redSmGrid[pastRollNumber][c - 1]) redSmGrid[pastRollNumber][c - 1] = redSaGrid[pastRollNumber][c - 1];
+            if (hasBlack || isWindowClosed) {
+                if (!countedTotal) { totalsGrid[pastRollNumber][c - 1]++; countedTotal = true; }
+                if (hasBlack) {
+                    blackSaGrid[pastRollNumber][c - 1] = 0;
+                    blackHitsGrid[pastRollNumber][c - 1]++;
+                } else {
+                    blackSaGrid[pastRollNumber][c - 1]++;
+                    if (blackSaGrid[pastRollNumber][c - 1] > blackSmGrid[pastRollNumber][c - 1]) blackSmGrid[pastRollNumber][c - 1] = blackSaGrid[pastRollNumber][c - 1];
+                }
             }
           }
         }
@@ -175,7 +194,7 @@ export default function CasaExataPage() {
       red: { sm: redSmGrid[num], sa: redSaGrid[num], hits: redHitsGrid[num] },
       black: { sm: blackSmGrid[num], sa: blackSaGrid[num], hits: blackHitsGrid[num] }
     }));
-  }, [data, casasLimit, periodHours]);
+  }, [data, casasLimit, periodHours, deferredNumEntradas]);
 
   // Placar e Avaliação de Previsões (Acionados a cada nova pedra)
   useEffect(() => {
@@ -232,7 +251,7 @@ export default function CasaExataPage() {
 
   const generatePatternStr = (pedra: number, casa: number, cor: string) => {
       const spaces = Array(casa - 1).fill('@').join(' ');
-      const targetStr = cor === 'branco' ? 'branco g0' : cor === 'red' ? 'vermelho g0' : 'preto g0';
+      const targetStr = cor === 'branco' ? `branco g${deferredNumEntradas - 1}` : cor === 'red' ? `vermelho g${deferredNumEntradas - 1}` : `preto g${deferredNumEntradas - 1}`;
       return spaces ? `${pedra} ${spaces} = ${targetStr}` : `${pedra} = ${targetStr}`;
   };
 
@@ -343,9 +362,6 @@ export default function CasaExataPage() {
                <Target className="text-red-500" />
                Casa Exata
              </h2>
-             <a href="/casa-exata/simulador" className="bg-[#12141c] border border-white/10 hover:border-white/20 text-xs font-bold px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-               <FlaskConical size={14} /> Simulador
-             </a>
           </div>
           <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Laboratório Temporal</span>
         </div>
@@ -361,6 +377,18 @@ export default function CasaExataPage() {
                <option value="branco">BRANCOS</option>
                <option value="cores">CORES</option>
              </select>
+           </div>
+
+           <div className="flex flex-col gap-1">
+             <label className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Entradas</label>
+             <input 
+               type="number"
+               min="1"
+               max="20"
+               className="bg-[#0a0a0f] text-white px-2 py-1 rounded border border-white/10 text-xs font-bold outline-none focus:border-red-500 w-16 text-center"
+               value={numEntradas}
+               onChange={(e) => setNumEntradas(Number(e.target.value) || 1)}
+             />
            </div>
 
            <div className="flex flex-col gap-1">
@@ -683,7 +711,7 @@ export default function CasaExataPage() {
 
       {/* NOVO HISTÓRICO FIXO */}
       <section className="bg-[#121214] border border-[#2a2a35] rounded-xl overflow-x-auto p-4 shadow-xl mb-8">
-         <FixedColumnsHistory data={data.slice(-200)} scanPatterns={scanPatterns} />
+         <FixedColumnsHistory data={data.slice(-200)} scanPatterns={scanPatterns} numEntradas={deferredNumEntradas} />
       </section>
 
       {/* MODAL COPIAR */}
@@ -766,14 +794,14 @@ export default function CasaExataPage() {
   );
 }
 
-function FixedColumnsHistory({ data, scanPatterns }: { data: any[], scanPatterns?: any[] }) {
+function FixedColumnsHistory({ data, scanPatterns, numEntradas }: { data: any[], scanPatterns?: any[], numEntradas: number }) {
    const [preds, setPreds] = useState<Record<string, string>>({});
    const [integrationOn, setIntegrationOn] = useState(false);
    const [integrationStartTimeMs, setIntegrationStartTimeMs] = useState<number>(0);
    const [score, setScore] = useState<{ w: number, l: number, sa: number, sm: number, cycleHistory: {type: 'W'|'L', count: number}[], currentCycleType: 'W'|'L'|null, currentCycleCount: number }>({ w: 0, l: 0, sa: 0, sm: 0, cycleHistory: [], currentCycleType: null, currentCycleCount: 0 });
    const evaluatedKeysRef = useRef<Set<string>>(new Set());
    const evaluatedVisualsRef = useRef<Record<string, string>>({});
-   const previousAutoTargetsRef = useRef<Record<string, string>>({});
+   const previousAutoTargetsRef = useRef<Record<string, { cor: string; count: number }>>({});
    const hindsightKeysRef = useRef<Set<string>>(new Set());
 
    const cyclePred = (key: string) => {
@@ -829,7 +857,7 @@ function FixedColumnsHistory({ data, scanPatterns }: { data: any[], scanPatterns
    }, [data]);
 
    const autoTargets = useMemo(() => {
-      const targets: Record<string, string> = {};
+      const targets: Record<string, { cor: string, count: number }> = {};
       if (!integrationOn || !scanPatterns || scanPatterns.length === 0 || data.length === 0) return targets;
 
       const triggersByStone: Record<number, { casa: number, cor: string }[]> = {};
@@ -846,35 +874,53 @@ function FixedColumnsHistory({ data, scanPatterns }: { data: any[], scanPatterns
          if (!targetList) continue;
 
          for (const targetItem of targetList) {
-             const targetIdx = i + targetItem.casa;
-             let targetTs: number;
+             for (let e = 0; e < numEntradas; e++) {
+                 const targetIdx = i + targetItem.casa + e;
+                 let targetTs: number;
+                 let hit = false;
 
-             if (targetIdx < data.length) {
-                 const targetStone = data[targetIdx];
-                 targetTs = targetStone.timestamp ? new Date(targetStone.timestamp).getTime() : (targetStone.created_at ? new Date(targetStone.created_at).getTime() : Date.now());
-             } else {
-                 const latestStone = data[data.length - 1];
-                 const latestTs = latestStone.timestamp ? new Date(latestStone.timestamp).getTime() : (latestStone.created_at ? new Date(latestStone.created_at).getTime() : Date.now());
-                 const remaining = targetIdx - (data.length - 1);
-                 targetTs = latestTs + remaining * 30 * 1000;
-             }
+                 if (targetIdx < data.length) {
+                     const targetStone = data[targetIdx];
+                     targetTs = targetStone.timestamp ? new Date(targetStone.timestamp).getTime() : (targetStone.created_at ? new Date(targetStone.created_at).getTime() : Date.now());
+                     
+                     // Checa se acertamos no meio do caminho!
+                     const isBranco = targetStone.color.includes('Branco') || targetStone.roll === '0';
+                     const isRed = targetStone.color.includes('Vermelho') || (parseInt(targetStone.roll as string) >= 1 && parseInt(targetStone.roll as string) <= 7);
+                     const isBlack = targetStone.color.includes('Preto') || (parseInt(targetStone.roll as string) >= 8 && parseInt(targetStone.roll as string) <= 14);
+                     
+                     if (targetItem.cor === 'branco' && isBranco) hit = true;
+                     if (targetItem.cor === 'red' && isRed) hit = true;
+                     if (targetItem.cor === 'black' && isBlack) hit = true;
+                 } else {
+                     const latestStone = data[data.length - 1];
+                     const latestTs = latestStone.timestamp ? new Date(latestStone.timestamp).getTime() : (latestStone.created_at ? new Date(latestStone.created_at).getTime() : Date.now());
+                     const remaining = targetIdx - (data.length - 1);
+                     targetTs = latestTs + remaining * 30 * 1000;
+                 }
 
-             const dt = new Date(targetTs - 3 * 3600 * 1000);
-             const blockId = Math.floor(dt.getTime() / (10 * 60 * 1000));
-             const col = dt.getUTCMinutes() % 10;
-             const split = dt.getUTCSeconds() >= 30 ? 1 : 0;
-             const cellKey = `${blockId}-${col}-${split}`;
-             
-             if (targets[cellKey] && targets[cellKey] !== targetItem.cor) {
-                 targets[cellKey] = 'misto';
-             } else {
-                 targets[cellKey] = targetItem.cor;
+                 const dt = new Date(targetTs - 3 * 3600 * 1000);
+                 const blockId = Math.floor(dt.getTime() / (10 * 60 * 1000));
+                 const col = dt.getUTCMinutes() % 10;
+                 const split = dt.getUTCSeconds() >= 30 ? 1 : 0;
+                 const cellKey = `${blockId}-${col}-${split}`;
+                 
+                 if (targets[cellKey]) {
+                     targets[cellKey].count++;
+                     if (targets[cellKey].cor !== targetItem.cor && targets[cellKey].cor !== 'misto') {
+                         targets[cellKey].cor = 'misto';
+                     }
+                 } else {
+                     targets[cellKey] = { cor: targetItem.cor, count: 1 };
+                 }
+                 
+                 // Se bateu na cor, aborta o resto das entradas deste ciclo!
+                 if (hit) break;
              }
          }
       }
 
       return targets;
-   }, [data, scanPatterns, integrationOn]);
+   }, [data, scanPatterns, integrationOn, numEntradas]);
 
    const activeTargets = useMemo(() => {
        const combined = { ...evaluatedVisualsRef.current, ...autoTargets, ...preds };
@@ -901,7 +947,8 @@ function FixedColumnsHistory({ data, scanPatterns }: { data: any[], scanPatterns
       // previousAutoTargetsRef deve sobrescrever activeTargets para recuperar conflitos 'misto' que possam ter sumido no update
       const targetsToEvaluate = { ...activeTargets, ...previousAutoTargetsRef.current, ...preds };
 
-      for (const [key, predColor] of Object.entries(targetsToEvaluate)) {
+      for (const [key, targetData] of Object.entries(targetsToEvaluate)) {
+         const predColor = typeof targetData === 'string' ? targetData : (targetData as any).cor;
          if (evaluatedKeysRef.current.has(key)) continue;
 
          const [bkStr, cStr, sStr] = key.split('-');
@@ -1115,7 +1162,7 @@ function FixedColumnsHistory({ data, scanPatterns }: { data: any[], scanPatterns
                      const key = `${bk}-${cIdx}-${sIdx}`;
                      const manualPred = preds[key];
                      const autoTarget = autoTargets[key];
-                     const pred = manualPred || autoTarget;
+                     const pred = manualPred || (autoTarget ? autoTarget.cor : undefined);
                      const localTimeMs = bk * 10 * 60 * 1000 + cIdx * 60 * 1000;
                      const localDate = new Date(localTimeMs);
                      const timeStr = `${localDate.getUTCHours().toString().padStart(2, '0')}:${localDate.getUTCMinutes().toString().padStart(2, '0')}`;
@@ -1145,11 +1192,18 @@ function FixedColumnsHistory({ data, scanPatterns }: { data: any[], scanPatterns
                      let inner = null;
                      const isAutoTargetRender = autoTarget && !manualPred;
                      const alvoBadge = isAutoTargetRender ? (
-                        <div className="absolute top-0.5 w-full flex justify-center z-10">
-                           <span className="animate-pulse bg-[#001f3f]/60 border border-[#001f3f]/80 text-cyan-400 text-[8px] font-black px-1 rounded shadow-sm uppercase tracking-widest">
-                              Alvo
-                           </span>
-                        </div>
+                        <>
+                          <div className="absolute top-0.5 w-full flex justify-center z-10">
+                             <span className="animate-pulse bg-[#001f3f]/60 border border-[#001f3f]/80 text-cyan-400 text-[8px] font-black px-1 rounded shadow-sm uppercase tracking-widest">
+                                Alvo
+                             </span>
+                          </div>
+                          {autoTarget.count > 1 && (
+                              <div className="absolute -top-1.5 -right-1.5 bg-cyan-500 text-slate-900 text-[9px] font-black w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(6,182,212,0.8)] z-20 border-[1.5px] border-[#0a0a0f]">
+                                {autoTarget.count}
+                              </div>
+                          )}
+                        </>
                      ) : null;
 
                      if (pred === 'red') {

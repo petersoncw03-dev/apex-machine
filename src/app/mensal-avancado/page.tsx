@@ -396,8 +396,13 @@ export default function MensalAvancadoPage() {
                 <button onClick={() => setModoAnalise('padrao')} className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest border transition-all whitespace-nowrap ${modoAnalise === 'padrao' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-[#12141c] text-gray-500 border-white/5 hover:bg-white/5'}`}>
                    Visão Padrão
                 </button>
-                <button onClick={() => setModoAnalise('fogo')} className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest border transition-all whitespace-nowrap ${modoAnalise === 'fogo' ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-[#12141c] text-gray-500 border-white/5 hover:bg-white/5'}`}>
-                   Caçador de Fogo
+                <button onClick={() => {
+                   setModoAnalise('fogo');
+                   setIntervalMins(10);
+                   setMinTarget(2);
+                   setMaxEspacoCurto(2);
+                }} className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest border transition-all whitespace-nowrap ${modoAnalise === 'fogo' ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-[#12141c] text-gray-500 border-white/5 hover:bg-white/5'}`}>
+                   Caçador de Devedor
                 </button>
 
                 {(modoAnalise !== 'padrao') && (
@@ -503,8 +508,8 @@ export default function MensalAvancadoPage() {
                  <p>Mostra todos os brancos de um horário. <b>Quando usar:</b> Excelente para mapear as janelas "gordas" do algoritmo. Se uma coluna inteira (Dia) está verde, o dia foi pagador.</p>
                </div>
                <div>
-                 <h4 className="font-black text-amber-400 text-md uppercase tracking-widest mb-2 border-l-2 border-amber-500 pl-2">Caçador de Fogo 🔥</h4>
-                 <p>Mostra a tabela padrão, mas acende um "Fogo" nos horários que deram brancos duplos (curtos). <b>Como Operar:</b> Se você entrar num horário que tem fogo no dia anterior (indicado com a borda laranja preditiva no futuro), a chance matemática de sair brancos duplos é extrema.</p>
+                 <h4 className="font-black text-amber-400 text-md uppercase tracking-widest mb-2 border-l-2 border-amber-500 pl-2">Caçador de Devedor 🔥</h4>
+                 <p>Focado em encontrar janelas onde a casa está "devendo" e paga brancos próximos um do outro (brancos curtos como: duplo, dentado, banguelo e banguelão). <b>Como Operar:</b> O sistema acende um "Fogo" nos horários onde ocorreram essas recuperações rápidas. Ao operar em um horário futuro que teve fogo no dia anterior (marcado com borda laranja preditiva), você aumenta exponencialmente a chance matemática de surfar uma sequência de brancos curtos.</p>
                </div>
              </div>
              <div className="p-4 border-t border-white/5 bg-[#12141c] flex justify-end">

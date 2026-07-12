@@ -26,7 +26,7 @@ export async function getResultsFromDB(limit: number): Promise<Result[] | null> 
   }
 }
 
-export async function getResultsPeriodFromDB(hours: number, onlyWhites: boolean = false): Promise<Result[] | null> {
+export async function getResultsPeriodFromDB(hours: number, onlyWhites: boolean = false, compact: boolean = false): Promise<Result[] | null> {
   try {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
     
@@ -34,6 +34,8 @@ export async function getResultsPeriodFromDB(hours: number, onlyWhites: boolean 
     
     if (onlyWhites) {
       queryStr = "SELECT id, color, roll, timestamp FROM results WHERE timestamp >= $1 AND (roll::text = '0' OR color ILIKE '%branco%' OR color ILIKE '%white%') ORDER BY timestamp ASC, id ASC";
+    } else if (compact) {
+      queryStr = "SELECT id, color, roll, timestamp FROM results WHERE timestamp >= $1 ORDER BY timestamp ASC, id ASC";
     }
 
     const result = await query(

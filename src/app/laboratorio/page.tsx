@@ -211,10 +211,10 @@ export default function LaboratorioPage(){
   const fetchPeriod = async (hours: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/results/period?hours=${hours}`);
+      const res = await fetch(`/api/results/period?hours=${hours}&compact=true`);
       if (!res.ok) return;
       const j = await res.json();
-      if (j.data) {
+      if (j.data && j.data.length > 0) {
         setData(j.data.map((r:any) => ({
           ...r,
           color: r.color ? String(r.color).charAt(0).toUpperCase() + String(r.color).slice(1).toLowerCase() : 'Branco',
