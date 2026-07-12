@@ -44,11 +44,22 @@ export function useMestreCores(globalData: RollData[], lookbackHours: number = 3
 
             if (prevState.status === 'active') {
                 // Checar se a aposta é imediata ou se está agendada pro futuro
-                if (prevState.scheduledMinute !== null && prevState.scheduledMinute !== currentMin) {
-                    // Ainda aguardando o minuto chegar. Não conta como step!
-                    // Mas precisamos checar se não surgiu conflito pro mesmo minuto...
-                    // (Lógica de conflito já seria tratada se houvesse no momento de setar)
-                    return nextState; 
+                if (prevState.scheduledMinute !== null) {
+                    if (prevState.scheduledMinute !== currentMin && prevState.stones.length === 0) {
+                        // Verifica se o minuto já passou para não travar o robô
+                        let isPast = false;
+                        if (currentMin > prevState.scheduledMinute && (currentMin - prevState.scheduledMinute) < 5) isPast = true;
+                        if (prevState.scheduledMinute >= 55 && currentMin < 5) isPast = true;
+                        
+                        if (isPast) {
+                            return { status: 'standby', step: 0, level: 0, targetColor: null, stones: [], scheduledMinute: null };
+                        }
+                        
+                        return nextState; 
+                    } else {
+                        // O minuto exato chegou, vamos limpar o agendamento para liberar as próximas pedras (Gales)
+                        nextState.scheduledMinute = null;
+                    }
                 }
 
                 // Agora estamos no minuto exato ou é uma entrada imediata
