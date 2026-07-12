@@ -335,7 +335,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   const renderAll = useCallback((fit = false) => {
     if (!candle.current || !activeData.length) return;
     const built = getBuilt(activeData);
-    const safeCandles = built.map(b => b.candle).filter(c => !isNaN(c.time) && !isNaN(c.open) && !isNaN(c.high) && !isNaN(c.low) && !isNaN(c.close));
+    const safeCandles = built.map(b => b.candle).filter(c => !isNaN(Number(c.time)) && !isNaN(c.open) && !isNaN(c.high) && !isNaN(c.low) && !isNaN(c.close));
     candle.current.setData(safeCandles as any);
     if (fit) chart.current?.timeScale().fitContent();
     const accs = built.map(b => b.acc); const times = built.map(b => b.time);
