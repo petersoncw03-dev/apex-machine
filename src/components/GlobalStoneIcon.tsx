@@ -1,4 +1,4 @@
-export const GlobalStoneIcon = ({ n, size = "md" }: { n: number, size?: "sm" | "md" | "lg" | "ticker" }) => {
+export const GlobalStoneIcon = ({ n, size = "md" }: { n: number, size?: "xs" | "sm" | "md" | "lg" | "ticker" }) => {
    let containerBg = 'bg-[#2C2F33]';
    let circleBorder = 'border-[1px] border-white/40';
    let textClass = 'text-white font-black';
@@ -13,6 +13,7 @@ export const GlobalStoneIcon = ({ n, size = "md" }: { n: number, size?: "sm" | "
    }
 
    const dims: any = {
+     xs: { out: 'w-[18px] h-[18px]', in: 'w-[14px] h-[14px]', txt: 'text-[7px]' },
      sm: { out: 'w-7 h-7', in: 'w-5 h-5', txt: 'text-[9px]' },
      md: { out: 'w-10 h-10', in: 'w-7 h-7', txt: 'text-[12px]' },
      lg: { out: 'w-12 h-12', in: 'w-8 h-8', txt: 'text-[14px]' },

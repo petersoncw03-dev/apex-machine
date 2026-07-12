@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createClient } from "@/utils/supabase/client";
 import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries } from "lightweight-charts";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
@@ -87,6 +88,35 @@ export default function FinanceiroPage() {
   const [limit,setLimit]=useState(500);
   const [tf,setTf]=useState("tick");
   const [inds,setInds]=useState<Ind[]>([]);
+  
+  // -- INTEGRAÇÃO SUPABASE (SALVAMENTO NA NUVEM) --
+  const supabase = createClient();
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        setIsSettingsLoaded(true);
+        return;
+      }
+      
+      const { data, error } = await supabase.from('profiles').select('chart_settings').eq('id', session.user.id).single();
+      if (!error && data?.chart_settings?.inds) {
+        setInds(data.chart_settings.inds);
+      }
+      setIsSettingsLoaded(true);
+    };
+    loadSettings();
+  }, [supabase.auth]);
+
+  const saveSettingsToCloud = async (newInds: Ind[]) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+    await supabase.from('profiles').update({ chart_settings: { inds: newInds } }).eq('id', session.user.id);
+  };
+  // ------------------------------------------------
+
   const [showSide,setShowSide]=useState(false);
   const [showPeriod,setShowPeriod]=useState(false);
   const [showTf,setShowTf]=useState(false);
@@ -357,6 +387,7 @@ export default function FinanceiroPage() {
   useEffect(()=>{ renderAll(true); },[tf,renderAll]);
   useEffect(()=>{ const id=setInterval(async()=>{await pollNew();renderAll(false);},10000); return()=>clearInterval(id); },[pollNew,renderAll]);
 
+
   const addInd=()=>{
     if(!chart.current)return; const p=parseInt(indPer); if(isNaN(p)||p<2)return;
     const key=`${indType}_${p}_${Date.now()}`;
@@ -367,14 +398,22 @@ export default function FinanceiroPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     s.setData(times.map((t,i)=>vals[i]!==null?{time:t,value:vals[i]}:null).filter(Boolean) as any);
     const color=CPOOL[cidx.current%CPOOL.length]; cidx.current++;
-    setInds(prev=>[...prev,{key,type:indType,period:p,color:indColor||color,thickness:indThick}]);
+    setInds(prev=>{
+      const novo = [...prev,{key,type:indType,period:p,color:indColor||color,thickness:indThick}];
+      saveSettingsToCloud(novo);
+      return novo;
+    });
     setIndPer("");
   };
 
   const removeInd=(key:string)=>{
     const s=sMap.current.get(key);
     if(s&&chart.current){try{s.applyOptions({visible:false});s.setData([]);chart.current.removeSeries(s);}catch{}}
-    sMap.current.delete(key); setInds(prev=>prev.filter(i=>i.key!==key));
+    sMap.current.delete(key); setInds(prev=>{
+      const novo = prev.filter(i=>i.key!==key);
+      saveSettingsToCloud(novo);
+      return novo;
+    });
   };
 
   const zoomIn=()=>{ const r=chart.current?.timeScale().getVisibleLogicalRange(); if(!r)return; const c=(r.from+r.to)/2,sz=(r.to-r.from)*0.35; chart.current.timeScale().setVisibleLogicalRange({from:c-sz,to:c+sz}); };
@@ -384,6 +423,7 @@ export default function FinanceiroPage() {
   const FloatBtn=({onClick,children,active=false}:{onClick:()=>void,children:React.ReactNode,active?:boolean})=>(
     <button onClick={onClick} className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-all backdrop-blur-sm border ${active?"bg-white/20 border-white/30 text-white":"bg-black/50 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white"}`}>{children}</button>
   );
+
 
   return (
     <div className="min-h-screen bg-[#0d0d0f] text-white flex flex-col">

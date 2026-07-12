@@ -49,6 +49,7 @@ const sections: NavSection[] = [
       { href: '/casa-exata', label: 'Casa Exata', icon: <TrendingUp size={18} /> },
       { href: '/dupla-exata', label: 'Dupla Exata', icon: <Target size={18} />, badge: 'Novo' },
       { href: '/analysis', label: 'Análise Avançada', icon: <Grid3X3 size={18} />, badge: 'Beta' },
+      { href: '/mensal-avancado', label: 'Mensal Avançado', icon: <BarChart2 size={18} />, badge: 'VIP' },
     ]
   }
 ];

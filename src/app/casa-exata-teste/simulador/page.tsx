@@ -132,9 +132,25 @@ export default function CasaExataSimulador() {
             }
         }
 
-        const isWhiteBet = whiteCount >= minConfluencia;
-        const isRedBet = redCount >= minConfluencia;
-        const isBlackBet = blackCount >= minConfluencia;
+        let isWhiteBet = whiteCount >= minConfluencia;
+        let isRedBet = redCount >= minConfluencia;
+        let isBlackBet = blackCount >= minConfluencia;
+        
+        let conflictCancelled = false;
+        let cancelledCycleType = '';
+        if (targetMode === 'cores' && isRedBet && isBlackBet) {
+            if (redCount > blackCount) {
+                isBlackBet = false;
+                cancelledCycleType = 'black';
+            } else if (blackCount > redCount) {
+                isRedBet = false;
+                cancelledCycleType = 'red';
+            } else {
+                isRedBet = false;
+                isBlackBet = false;
+                conflictCancelled = true;
+            }
+        }
         
         let anyWin = false;
         let anyLoss = false;
@@ -173,6 +189,15 @@ export default function CasaExataSimulador() {
             
             const currentT = cycle.startT + cycle.currentShot;
             if (currentT === T) {
+                if (conflictCancelled && (cycle.type === 'red' || cycle.type === 'black')) {
+                    cycle.resolved = true;
+                    continue;
+                }
+                if (cancelledCycleType === cycle.type) {
+                    cycle.resolved = true;
+                    continue;
+                }
+                
                 let hitTarget = false;
                 if (cycle.type === 'white' && (latestStone.color.includes('Branco') || latestStone.roll === '0')) hitTarget = true;
                 if (cycle.type === 'red' && (latestStone.color.includes('Vermelho') || (parseInt(latestStone.roll as string) >= 1 && parseInt(latestStone.roll as string) <= 7))) hitTarget = true;

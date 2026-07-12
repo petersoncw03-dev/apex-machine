@@ -12,7 +12,7 @@ interface ResumoDiarioPanelProps {
 }
 
 const CARD = 'bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300';
-const HEAD = 'px-5 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
+const HEAD = 'px-4 py-2 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
 const SEL = 'bg-[#0b0e14] border border-white/10 text-white text-[10px] px-3 py-1.5 rounded-lg outline-none focus:border-[#00c83a] uppercase font-black tracking-widest hover:border-white/20 transition-colors cursor-pointer';
 
 export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps) {
@@ -164,9 +164,9 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
   };
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-[1600px] mx-auto w-full pb-32">
+    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-[1600px] mx-auto w-full pb-32">
       {/* Header */}
-      <div className={`${CARD} p-5 flex flex-row items-center gap-4`}>
+      <div className={`${CARD} p-4 flex flex-row items-center gap-4`}>
          <div className="w-12 h-12 rounded-xl bg-[#00c83a]/20 border border-[#00c83a]/40 flex items-center justify-center shadow-[0_0_15px_rgba(0,98,255,0.3)] shrink-0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-[#00c83a]"><path d="M12 2a2 2 0 0 1 2 2c-.08.64-.17 1.25-.27 1.83.67.24 1.32.55 1.94.92l1.6-1.07a2 2 0 0 1 2.83.82l1.24 2.14a2 2 0 0 1-.5 2.6l-1.46 1.28c.12.63.18 1.27.18 1.93s-.06 1.3-.18 1.93l1.46 1.28a2 2 0 0 1 .5 2.6l-1.24 2.14a2 2 0 0 1-2.83.82l-1.6-1.07c-.62.37-1.27.68-1.94.92.1.58.19 1.19.27 1.83a2 2 0 0 1-2 2h-2.48a2 2 0 0 1-2-2c.08-.64.17-1.25.27-1.83-.67-.24-1.32-.55-1.94-.92l-1.6 1.07a2 2 0 0 1-2.83-.82L2.7 17.5a2 2 0 0 1 .5-2.6l1.46-1.28A9.87 9.87 0 0 1 4.48 12c0-.66.06-1.3.18-1.93L3.2 8.78a2 2 0 0 1-.5-2.6l1.24-2.14a2 2 0 0 1 2.83-.82l1.6 1.07c.62-.37 1.27-.68 1.94-.92-.1-.58-.19-1.19-.27-1.83a2 2 0 0 1 2-2h2.48Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
          </div>
@@ -186,9 +186,9 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
          </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
          {/* Left Column */}
-         <div className="xl:col-span-2 flex flex-col gap-6">
+         <div className="xl:col-span-2 flex flex-col gap-4">
             
             {/* RESUMO INTELIGENTE */}
             <div className={CARD}>
@@ -198,24 +198,24 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                      Resumo Inteligente ({getPeriodLabel()})
                   </span>
                </div>
-               <div className="p-5 flex flex-col gap-3">
-                  <p className="text-[13px] text-slate-300 flex items-start gap-3">
+               <div className="p-4 flex flex-col gap-3">
+                  <p className="text-[12px] text-slate-300 flex items-start gap-3">
                      <span className="text-[#00c83a] font-black mt-0.5">→</span>
                      <span>Tivemos <strong className="text-white">{stats.brancos} brancos</strong> em <strong className="text-white">{stats.totalRodadas} rodadas</strong>, com distância média de <strong className="text-white">{stats.mediaBrancos} rodadas</strong> entre cada.</span>
                   </p>
-                  <p className="text-[13px] text-slate-300 flex items-start gap-3">
+                  <p className="text-[12px] text-slate-300 flex items-start gap-3">
                      <span className="text-amber-500 font-black mt-0.5">→</span>
                      <span>Ocorreram <strong className="text-amber-400">{stats.recuperacoesCount} recuperações</strong> (períodos de 20+ rodadas sem branco). A mais longa durou {stats.maxWhiteDelay} rodadas.</span>
                   </p>
-                  <p className="text-[13px] text-slate-300 flex items-start gap-3">
+                  <p className="text-[12px] text-slate-300 flex items-start gap-3">
                      <span className="text-[#00c83a] font-black mt-0.5">→</span>
                      <span>A cor dominante é o <strong className="text-white">{stats.domColor}</strong> com {stats.domPct}%. Há uma {stats.tendText.toLowerCase()}.</span>
                   </p>
-                  <p className="text-[13px] text-slate-300 flex items-start gap-3">
+                  <p className="text-[12px] text-slate-300 flex items-start gap-3">
                      <span className="text-emerald-500 font-black mt-0.5">→</span>
                      <span>Minuto com mais brancos: <strong className="text-white">:{stats.topBrancos[0]?.min.toString().padStart(2,'0') || '00'}</strong> com {stats.topBrancos[0]?.pct.toFixed(1)}% de taxa.</span>
                   </p>
-                  <p className="text-[13px] text-slate-300 flex items-start gap-3">
+                  <p className="text-[12px] text-slate-300 flex items-start gap-3">
                      <span className="text-slate-500 font-black mt-0.5">→</span>
                      <span>Maiores sequências: Vermelho <strong className="text-rose-500">{stats.maxRedSeq}x</strong>, Preto <strong className="text-slate-200">{stats.maxBlackSeq}x</strong>, Branco <strong className="text-white">{stats.maxWhiteSeq}x</strong>.</span>
                   </p>
@@ -230,17 +230,17 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                      Maiores Sequências ({getPeriodLabel()})
                   </span>
                </div>
-               <div className="p-5 grid grid-cols-3 gap-4">
-                  <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-b from-[#E51E3E]/10 to-transparent border border-[#E51E3E]/20 rounded-xl shadow-[inset_0_2px_15px_rgba(229,30,62,0.1)]">
-                     <span className="text-3xl font-black text-[#E51E3E] drop-shadow-[0_0_10px_rgba(229,30,62,0.8)]">{stats.maxRedSeq}x</span>
+               <div className="p-4 grid grid-cols-3 gap-4">
+                  <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#E51E3E]/10 to-transparent border border-[#E51E3E]/20 rounded-xl shadow-[inset_0_2px_15px_rgba(229,30,62,0.1)]">
+                     <span className="text-2xl font-black text-[#E51E3E] drop-shadow-[0_0_10px_rgba(229,30,62,0.8)]">{stats.maxRedSeq}x</span>
                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-2">Vermelho</span>
                   </div>
-                  <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-b from-[#2C2F33]/40 to-transparent border border-white/10 rounded-xl shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)]">
-                     <span className="text-3xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{stats.maxBlackSeq}x</span>
+                  <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#2C2F33]/40 to-transparent border border-white/10 rounded-xl shadow-[inset_0_2px_15px_rgba(255,255,255,0.05)]">
+                     <span className="text-2xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">{stats.maxBlackSeq}x</span>
                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-2">Preto</span>
                   </div>
-                  <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-b from-white/10 to-transparent border border-white/20 rounded-xl shadow-[inset_0_2px_15px_rgba(255,255,255,0.1)]">
-                     <span className="text-3xl font-black text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]">{stats.maxWhiteSeq}x</span>
+                  <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-b from-white/10 to-transparent border border-white/20 rounded-xl shadow-[inset_0_2px_15px_rgba(255,255,255,0.1)]">
+                     <span className="text-2xl font-black text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]">{stats.maxWhiteSeq}x</span>
                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-2">Branco</span>
                   </div>
                </div>
@@ -251,30 +251,30 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
          {/* Right Column */}
          <div className="flex flex-col gap-4">
             
-            <div className={`${CARD} p-4 flex flex-col gap-1`}>
+            <div className={`${CARD} p-3 flex flex-col gap-1`}>
                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-white"></div> Brancos no Período</span>
-               <span className="text-2xl font-black text-white mt-1">{stats.brancos}</span>
+               <span className="text-xl font-black text-white mt-1">{stats.brancos}</span>
                <span className="text-[10px] text-slate-500 font-bold">{(stats.totalRodadas > 0 ? (stats.brancos / stats.totalRodadas) * 100 : 0).toFixed(1)}% • {stats.totalRodadas} rodadas</span>
             </div>
 
             {period !== 'ontem' && (
-              <div className={`bg-[#0f141e]/80 backdrop-blur-xl border ${status.border} rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-4 flex flex-col gap-1 relative`}>
+              <div className={`bg-[#0f141e]/80 backdrop-blur-xl border ${status.border} rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-3 flex flex-col gap-1 relative`}>
                  <div className={`absolute inset-0 ${status.bg} pointer-events-none`}></div>
                  <span className={`text-[10px] font-bold uppercase ${status.color} tracking-widest flex items-center gap-1.5 z-10`}><div className={`w-1.5 h-1.5 rounded-full ${status.color.replace('text-', 'bg-')}`}></div> Status Atual</span>
-                 <span className={`text-lg font-black ${status.color} mt-1 z-10`}>{status.text}</span>
+                 <span className={`text-base font-black ${status.color} mt-1 z-10`}>{status.text}</span>
                  <span className="text-[10px] text-slate-400 font-bold z-10">{stats.currentWhiteDelay} sem branco</span>
               </div>
             )}
 
-            <div className={`${CARD} p-4 flex flex-col gap-1`}>
+            <div className={`${CARD} p-3 flex flex-col gap-1`}>
                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#00c83a]"></div> Dist. Média</span>
-               <span className="text-2xl font-black text-white mt-1">{stats.mediaBrancos}</span>
+               <span className="text-xl font-black text-white mt-1">{stats.mediaBrancos}</span>
                <span className="text-[10px] text-slate-500 font-bold">Máx {stats.maxWhiteDelay} rodadas</span>
             </div>
 
-            <div className={`${CARD} p-4 flex flex-col gap-1`}>
+            <div className={`${CARD} p-3 flex flex-col gap-1`}>
                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Recuperações</span>
-               <span className="text-2xl font-black text-white mt-1">{stats.recuperacoesCount}</span>
+               <span className="text-xl font-black text-white mt-1">{stats.recuperacoesCount}</span>
                <span className="text-[10px] text-slate-500 font-bold">Máx {stats.maxWhiteDelay} rodadas</span>
             </div>
 
@@ -282,7 +282,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
       </div>
 
       {/* Row 2 */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
          
          {/* ANÁLISE DO BRANCO */}
          <div className={CARD}>
@@ -293,23 +293,23 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                </span>
             </div>
             <div className="p-0 flex flex-col">
-               <div className="flex justify-between items-center p-4 border-b border-white/5">
+               <div className="flex justify-between items-center p-3 border-b border-white/5">
                   <span className="text-[11px] font-bold text-slate-400 tracking-wider">Último branco</span>
-                  <span className="text-[12px] font-black text-white">{stats.lastWhiteDate ? stats.lastWhiteDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '--:--:--'}</span>
+                  <span className="text-[11px] font-black text-white">{stats.lastWhiteDate ? stats.lastWhiteDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '--:--:--'}</span>
                </div>
                {period !== 'ontem' && (
-                 <div className="flex justify-between items-center p-4 border-b border-white/5 bg-white/[0.02]">
+                 <div className="flex justify-between items-center p-3 border-b border-white/5 bg-white/[0.02]">
                     <span className="text-[11px] font-bold text-slate-400 tracking-wider">Distância atual</span>
-                    <span className="text-[12px] font-black text-white">{stats.currentWhiteDelay} rodadas</span>
+                    <span className="text-[11px] font-black text-white">{stats.currentWhiteDelay} rodadas</span>
                  </div>
                )}
-               <div className="flex justify-between items-center p-4 border-b border-white/5">
+               <div className="flex justify-between items-center p-3 border-b border-white/5">
                   <span className="text-[11px] font-bold text-slate-400 tracking-wider">Média entre brancos</span>
-                  <span className="text-[12px] font-black text-white">{stats.mediaBrancos} rodadas</span>
+                  <span className="text-[11px] font-black text-white">{stats.mediaBrancos} rodadas</span>
                </div>
-               <div className="flex justify-between items-center p-4 bg-white/[0.02]">
+               <div className="flex justify-between items-center p-3 bg-white/[0.02]">
                   <span className="text-[11px] font-bold text-slate-400 tracking-wider">Maior distância do período</span>
-                  <span className="text-[12px] font-black text-rose-500">{stats.maxWhiteDelay} rodadas</span>
+                  <span className="text-[11px] font-black text-rose-500">{stats.maxWhiteDelay} rodadas</span>
                </div>
             </div>
          </div>
@@ -322,7 +322,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                   Dominância do Período
                </span>
             </div>
-            <div className="p-6 flex flex-col gap-6">
+            <div className="p-4 flex flex-col gap-4">
                <div className="w-full h-4 rounded-full flex overflow-hidden shadow-inner bg-slate-800">
                   <div className="h-full bg-[#E51E3E]" style={{width: `${(stats.vermelhos/stats.totalRodadas)*100}%`}}></div>
                   <div className="h-full bg-slate-300" style={{width: `${(stats.brancos/stats.totalRodadas)*100}%`}}></div>
@@ -330,15 +330,15 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                </div>
                <div className="flex justify-between gap-4">
                   <div className="flex-1 bg-[#E51E3E]/10 border border-[#E51E3E]/30 rounded-lg p-3 flex flex-col items-center justify-center gap-1">
-                     <span className="text-lg font-black text-[#E51E3E]">{stats.vermelhos}</span>
+                     <span className="text-base font-black text-[#E51E3E]">{stats.vermelhos}</span>
                      <span className="text-[9px] font-bold text-slate-400">{(stats.totalRodadas>0?(stats.vermelhos/stats.totalRodadas)*100:0).toFixed(1)}%</span>
                   </div>
                   <div className="flex-1 bg-[#2C2F33]/50 border border-white/10 rounded-lg p-3 flex flex-col items-center justify-center gap-1">
-                     <span className="text-lg font-black text-white">{stats.pretos}</span>
+                     <span className="text-base font-black text-white">{stats.pretos}</span>
                      <span className="text-[9px] font-bold text-slate-400">{(stats.totalRodadas>0?(stats.pretos/stats.totalRodadas)*100:0).toFixed(1)}%</span>
                   </div>
                   <div className="flex-1 bg-white/10 border border-white/20 rounded-lg p-3 flex flex-col items-center justify-center gap-1">
-                     <span className="text-lg font-black text-blue-300">{stats.brancos}</span>
+                     <span className="text-base font-black text-blue-300">{stats.brancos}</span>
                      <span className="text-[9px] font-bold text-slate-400">{(stats.totalRodadas>0?(stats.brancos/stats.totalRodadas)*100:0).toFixed(1)}%</span>
                   </div>
                </div>
@@ -356,7 +356,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
       </div>
       
       {/* ROW 3: MINUTOS */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
          {/* MINUTOS QUENTES P/ BRANCO */}
          <div className={CARD}>
@@ -366,11 +366,11 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                   Minutos Quentes P/ Branco
                </span>
             </div>
-            <div className="p-5 flex flex-col gap-4 h-full">
+            <div className="p-4 flex flex-col gap-3 h-full">
                {stats.topBrancos.map((m, i) => (
                   <div key={i} className="flex items-center gap-4">
                      <div className="w-5 h-5 rounded-full bg-[#00c83a]/20 text-[#00c83a] text-[10px] font-black flex items-center justify-center shrink-0 border border-[#00c83a]/30">{i+1}</div>
-                     <span className="text-[12px] font-black text-white w-6 shrink-0">:{m.min.toString().padStart(2,'0')}</span>
+                     <span className="text-[11px] font-black text-white w-6 shrink-0">:{m.min.toString().padStart(2,'0')}</span>
                      <div className="flex-1 h-2.5 bg-slate-800 rounded-full overflow-hidden">
                         <div className="h-full bg-[#00c83a] rounded-full" style={{width: `${(m.hits / (stats.topBrancos[0]?.hits || 1)) * 100}%`}}></div>
                      </div>
@@ -394,7 +394,7 @@ export default function ResumoDiarioPanel({ globalData }: ResumoDiarioPanelProps
                </span>
                <span className="text-[9px] font-bold text-slate-500 tracking-wider">Base: {stats.totalRodadas} rodadas</span>
             </div>
-            <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2 mb-2">
                      <div className="w-2.5 h-2.5 rounded-full bg-[#E51E3E]"></div>

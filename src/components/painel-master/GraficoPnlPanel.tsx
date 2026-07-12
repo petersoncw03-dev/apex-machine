@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries } from "lightweight-charts";
 import * as htmlToImage from 'html-to-image';
 
@@ -74,6 +75,36 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
 
   const [tf, setTf] = useState("tick");
   const [inds, setInds] = useState<Ind[]>([]);
+  
+  // -- INTEGRAÇÃO SUPABASE (SALVAMENTO NA NUVEM) --
+  const supabase = createClient();
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        setIsSettingsLoaded(true);
+        return;
+      }
+      
+      const { data, error } = await supabase.from('profiles').select('chart_settings').eq('id', session.user.id).single();
+      if (!error && data?.chart_settings?.inds) {
+        setInds(data.chart_settings.inds);
+      }
+      setIsSettingsLoaded(true);
+    };
+    loadSettings();
+  }, [supabase.auth]);
+
+  const saveSettingsToCloud = async (newInds: Ind[]) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+    await supabase.from('profiles').update({ chart_settings: { inds: newInds } }).eq('id', session.user.id);
+  };
+  
+  // ------------------------------------------------
+
   const [showSide, setShowSide] = useState(false);
   const [indType, setIndType] = useState<"sma" | "ema" | "bb">("ema");
   const [indPer, setIndPer] = useState("");
@@ -136,7 +167,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     candle.current = c.addSeries(CandlestickSeries, { upColor: "#e51e3e", downColor: "rgba(200,200,220,0.8)", borderVisible: false, wickVisible: true });
     const ro = new ResizeObserver(() => { if (cRef.current && chart.current) chart.current.applyOptions({ width: cRef.current.clientWidth, height: cRef.current.clientHeight }); });
     if (cRef.current) ro.observe(cRef.current);
-    return () => { ro.disconnect(); try { c.remove(); } catch (e) { } chart.current = null; candle.current = null; sMap.current.clear(); };
+  
+  return () => { ro.disconnect(); try { c.remove(); } catch (e) { } chart.current = null; candle.current = null; sMap.current.clear(); };
   }, []);
 
   const addInd = () => {
@@ -165,7 +197,11 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
       s.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: vals[i] } : null).filter(Boolean) as any);
     }
     
-    setInds(prev => [...prev, { key, type: indType, period: p, color, thickness: indThick }]);
+    setInds(prev=>{
+      const novo = [...prev,{key,type:indType,period:p,color,thickness:indThick}];
+      saveSettingsToCloud(novo);
+      return novo;
+    });
     setIndPer("");
   };
 
@@ -182,7 +218,11 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
       if (s && chart.current) { try { s.applyOptions({ visible: false }); s.setData([]); chart.current.removeSeries(s); } catch { } }
       sMap.current.delete(key);
     }
-    setInds(prev => prev.filter(i => i.key !== key));
+    setInds(prev=>{
+      const novo = prev.filter(i=>i.key!==key);
+      saveSettingsToCloud(novo);
+      return novo;
+    });
   };
 
   const prevTf = useRef(tf);
@@ -228,6 +268,34 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
       {children}
     </button>
   );
+
+
+  useEffect(() => {
+    if (!chart.current || !isSettingsLoaded) return;
+    let changed = false;
+    inds.forEach(ind => {
+      if (!sMap.current.has(ind.key)) {
+        const s = chart.current.addSeries(LineSeries, {
+          color: ind.color,
+          lineWidth: ind.thickness,
+          lineStyle: ind.type === "ema" ? 1 : 0,
+          crosshairMarkerVisible: false,
+          priceLineVisible: false,
+          lastValueVisible: true
+        });
+        sMap.current.set(ind.key, s);
+        changed = true;
+      }
+    });
+    // Remove series that are in sMap but not in inds
+    sMap.current.forEach((s, key) => {
+      if (!inds.find(i => i.key === key)) {
+        try { chart.current.removeSeries(s); } catch {}
+        sMap.current.delete(key);
+      }
+    });
+    if (changed) renderAll(false);
+  }, [inds, isSettingsLoaded, renderAll]);
 
   return (
     <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative w-full h-[700px]">

@@ -27,26 +27,12 @@ type SortDirection = 'desc' | 'asc' | null;
 
 export default function RadarAvancado() {
   const { isVip } = useVip();
-  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'grafico' | 'analise-pnl' | 'visao-cores'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'resumos' | 'grafico' | 'analise-pnl' | 'visao-cores'>('visao-cores');
   const [histRealTime, setHistRealTime] = useState(true);
   const [histFixedCols, setHistFixedCols] = useState(false);
   const [histReverse, setHistReverse] = useState(false);
   const [histShowSeconds, setHistShowSeconds] = useState(false);
   const [globalData, setGlobalData] = useState<Roll[]>([]);
-  const [globalDataDelayed, setGlobalDataDelayed] = useState<Roll[]>([]);
-  const isInitialLoadDelayed = useRef(true);
-  useEffect(() => {
-    if (isInitialLoadDelayed.current || globalDataDelayed.length === 0) {
-      setGlobalDataDelayed(globalData);
-      if (globalData && globalData.length > 0) isInitialLoadDelayed.current = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      setGlobalDataDelayed(globalData);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [globalData, globalDataDelayed.length]);
-
   const [globalData24h, setGlobalData24h] = useState<Roll[]>([]);
   const isInitialLoad24h = useRef(true);
   useEffect(() => {
@@ -67,11 +53,10 @@ export default function RadarAvancado() {
 
   // ── NOVAS ESTATÍSTICAS (BRANCOS, DUPLOS, TRIPLOS, HORAS) ──────────────
   const [analiseBrancos, setAnaliseBrancos] = useState({ minAtras: 0, rodadasAtras: 0, maxima24h: 0 });
-  const [seqDuplos, setSeqDuplos] = useState({ minAtras: 0, rodadasAtras: 0, brancosSem: 0, maxima: 0, maxBrancosSem: 0 });
-  const [seqTriplos, setSeqTriplos] = useState({ minAtras: 0, rodadasAtras: 0, brancosSem: 0, maxima: 0, maxBrancosSem: 0, duplosSem: 0, maxDuplosSem: 0 });
-  const [patternDays, setPatternDays] = useState(1);
-  const [seqDentado, setSeqDentado] = useState({ minAtras: 0, rodadasAtras: 0, brancosSem: 0, maxima: 0, maxBrancosSem: 0 });
-  const [seqBanguelo, setSeqBanguelo] = useState({ minAtras: 0, rodadasAtras: 0, brancosSem: 0, maxima: 0, maxBrancosSem: 0 });
+  const [seqDuplos, setSeqDuplos] = useState({ minAtras: 0, rodadasAtras: 0, brancosSem: 0, maxima: 0 });
+  const [seqTriplos, setSeqTriplos] = useState({ minAtras: 0, rodadasAtras: 0, brancosSem: 0, maxima: 0, duplosSem: 0, maxDuplosSem: 0 });
+  const [seqDentado, setSeqDentado] = useState({ minAtras: 0, rodadasAtras: 0, brancosSem: 0, maxima: 0 });
+  const [seqBanguelo, setSeqBanguelo] = useState({ minAtras: 0, rodadasAtras: 0, brancosSem: 0, maxima: 0 });
   const [coresPorHora, setCoresPorHora] = useState(Array.from({ length: 24 }, () => ({ r: 0, b: 0, w: 0 })));
   const [coresMode, setCoresMode] = useState<'qtd' | 'perc'>('qtd');
   const [coresHoraOffsetDays, setCoresHoraOffsetDays] = useState<number>(0);
@@ -185,11 +170,11 @@ export default function RadarAvancado() {
   }, [globalData, coresHoraOffsetDays]);
 
   useEffect(() => {
-    if (!globalDataDelayed || globalDataDelayed.length === 0) return;
+    if (!globalData || globalData.length === 0) return;
 
     const now = Date.now();
     const isW = (r: any) => r?.color?.toUpperCase() === 'BRANCO' || r?.color?.toUpperCase() === 'B' || r?.color?.toUpperCase() === 'WHITE' || Number(r?.roll) === 0;
-    const data24h = patternDays === 7 ? globalDataDelayed : globalDataDelayed.slice(-3000);
+    const data24h = globalData.filter(d => (now - new Date(d.timestamp).getTime()) <= 24 * 3600 * 1000);
 
     // Análise de Brancos (último e máxima 24h)
     let lastWIdx = -1;
@@ -225,7 +210,6 @@ export default function RadarAvancado() {
     // Sequências de Brancos (Duplos e Triplos)
     const findPattern = (pattern: ('W'|'X')[]) => {
       let maxDelay = 0;
-      let maxBrancosSem = 0;
       let lastEndIdx = -1;
       const count = pattern.length;
 
@@ -244,12 +228,6 @@ export default function RadarAvancado() {
           if (lastEndIdx !== -1) {
             const delay = endIdx - lastEndIdx;
             if (delay > maxDelay) maxDelay = delay;
-            
-            let wBetween = 0;
-            for (let k = lastEndIdx + 1; k < i; k++) {
-              if (isW(data24h[k])) wBetween++;
-            }
-            if (wBetween > maxBrancosSem) maxBrancosSem = wBetween;
           }
           lastEndIdx = endIdx;
           i += count - 1; // Prevent overlapping
@@ -259,19 +237,8 @@ export default function RadarAvancado() {
       if (lastEndIdx !== -1) {
         const currentDelay = (data24h.length - 1) - lastEndIdx;
         if (currentDelay > maxDelay) maxDelay = currentDelay;
-        
-        let currentWBetween = 0;
-        for (let k = lastEndIdx + 1; k < data24h.length; k++) {
-            if (isW(data24h[k])) currentWBetween++;
-        }
-        if (currentWBetween > maxBrancosSem) maxBrancosSem = currentWBetween;
       } else {
         maxDelay = data24h.length;
-        let totalW = 0;
-        for (let k = 0; k < data24h.length; k++) {
-          if (isW(data24h[k])) totalW++;
-        }
-        maxBrancosSem = totalW;
       }
 
       let minAtras = 0;
@@ -308,7 +275,7 @@ export default function RadarAvancado() {
         }
       }
 
-      return { minAtras, rodadasAtras, brancosSem, maxima: maxDelay, maxBrancosSem };
+      return { minAtras, rodadasAtras, brancosSem, maxima: maxDelay };
     };
 
     const ds = findPattern(['W', 'W']);
@@ -342,10 +309,10 @@ export default function RadarAvancado() {
     setSeqDentado(findPattern(['W', 'X', 'W']));
     setSeqBanguelo(findPattern(['W', 'X', 'X', 'W']));
 
-  }, [globalDataDelayed, patternDays]);
+  }, [globalData]);
 
   const seqColorStats = useMemo(() => {
-    if (!globalDataDelayed || globalDataDelayed.length === 0) return {
+    if (!globalData || globalData.length === 0) return {
       any: { minAtras: 0, rodadasAtras: 0, maxima: 0 },
       red: { minAtras: 0, rodadasAtras: 0, maxima: 0 },
       black: { minAtras: 0, rodadasAtras: 0, maxima: 0 }
@@ -359,10 +326,10 @@ export default function RadarAvancado() {
       let maxDelay = 0;
       let lastEndIdx = -1;
 
-      for (let i = 0; i <= globalDataDelayed.length - count; i++) {
+      for (let i = 0; i <= globalData.length - count; i++) {
         let isSeq = true;
         for (let j = 0; j < count; j++) {
-          if (!colorCheck(globalDataDelayed[i + j])) {
+          if (!colorCheck(globalData[i + j])) {
             isSeq = false;
             break;
           }
@@ -380,32 +347,32 @@ export default function RadarAvancado() {
       }
 
       if (lastEndIdx !== -1) {
-        const currentDelay = (globalDataDelayed.length - 1) - lastEndIdx;
+        const currentDelay = (globalData.length - 1) - lastEndIdx;
         if (currentDelay > maxDelay) maxDelay = currentDelay;
       } else {
-        maxDelay = globalDataDelayed.length;
+        maxDelay = globalData.length;
       }
 
       let minAtras = 0;
       let rodadasAtras = -1;
 
-      for (let i = globalDataDelayed.length - 1; i >= count - 1; i--) {
+      for (let i = globalData.length - 1; i >= count - 1; i--) {
         let isSeq = true;
         for (let j = 0; j < count; j++) {
-          if (!colorCheck(globalDataDelayed[i - j])) {
+          if (!colorCheck(globalData[i - j])) {
             isSeq = false;
             break;
           }
         }
 
         if (isSeq) {
-          rodadasAtras = globalDataDelayed.length - 1 - i;
-          minAtras = Math.floor((now - new Date(globalDataDelayed[i].timestamp).getTime()) / 60000);
+          rodadasAtras = globalData.length - 1 - i;
+          minAtras = Math.floor((now - new Date(globalData[i].timestamp).getTime()) / 60000);
           break;
         }
       }
 
-      if (rodadasAtras === -1) rodadasAtras = globalDataDelayed.length;
+      if (rodadasAtras === -1) rodadasAtras = globalData.length;
 
       return { minAtras, rodadasAtras, maxima: maxDelay };
     };
@@ -414,12 +381,12 @@ export default function RadarAvancado() {
       let maxDelay = 0;
       let lastEndIdx = -1;
 
-      for (let i = 0; i <= globalDataDelayed.length - count; i++) {
+      for (let i = 0; i <= globalData.length - count; i++) {
         let isSeqR = true;
         let isSeqB = true;
         for (let j = 0; j < count; j++) {
-          if (!isR(globalDataDelayed[i + j])) isSeqR = false;
-          if (!isB(globalDataDelayed[i + j])) isSeqB = false;
+          if (!isR(globalData[i + j])) isSeqR = false;
+          if (!isB(globalData[i + j])) isSeqB = false;
         }
 
         if (isSeqR || isSeqB) {
@@ -434,31 +401,31 @@ export default function RadarAvancado() {
       }
 
       if (lastEndIdx !== -1) {
-        const currentDelay = (globalDataDelayed.length - 1) - lastEndIdx;
+        const currentDelay = (globalData.length - 1) - lastEndIdx;
         if (currentDelay > maxDelay) maxDelay = currentDelay;
       } else {
-        maxDelay = globalDataDelayed.length;
+        maxDelay = globalData.length;
       }
 
       let minAtras = 0;
       let rodadasAtras = -1;
 
-      for (let i = globalDataDelayed.length - 1; i >= count - 1; i--) {
+      for (let i = globalData.length - 1; i >= count - 1; i--) {
         let isSeqR = true;
         let isSeqB = true;
         for (let j = 0; j < count; j++) {
-          if (!isR(globalDataDelayed[i - j])) isSeqR = false;
-          if (!isB(globalDataDelayed[i - j])) isSeqB = false;
+          if (!isR(globalData[i - j])) isSeqR = false;
+          if (!isB(globalData[i - j])) isSeqB = false;
         }
 
         if (isSeqR || isSeqB) {
-          rodadasAtras = globalDataDelayed.length - 1 - i;
-          minAtras = Math.floor((now - new Date(globalDataDelayed[i].timestamp).getTime()) / 60000);
+          rodadasAtras = globalData.length - 1 - i;
+          minAtras = Math.floor((now - new Date(globalData[i].timestamp).getTime()) / 60000);
           break;
         }
       }
 
-      if (rodadasAtras === -1) rodadasAtras = globalDataDelayed.length;
+      if (rodadasAtras === -1) rodadasAtras = globalData.length;
 
       return { minAtras, rodadasAtras, maxima: maxDelay };
     };
@@ -468,7 +435,7 @@ export default function RadarAvancado() {
       black: findSeqColor(isB, seqColorLen),
       any: findSeqAnyColor(seqColorLen)
     };
-  }, [globalDataDelayed, seqColorLen]);
+  }, [globalData, seqColorLen]);
 
   // --- IA SIGNALS CALCULATION ---
   // (O Master Sniper AI foi removido para dar lugar ao Mestre de Confluência)
@@ -931,10 +898,10 @@ export default function RadarAvancado() {
   }, []);
 
   // Fatias pré-computadas — cada analítico re-usa o corte já feito, sem varrer tudo de novo
-  const sliceCustomSomaGeral = useMemo(() => sliceByHours(globalDataDelayed, somaHoursGeral), [globalDataDelayed, somaHoursGeral, sliceByHours]);
-  const sliceCustomSomaSM = useMemo(() => sliceByHours(globalDataDelayed, somaHoursSM), [globalDataDelayed, somaHoursSM, sliceByHours]);
-  const sliceCustomCasas = useMemo(() => sliceByHours(globalDataDelayed, casasHours), [globalDataDelayed, casasHours, sliceByHours]);
-  const sliceCustomMin = useMemo(() => sliceByHours(globalDataDelayed, minHours), [globalDataDelayed, minHours, sliceByHours]);
+  const sliceCustomSomaGeral = useMemo(() => sliceByHours(globalData, somaHoursGeral), [globalData, somaHoursGeral, sliceByHours]);
+  const sliceCustomSomaSM = useMemo(() => sliceByHours(globalData, somaHoursSM), [globalData, somaHoursSM, sliceByHours]);
+  const sliceCustomCasas = useMemo(() => sliceByHours(globalData, casasHours), [globalData, casasHours, sliceByHours]);
+  const sliceCustomMin = useMemo(() => sliceByHours(globalData, minHours), [globalData, minHours, sliceByHours]);
 
   const deferredScannerData = useDeferredValue(scannerData);
   const isScannerStale = deferredScannerData !== scannerData || loadingScanner;
@@ -943,7 +910,7 @@ export default function RadarAvancado() {
 
   // ── PAGAMENTO POR COR E PAR/IMPAR ──────────────────────────────────────────
   const corStats = useMemo(() => {
-    const data = sliceByHours(globalDataDelayed, horasCor);
+    const data = sliceByHours(globalData, horasCor);
     let saBlack = 0, smaBlack = 0, hitsBlack = 0;
     let saRed = 0, smaRed = 0, hitsRed = 0;
 
@@ -964,10 +931,10 @@ export default function RadarAvancado() {
       black: { hits: hitsBlack, sa: saBlack, sma: smaBlack },
       red: { hits: hitsRed, sa: saRed, sma: smaRed }
     };
-  }, [globalDataDelayed, horasCor, sliceByHours]);
+  }, [globalData, horasCor, sliceByHours]);
 
   const parImparStats = useMemo(() => {
-    const data = sliceByHours(globalDataDelayed, horasParImpar);
+    const data = sliceByHours(globalData, horasParImpar);
     let saPar = 0, smaPar = 0, hitsPar = 0;
     let saImpar = 0, smaImpar = 0, hitsImpar = 0;
 
@@ -987,7 +954,7 @@ export default function RadarAvancado() {
       par: { hits: hitsPar, sa: saPar, sma: smaPar },
       impar: { hits: hitsImpar, sa: saImpar, sma: smaImpar }
     };
-  }, [globalDataDelayed, horasParImpar, sliceByHours]);
+  }, [globalData, horasParImpar, sliceByHours]);
 
   // ── SOMA ──────────────────────────────────────────────────────────────────
   const somaStats = useMemo(() => {
@@ -1228,7 +1195,7 @@ export default function RadarAvancado() {
   const timeframesBranco = useMemo(() => [1, 2, 3, 4, 5, 6, 12, 24], []);
   const galeBrancoStats = useMemo(() => {
     return timeframesBranco.map(hours => {
-      const data = sliceByHours(globalDataDelayed, hours);
+      const data = sliceByHours(globalData, hours);
       const st = Array.from({ length: 15 }, (_, i) => ({ stone: i, hits: 0, triggers: 0 }));
 
       for (let i = 0; i < data.length - entradasBranco; i++) {
@@ -1246,7 +1213,7 @@ export default function RadarAvancado() {
       }
       return { hours, stats: st };
     });
-  }, [globalDataDelayed, sliceByHours, timeframesBranco, entradasBranco]);
+  }, [globalData, sliceByHours, timeframesBranco, entradasBranco]);
 
   return (
     <div className="h-screen overflow-hidden bg-[#030303] text-gray-200 font-sans flex flex-col relative">
@@ -1279,21 +1246,21 @@ export default function RadarAvancado() {
            {/* Abas Principais (Top Navigation) */}
            <div className="flex items-center gap-2 md:gap-1.5 overflow-x-auto custom-scrollbar bg-[#0b0e14]/80 backdrop-blur-md border border-[#00c83a]/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-2 md:p-1.5 shrink-0">
              <button 
-               onClick={() => setActiveTab('home')} 
+               onClick={() => window.location.href = '/painel-master'} 
                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'home' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
              >
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                Home
              </button>
              <button 
-               onClick={() => setActiveTab('history')} 
+               onClick={() => window.location.href = '/painel-master'} 
                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'history' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
              >
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
                Histórico
              </button>
              <button 
-               onClick={() => setActiveTab('resumos')} 
+               onClick={() => window.location.href = '/painel-master'} 
                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'resumos' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
              >
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -1308,7 +1275,7 @@ export default function RadarAvancado() {
                 Stress Test
               </button>
               <button 
-                onClick={() => isVip ? window.location.href = '/painel-master/avancado' : alert('Aba exclusiva para usuários VIP!')} 
+                onClick={() => isVip ? setActiveTab('visao-cores') : alert('Aba exclusiva para usuários VIP!')} 
                 className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'visao-cores' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'} ${!isVip ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={!isVip ? "Exclusivo VIP" : ""}
               >
@@ -1316,7 +1283,7 @@ export default function RadarAvancado() {
                 Avançado
               </button>
               <button 
-                onClick={() => setActiveTab('grafico')} 
+                onClick={() => window.location.href = '/painel-master'} 
                 className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'grafico' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
@@ -1402,7 +1369,11 @@ export default function RadarAvancado() {
               
               {/* ── LEFT COLUMN: NOVAS INFORMAÇÕES ──────────────────────────────────── */}
               
-              
+              {activeTab === 'visao-cores' && (
+                <div className="w-full">
+                  <VisaoCoresTab globalData={globalData} />
+                </div>
+              )}
 
               {activeTab === 'home' && (
                 <div className="flex flex-col gap-4 w-full xl:w-[300px] shrink-0">
@@ -1436,15 +1407,8 @@ export default function RadarAvancado() {
 
                 {/* Sequência de Brancos (Duplos/Triplos) */}
                 <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-white/5 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.5)] [&>*:first-child]:rounded-t-lg [&>*:last-child]:rounded-b-lg transition-all duration-300 relative">
-                  <div className="px-3 py-2 border-b border-white/5 bg-[#0b0e14]/50 text-center flex justify-between items-center">
+                  <div className="px-3 py-2 border-b border-white/5 bg-[#0b0e14]/50 text-center">
                     <span className="text-[10px] font-black uppercase tracking-widest text-white">Sequência de Brancos</span>
-                    <button 
-                      onClick={() => setPatternDays(prev => prev === 1 ? 7 : 1)}
-                      className={`text-[10px] font-bold transition-colors ${patternDays === 7 ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
-                      title="Alternar cálculo para 7 Dias"
-                    >
-                      7 DIAS
-                    </button>
                   </div>
                   <div className="p-3 flex flex-col gap-4">
 
@@ -1458,7 +1422,7 @@ export default function RadarAvancado() {
                         <div className="flex flex-col justify-center gap-1">
                           <span className="text-[10px] text-slate-300 leading-tight">O último Duplo foi há <strong className="text-white">{seqDuplos.minAtras} min</strong></span>
                           <span className="text-[10px] text-white font-bold leading-tight">{seqDuplos.rodadasAtras} rodadas atrás</span>
-                          <span className="text-[10px] text-rose-400 font-bold leading-tight mt-1">{seqDuplos.brancosSem} brancos sem duplo (Máx: {seqDuplos.maxBrancosSem})</span>
+                          <span className="text-[10px] text-rose-400 font-bold leading-tight mt-1">{seqDuplos.brancosSem} brancos sem duplo</span>
                           <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem duplos em rodadas é: <strong className="text-white">{seqDuplos.maxima}</strong></span>
                         </div>
                       </div>
@@ -1480,7 +1444,7 @@ export default function RadarAvancado() {
                               <span className="text-[10px] text-white font-bold leading-tight">{seqTriplos.rodadasAtras} rodadas atrás</span>
                             </>
                           )}
-                          <span className="text-[10px] text-rose-400 font-bold leading-tight mt-1">{seqTriplos.brancosSem} brancos sem triplo (Máx: {seqTriplos.maxBrancosSem})</span>
+                          <span className="text-[10px] text-rose-400 font-bold leading-tight mt-1">{seqTriplos.brancosSem} brancos sem triplo</span>
                           <span className="text-[10px] text-amber-400 font-bold leading-tight mt-0.5">Duplos sem triplos: {seqTriplos.duplosSem} (Máx: {seqTriplos.maxDuplosSem})</span>
                           <span className="text-[10px] text-slate-400 leading-tight mt-1">A máxima sem triplos em rodadas é: <strong className="text-white">{seqTriplos.maxima}</strong></span>
                         </div>
@@ -1503,7 +1467,7 @@ export default function RadarAvancado() {
                               <span className="text-[10px] text-white font-bold leading-tight">{seqDentado.rodadasAtras} rodadas atrás</span>
                             </>
                           )}
-                          <span className="text-[10px] text-rose-400 font-bold leading-tight mt-1">{seqDentado.brancosSem} brancos sem dentado (Máx: {seqDentado.maxBrancosSem})</span>
+                          <span className="text-[10px] text-rose-400 font-bold leading-tight mt-1">{seqDentado.brancosSem} brancos sem dentado</span>
                           <span className="text-[10px] text-slate-400 leading-tight mt-1">Máxima sem dentado: <strong className="text-white">{seqDentado.maxima}</strong></span>
                         </div>
                       </div>
@@ -1527,7 +1491,7 @@ export default function RadarAvancado() {
                               <span className="text-[10px] text-white font-bold leading-tight">{seqBanguelo.rodadasAtras} rodadas atrás</span>
                             </>
                           )}
-                          <span className="text-[10px] text-rose-400 font-bold leading-tight mt-1">{seqBanguelo.brancosSem} brancos sem banguelo (Máx: {seqBanguelo.maxBrancosSem})</span>
+                          <span className="text-[10px] text-rose-400 font-bold leading-tight mt-1">{seqBanguelo.brancosSem} brancos sem banguelo</span>
                           <span className="text-[10px] text-slate-400 leading-tight mt-1">Máxima sem banguelo: <strong className="text-white">{seqBanguelo.maxima}</strong></span>
                         </div>
                       </div>

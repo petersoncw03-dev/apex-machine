@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useDeferredValue } from 'react';
 import { useSSE } from '@/contexts/SSEContext';
 import { useMinutosIa } from '@/hooks/useMinutosIa';
+import { useMestreConfluencia } from '@/hooks/useMestreConfluencia';
+import { useMestreCores } from '@/hooks/useMestreCores';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Activity, Clock, Droplets } from 'lucide-react';
 
@@ -19,27 +21,41 @@ const COLORS = {
   Branco: '#ffffff',
 };
 
-export function VisaoCoresTab() {
+export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
   const { subscribe } = useSSE();
-  const [history, setHistory] = useState<RollData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [localHistory, setLocalHistory] = useState<RollData[]>([]);
+  const [loading, setLoading] = useState(!globalData);
   const [radarMode, setRadarMode] = useState<'branco' | 'cor' | 'branco_3' | 'cor_1'>('branco');
-  const lastProcessedIdRef = useRef<string | null>(null);
-  const pendingNextStateRef = useRef<any>(null);
-  const [signalState, setSignalState] = useState<{
-      status: 'standby' | 'active' | 'win' | 'loss',
-      step: number,
-      level: number,
-      stones: number[]
-  }>({ status: 'standby', step: 0, level: 0, stones: [] });
+
+  const history = (globalData && globalData.length > 0) ? globalData : localHistory;
+  const [deferredHistory, setDeferredHistory] = useState<any[]>(history);
+  const isInitialLoad = useRef(true);
+  
+  // Solução B: Atraso intencional de 2s para processos super pesados
+  useEffect(() => {
+    if (isInitialLoad.current || deferredHistory.length === 0) {
+      setDeferredHistory(history);
+      if (history && history.length > 0) isInitialLoad.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      setDeferredHistory(history);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [history, deferredHistory.length]);
+
 
   const [iaPeriodFilter, setIaPeriodFilter] = useState<number>(3);
   const [zonesPeriod, setZonesPeriod] = useState<number>(3);
-  const parsedHistory = useMemo(() => history.map(r => ({ ...r, roll: parseInt(r.roll as string) })), [history]);
+  const [selectedZoneCycles, setSelectedZoneCycles] = useState<any>(null);
+  const parsedHistory = useMemo(() => deferredHistory.map(r => ({ ...r, roll: parseInt(r.roll as string) })), [deferredHistory]);
+  const { mestreState: signalState, placarDiario, levelPoints } = useMestreConfluencia(parsedHistory as any);
+  const { mestreState: coresState } = useMestreCores(parsedHistory as any);
+
   const iaSignals = useMinutosIa(parsedHistory as any, iaPeriodFilter, new Set<number>(), true, false);
   const { scores: iaScores, stats: iaStats } = iaSignals;
 
-  const StoneIcon = ({ n, size = "md" }: { n: number, size?: "sm" | "md" | "lg" | "ticker" }) => {
+  const StoneIcon = ({ n, size = "md", hideNumber = false }: { n: number, size?: "sm" | "md" | "lg" | "ticker", hideNumber?: boolean }) => {
     let containerBg = 'bg-[#2C2F33]';
     let circleBorder = 'border-[1px] border-white/40';
     let textClass = 'text-white font-black';
@@ -54,10 +70,10 @@ export function VisaoCoresTab() {
     }
 
     const dims = {
-      sm: { out: 'w-7 h-7', in: 'w-5 h-5', txt: 'text-[9px]' },
-      md: { out: 'w-10 h-10', in: 'w-7 h-7', txt: 'text-[12px]' },
-      lg: { out: 'w-12 h-12', in: 'w-8 h-8', txt: 'text-[14px]' },
-      ticker: { out: 'w-[40px] h-[40px]', in: 'w-[30px] h-[30px]', txt: 'text-[12px]' }
+      sm: { out: 'w-6 h-6', in: 'w-4 h-4', txt: 'text-[8px]' },
+      md: { out: 'w-8 h-8', in: 'w-6 h-6', txt: 'text-[10px]' },
+      lg: { out: 'w-10 h-10', in: 'w-7 h-7', txt: 'text-[11px]' },
+      ticker: { out: 'w-[40px] h-[40px]', in: 'w-[30px] h-[30px]', txt: 'text-[11px]' }
     };
 
     const d = dims[size];
@@ -70,67 +86,54 @@ export function VisaoCoresTab() {
           </div>
         ) : (
           <div className={`rounded-full flex items-center justify-center ${d.in} ${circleBorder}`}>
-            <span className={`${textClass} ${d.txt}`}>{n}</span>
+            {!hideNumber && <span className={`${textClass} ${d.txt}`}>{n}</span>}
           </div>
         )}
       </div>
     );
   };
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/results/period?hours=24', { cache: 'no-store' });
-      const json = await res.json();
-      if (json.data) {
-        const parsed = json.data.map((r: any) => ({
-          ...r,
-          color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
-        }));
-        setHistory(parsed);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
+    if (globalData && globalData.length > 0) return;
     const unsub = subscribe((mappedRoll: any) => {
-      setHistory(prev => {
+      setLocalHistory(prev => {
         if (prev.length > 0 && prev[prev.length - 1].id === mappedRoll.id) return prev;
         return [...prev, mappedRoll].slice(-2000);
       });
     });
     return unsub;
-  }, [subscribe]);
+  }, [subscribe, globalData]);
 
   const stats = useMemo(() => {
+    const history2k = deferredHistory.slice(-2000);
     let counts = { Vermelho: 0, Preto: 0, Branco: 0 };
     let currentDelay = { Vermelho: 0, Preto: 0, Branco: 0 };
     let maxDelay = { Vermelho: 0, Preto: 0, Branco: 0 };
     
-    history.forEach((roll) => {
-      const c = roll.color as keyof typeof counts;
-      if (c === 'Vermelho' || c === 'Preto' || c === 'Branco') {
-        counts[c]++;
-        ['Vermelho', 'Preto', 'Branco'].forEach(colorKey => {
-          const k = colorKey as keyof typeof currentDelay;
-          if (c === k) {
-            currentDelay[k] = 0;
-          } else {
-            currentDelay[k]++;
-            if (currentDelay[k] > maxDelay[k]) {
-              maxDelay[k] = currentDelay[k];
-            }
+    history2k.slice(-2000).forEach((roll) => {
+      let c = '';
+      const rollColor = roll.color?.toString().toLowerCase() || '';
+      const n = parseInt(roll.roll as string);
+      if (rollColor.includes('branco') || rollColor.includes('white') || n === 0) c = 'Branco';
+      else if (rollColor.includes('vermelho') || rollColor.includes('red') || (n >= 1 && n <= 7)) c = 'Vermelho';
+      else c = 'Preto';
+      
+      const keyC = c as keyof typeof counts;
+      counts[keyC]++;
+      
+      ['Vermelho', 'Preto', 'Branco'].forEach(colorKey => {
+        const k = colorKey as keyof typeof currentDelay;
+        if (c === k) {
+          currentDelay[k] = 0;
+        } else {
+          currentDelay[k]++;
+          if (currentDelay[k] > maxDelay[k]) {
+            maxDelay[k] = currentDelay[k];
           }
-        });
-      }
+        }
+      });
     });
 
     const total = counts.Vermelho + counts.Preto + counts.Branco;
@@ -144,15 +147,15 @@ export function VisaoCoresTab() {
     let max_posV = 0, max_posP = 0, max_posB = 0;
     let posNum = 0;
     
-    if (history.length > 0) {
-      posNum = parseInt(history[history.length - 1].roll as string);
+    if (history2k.length > 0) {
+      posNum = parseInt(history2k[history2k.length - 1].roll as string);
       
       const isW = (r: RollData) => r.color?.toString().toLowerCase().includes('branco') || r.color?.toString().toLowerCase().includes('white') || parseInt(r.roll as string) === 0;
       const isR = (r: RollData) => r.color?.toString().toLowerCase().includes('vermelho') || r.color?.toString().toLowerCase().includes('red') || (parseInt(r.roll as string) >= 1 && parseInt(r.roll as string) <= 7);
       
-      for (let i = 0; i < history.length - 1; i++) {
-         if (parseInt(history[i].roll as string) === posNum) {
-            const fb = history[i+1];
+      for (let i = 0; i < history2k.length - 1; i++) {
+         if (parseInt(history2k[i].roll as string) === posNum) {
+            const fb = history2k[i+1];
             const fbB = isW(fb);
             const fbV = isR(fb);
             
@@ -172,10 +175,10 @@ export function VisaoCoresTab() {
         num: posNum 
       } 
     };
-  }, [history]);
+  }, [deferredHistory]);
 
   const radarStats = useMemo(() => {
-    if (history.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
+    if (deferredHistory.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
 
     const targetMargin = radarMode === 'branco' ? 6 : radarMode === 'branco_3' ? 3 : radarMode === 'cor_1' ? 1 : 2;
     const isBrancoMode = radarMode.startsWith('branco');
@@ -191,7 +194,7 @@ export function VisaoCoresTab() {
 
     // Branco: usa até 1440 pedras. Cor: usa até 480 pedras.
     const sliceAmount = isBrancoMode ? -1440 : -480;
-    const h2h = history.slice(sliceAmount);
+    const h2h = deferredHistory.slice(sliceAmount);
     if (h2h.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
 
     const lastRoll = h2h[h2h.length - 1];
@@ -412,28 +415,36 @@ export function VisaoCoresTab() {
     const topCasas = diversifiedTop.slice(0, 5);
 
     return { lastNumber: lastRollNumber, livePatterns, topCasas, ...results };
-  }, [history, radarMode]);
+  }, [deferredHistory, radarMode]);
 
   const zonesStats = useMemo(() => {
-     if (history.length === 0) return { blocks: [], currentGap: 0 };
+     if (deferredHistory.length === 0) return { blocks: [], currentGap: 0 };
      
+     // Rolls for general Winrate display (filtered by zonesPeriod)
      const sliceAmount = -(zonesPeriod * 120); // ~120 pedras por hora
-     const rolls = history.slice(sliceAmount);
-     const whiteIndices = rolls.reduce((acc, r, i) => {
-        const n = parseInt(r.roll as string);
-        if (r.color?.includes('Branco') || n === 0) acc.push(i);
-        return acc;
-     }, [] as number[]);
+     const rolls = deferredHistory.slice(sliceAmount);
      
-     if (whiteIndices.length === 0) return { blocks: [], currentGap: rolls.length };
+     const extractGaps = (arr: any[]) => {
+         const whiteIndices = arr.reduce((acc, r, i) => {
+            const n = parseInt(r.roll as string);
+            if (r.color?.includes('Branco') || n === 0) acc.push(i);
+            return acc;
+         }, [] as number[]);
+         
+         if (whiteIndices.length === 0) return { gaps: [], currentGap: arr.length };
+         
+         const gaps: number[] = [];
+         for (let i = 1; i < whiteIndices.length; i++) {
+             gaps.push(whiteIndices[i] - whiteIndices[i-1]);
+         }
+         const currentGap = arr.length - 1 - whiteIndices[whiteIndices.length - 1];
+         return { gaps, currentGap };
+     };
      
-     const gaps: number[] = [];
-     for (let i = 1; i < whiteIndices.length; i++) {
-         gaps.push(whiteIndices[i] - whiteIndices[i-1]);
-     }
+     const { gaps: periodGaps, currentGap: periodCurrentGap } = extractGaps(rolls);
+     const { gaps: allGaps, currentGap: allCurrentGap } = extractGaps(deferredHistory);
      
-     const currentGap = rolls.length - 1 - whiteIndices[whiteIndices.length - 1];
-     const nextEnt = currentGap + 1;
+     const nextEnt = periodCurrentGap + 1;
      
      const zones = [
         { label: '1 a 5', s: 1, e: 5 },
@@ -448,20 +459,30 @@ export function VisaoCoresTab() {
         let wins = 0;
         let losses = 0;
         
-        const outcomes: ('W'|'L')[] = [];
-        for (const g of gaps) {
-           if (g >= z.s && g <= z.e) { wins++; outcomes.push('W'); }
-           else if (g > z.e) { losses++; outcomes.push('L'); }
+        // Outcomes for UI (short term)
+        const outcomesPeriod: ('W'|'L')[] = [];
+        for (const g of periodGaps) {
+           if (g >= z.s && g <= z.e) { wins++; outcomesPeriod.push('W'); }
+           else if (g > z.e) { losses++; outcomesPeriod.push('L'); }
         }
-        
-        if (currentGap >= z.e) {
+        if (periodCurrentGap >= z.e) {
            losses++;
-           outcomes.push('L');
+           outcomesPeriod.push('L');
         }
         
-        // Calcular Ciclos
+        // Outcomes for Cycles (long term)
+        const outcomesAll: ('W'|'L')[] = [];
+        for (const g of allGaps) {
+           if (g >= z.s && g <= z.e) { outcomesAll.push('W'); }
+           else if (g > z.e) { outcomesAll.push('L'); }
+        }
+        if (allCurrentGap >= z.e) {
+           outcomesAll.push('L');
+        }
+        
+        // Calcular Ciclos UI antigos (usa period)
         const cycles: { type: 'W'|'L', count: number }[] = [];
-        for (const out of outcomes) {
+        for (const out of outcomesPeriod) {
            if (cycles.length === 0) {
               cycles.push({ type: out, count: 1 });
            } else {
@@ -474,6 +495,55 @@ export function VisaoCoresTab() {
            }
         }
         
+        // NOVO: Cálculo Estatístico dos Ciclos (usa ALL)
+        const cycleStats: { W: Record<number, {win: number, loss: number}>, L: Record<number, {win: number, loss: number}> } = { W: {}, L: {} };
+        let runningType: 'W'|'L'|null = null;
+        let runningCount = 0;
+        
+        for (let i = 0; i < outcomesAll.length; i++) {
+            const out = outcomesAll[i];
+            if (runningType && runningCount > 0) {
+                if (!cycleStats[runningType][runningCount]) {
+                    cycleStats[runningType][runningCount] = { win: 0, loss: 0 };
+                }
+                if (out === 'W') {
+                    cycleStats[runningType][runningCount].win++;
+                } else {
+                    cycleStats[runningType][runningCount].loss++;
+                }
+            }
+            if (runningType === out) {
+                runningCount++;
+            } else {
+                runningType = out;
+                runningCount = 1;
+            }
+        }
+        
+        const mapToSorted = (obj: Record<number, {win: number, loss: number}>, type: 'W'|'L') => {
+            return Object.entries(obj).map(([count, stats]) => {
+                const total = stats.win + stats.loss;
+                const winrate = total > 0 ? (stats.win / total) * 100 : 0;
+                return { type, count: Number(count), win: stats.win, loss: stats.loss, winrate, total };
+            }).filter(c => c.total > 0)
+              .sort((a, b) => b.winrate - a.winrate || b.total - a.total)
+              .slice(0, 5);
+        };
+        
+        const topLossCycles = mapToSorted(cycleStats.L, 'L');
+        const topWinCycles = mapToSorted(cycleStats.W, 'W');
+        
+        const currentCycleState = { type: runningType, count: runningCount };
+        let currentCycleWinrate = 0;
+        let currentCycleTotal = 0;
+        let currentCycleWins = 0;
+        if (runningType && cycleStats[runningType][runningCount]) {
+            const st = cycleStats[runningType][runningCount];
+            currentCycleTotal = st.win + st.loss;
+            currentCycleWins = st.win;
+            currentCycleWinrate = currentCycleTotal > 0 ? (st.win / currentCycleTotal) * 100 : 0;
+        }
+
         const total = wins + losses;
         const winrate = total > 0 ? (wins / total) * 100 : 0;
         
@@ -481,100 +551,12 @@ export function VisaoCoresTab() {
         if (nextEnt >= z.s && nextEnt <= z.e) status = 'ativo';
         else if (nextEnt > z.e) status = 'passou';
         
-        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-7) };
+        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-7), topLossCycles, topWinCycles, currentCycleState, currentCycleWinrate, currentCycleTotal, currentCycleWins };
      });
      
-     return { blocks, currentGap };
-  }, [history, zonesPeriod]);
+     return { blocks, currentGap: periodCurrentGap };
+  }, [deferredHistory, zonesPeriod]);
 
-  useEffect(() => {
-      if (history.length === 0) return;
-      
-      const lastStone = history[history.length - 1];
-      if (lastStone.id === lastProcessedIdRef.current) return;
-      
-      lastProcessedIdRef.current = lastStone.id;
-
-      const isBranco = lastStone.color?.toString().toLowerCase().includes('branco') || parseInt(lastStone.roll as string) === 0;
-      const currentRollValue = parseInt(lastStone.roll as string);
-
-      setSignalState(prev => {
-          let points = 0;
-          let hasZonasQuentes = zonesStats.blocks.some(b => b.status === 'ativo' && b.winrate >= 30);
-          if (hasZonasQuentes) points++;
-          
-          let hasCasas = radarStats.topCasas?.some((c: any) => c.isLive && c.target === 'B');
-          if (hasCasas) points++;
-          
-          let hasPatterns = [4,5,6].some(t => {
-             const pat = radarStats.livePatterns[t];
-             if (!pat || pat.target !== 'B') return false;
-             if (pat.total < 4 || pat.winrate < 60) return false;
-             if (pat.wrL !== null && pat.wrL < 50) return false;
-             return true;
-          });
-          if (hasPatterns) points++;
-
-          // Validação pela IA
-          let approvedByIa = false;
-          const currentMin = new Date(lastStone.timestamp).getMinutes();
-          const m1 = (currentMin + 1) % 60;
-          const m2 = (currentMin + 2) % 60;
-          const score1 = iaScores[m1] || 0;
-          const score2 = iaScores[m2] || 0;
-          if (score1 >= 3 || score2 >= 3) approvedByIa = true;
-          if (score1 === 2 || score2 === 2) {
-              const winrate2 = iaStats[1]?.winRate || 0;
-              if (winrate2 >= 35) approvedByIa = true;
-          }
-
-          // REGRA DE APROVAÇÃO:
-          // Tem que ter no mínimo 1 gatilho (Padrão, Casa Exata ou Zona Quente).
-          // E o sinal precisa ser validado: OU pela IA Minutos, OU pelas Zonas Quentes.
-          let approved = false;
-          if (points >= 1 && (approvedByIa || hasZonasQuentes)) {
-              approved = true;
-          }
-
-          const nextActiveState = (points >= 1 && approved) 
-                ? { status: 'active' as const, step: 1, level: points, stones: [] } 
-                : { status: 'standby' as const, step: 0, level: 0, stones: [] };
-
-          pendingNextStateRef.current = nextActiveState;
-
-          if (prev.status === 'active') {
-              if (points > prev.level && approved) {
-                  return { status: 'active', step: 1, level: points, stones: [] };
-              }
-              const newStones = [...prev.stones, isNaN(currentRollValue) ? -1 : currentRollValue];
-              if (isBranco) {
-                  return { status: 'win', step: prev.step, level: prev.level, stones: newStones };
-              } else {
-                  if (prev.step < 6) {
-                      return { ...prev, step: prev.step + 1, stones: newStones };
-                  } else {
-                      return { status: 'loss', step: 6, level: prev.level, stones: newStones };
-                  }
-              }
-          } else {
-              return nextActiveState;
-          }
-      });
-  }, [history, zonesStats, radarStats, iaScores, iaStats]);
-
-  useEffect(() => {
-      if (signalState.status === 'win' || signalState.status === 'loss') {
-          const t = setTimeout(() => {
-              setSignalState(prev => {
-                  if (prev.status === 'win' || prev.status === 'loss') {
-                      return pendingNextStateRef.current || { status: 'standby', step: 0, level: 0, stones: [] };
-                  }
-                  return prev;
-              });
-          }, 7000);
-          return () => clearTimeout(t);
-      }
-  }, [signalState.status]);
 
   if (loading) {
     return (
@@ -590,15 +572,15 @@ export function VisaoCoresTab() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
         {/* Card Combinado: Visão Geral */}
-        <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] lg:col-span-2 flex flex-col overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a]">
+        <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] lg:col-span-1 flex flex-col overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
               <span className="text-[11px] font-black uppercase tracking-widest text-white">Visão Geral</span>
             </div>
           </div>
           
-          <div className="p-4 flex flex-col md:flex-row gap-6 items-center">
+          <div className="p-4 flex flex-col gap-4 items-center">
             {/* Left: Dominância Pie */}
             <div className="flex-1 flex items-center justify-center gap-4 w-full border-b border-white/5 pb-4 md:border-b-0 md:border-r md:pb-0 md:pr-4">
               <div style={{ width: '120px', height: '120px', minHeight: '120px', position: 'relative', flexShrink: 0 }}>
@@ -645,7 +627,7 @@ export function VisaoCoresTab() {
             </div>
 
             {/* Right: Seca */}
-            <div className="flex-[1.5] flex gap-4 w-full h-full">
+            <div className="flex gap-4 w-full h-full flex-col sm:flex-row">
               
               {/* Seca Global */}
               <div className="flex-1 flex flex-col bg-[#0b0e14]/50 rounded-xl border border-white/5 p-3">
@@ -667,7 +649,7 @@ export function VisaoCoresTab() {
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col items-end leading-none w-10">
                           <span className="text-[7px] text-gray-500 font-bold uppercase mb-0.5">SA</span>
-                          <span className={`text-[12px] font-black ${x.a >= 10 && x.c !== 'Branco' ? 'text-red-500' : x.tc}`}>{x.a}</span>
+                          <span className={`text-[11px] font-black ${x.a >= 10 && x.c !== 'Branco' ? 'text-red-500' : x.tc}`}>{x.a}</span>
                         </div>
                         <div className="w-px h-6 bg-white/10"></div>
                         <div className="flex flex-col items-end leading-none w-10">
@@ -704,7 +686,7 @@ export function VisaoCoresTab() {
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col items-end leading-none w-10">
                           <span className="text-[7px] text-gray-500 font-bold uppercase mb-0.5">SA</span>
-                          <span className={`text-[12px] font-black ${x.a >= 10 && x.c !== 'Branco' ? 'text-red-500' : x.tc}`}>{x.a}</span>
+                          <span className={`text-[11px] font-black ${x.a >= 10 && x.c !== 'Branco' ? 'text-red-500' : x.tc}`}>{x.a}</span>
                         </div>
                         <div className="w-px h-6 bg-white/10"></div>
                         <div className="flex flex-col items-end leading-none w-10">
@@ -722,7 +704,7 @@ export function VisaoCoresTab() {
         </div>
 
         {/* Radar Mestre de Confluência */}
-        <div className="bg-gradient-to-r from-[#0a0a0f] to-[#12141c] border border-white/10 rounded-xl p-5 shadow-xl flex flex-col relative overflow-hidden h-auto justify-between gap-5">
+        <div className="bg-gradient-to-r from-[#0a0a0f] to-[#12141c] border border-white/10 rounded-xl p-4 shadow-xl flex flex-col relative overflow-hidden h-auto justify-between gap-4">
            {signalState.status === 'active' && (
                <div className="absolute top-0 left-0 w-full h-full bg-[#e85dff]/5 animate-pulse pointer-events-none"></div>
            )}
@@ -748,8 +730,8 @@ export function VisaoCoresTab() {
                   </div>
 
                   <div className="flex flex-col">
-                     <h3 className="text-[12px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                        Mestre de Confluência
+                     <h3 className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
+                        Mestre dos Brancos
                         {signalState.status === 'active' && <span className="w-2 h-2 rounded-full bg-[#e85dff] animate-pulse"></span>}
                      </h3>
                      <span className="text-[11px] text-gray-300 font-bold mt-1">
@@ -767,14 +749,18 @@ export function VisaoCoresTab() {
                {/* Nível de Confluência */}
                <div className="flex flex-col items-end z-10">
                   <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Nível de Força</span>
-                  <div className="flex gap-1.5">
-                     {[1, 2, 3].map(lvl => (
-                        <div key={lvl} className={`w-8 h-2.5 rounded-sm transition-all ${
-                            signalState.level >= lvl 
-                               ? 'bg-[#e85dff] shadow-[0_0_8px_rgba(232,93,255,0.5)]' 
-                               : 'bg-white/5'
-                        }`}></div>
-                     ))}
+                  <div className="flex gap-1.5 items-end">
+                     {[4, 5, 6, 7].map((lvl, index) => {
+                        const isActive = signalState.level >= lvl;
+                        const heightClass = ['h-2.5', 'h-4', 'h-[22px]', 'h-[26px]'][index];
+                        return (
+                           <div key={lvl} className={`w-4 rounded-sm transition-all ${heightClass} ${
+                               isActive 
+                                  ? 'bg-[#e85dff] shadow-[0_0_8px_rgba(232,93,255,0.5)]' 
+                                  : 'bg-white/5'
+                           }`}></div>
+                        )
+                     })}
                   </div>
                </div>
            </div>
@@ -813,6 +799,125 @@ export function VisaoCoresTab() {
               })}
            </div>
         </div>
+
+
+        {/* Radar Mestre de CORES */}
+        <div className="bg-gradient-to-r from-[#0a0a0f] to-[#12141c] border border-white/10 rounded-xl p-4 shadow-xl flex flex-col relative overflow-hidden h-auto justify-between gap-4">
+           {coresState.status === 'active' && (
+               <div className={`absolute top-0 left-0 w-full h-full animate-pulse pointer-events-none ${coresState.targetColor === 'R' ? 'bg-[#e51e3e]/5' : 'bg-white/5'}`}></div>
+           )}
+           
+           {/* Topo: Indicador e Titulo */}
+           <div className="flex items-center justify-between z-10 w-full">
+               <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-[2px] transition-all ${
+                      coresState.status === 'active' ? (coresState.targetColor === 'R' ? 'bg-[#e51e3e]/20 border-[#e51e3e] shadow-[0_0_15px_rgba(229,30,62,0.4)]' : 'bg-gray-600/20 border-gray-400 shadow-[0_0_15px_rgba(156,163,175,0.4)]') :
+                      coresState.status === 'win' ? 'bg-[#00c83a]/20 border-[#00c83a] shadow-[0_0_15px_rgba(0,200,58,0.4)]' :
+                      coresState.status === 'loss' ? 'bg-red-500/20 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' :
+                      'bg-black/50 border-white/10'
+                  }`}>
+                     {coresState.status === 'active' ? (
+                         <span className={`font-black text-xl ${coresState.targetColor === 'R' ? 'text-[#e51e3e]' : 'text-gray-300'}`}>{coresState.step}/2</span>
+                     ) : coresState.status === 'win' ? (
+                         <span className="text-[#00c83a] font-black text-sm uppercase tracking-widest">Win</span>
+                     ) : coresState.status === 'loss' ? (
+                         <span className="text-red-500 font-black text-[11px] uppercase tracking-widest">Loss</span>
+                     ) : (
+                         <div className="w-4 h-4 rounded-full bg-gray-600 animate-pulse"></div>
+                     )}
+                  </div>
+
+                  <div className="flex flex-col">
+                     <h3 className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
+                        Mestre das Cores
+                        {coresState.status === 'active' && <span className={`w-2 h-2 rounded-full animate-pulse ${coresState.targetColor === 'R' ? 'bg-[#e51e3e]' : 'bg-gray-300'}`}></span>}
+                     </h3>
+                     <span className="text-[11px] text-gray-300 font-bold mt-1">
+                        {coresState.status === 'active' 
+                           ? `Gatilho Aceito! Entrada ${coresState.step} p/ ${coresState.targetColor === 'R' ? 'VERMELHO' : 'PRETO'}.` 
+                           : coresState.status === 'win' 
+                           ? `Vitória na ${coresState.step}ª entrada!`
+                           : coresState.status === 'loss'
+                           ? `Red após G1.`
+                           : `Analisando Padrões e Minutos...`}
+                     </span>
+                  </div>
+               </div>
+
+               {/* Nível de Confluência */}
+               <div className="flex flex-col items-end z-10">
+                  <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Nível de Força</span>
+                  <div className="flex gap-1.5 items-end">
+                     {[1, 2, 3].map((lvl, index) => {
+                        const isActive = coresState.level >= lvl;
+                        const heightClass = ['h-2.5', 'h-4', 'h-[22px]'][index];
+                        return (
+                           <div key={lvl} className={`w-4 rounded-sm transition-all ${heightClass} ${
+                               isActive 
+                                  ? (coresState.targetColor === 'R' ? 'bg-[#e51e3e] shadow-[0_0_8px_rgba(229,30,62,0.5)]' : 'bg-gray-400 shadow-[0_0_8px_rgba(156,163,175,0.5)]') 
+                                  : 'bg-white/5'
+                           }`}></div>
+                        )
+                     })}
+                  </div>
+               </div>
+           </div>
+
+                      {/* Meio: Explicação do Card */}
+           <div className={`border rounded-lg p-3 w-full flex items-center justify-center z-10 transition-all ${
+               coresState.status === 'active' 
+                   ? (coresState.targetColor === 'R' ? 'bg-[#e51e3e]/20 border-[#e51e3e]/50 shadow-[inset_0_0_20px_rgba(229,30,62,0.2)]' : 'bg-[#1a1d24]/80 border-gray-500/50 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]')
+                   : 'bg-black/30 border-white/5'
+           }`}>
+              {coresState.status === 'active' ? (
+                  <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest animate-pulse">Atenção Máxima</span>
+                      <strong className={`flex flex-col md:flex-row items-center justify-center gap-2 text-lg md:text-base lg:text-lg uppercase font-black text-center ${coresState.targetColor === 'R' ? 'text-[#e51e3e]' : 'text-white'}`}>
+                          <span>
+                          {coresState.scheduledMinute !== null 
+                              ? `ENTRAR NO ${coresState.targetColor === 'R' ? 'VERMELHO' : 'PRETO'} NO MINUTO ${String(coresState.scheduledMinute).padStart(2, '0')}` 
+                              : `ENTRAR AGORA NO ${coresState.targetColor === 'R' ? 'VERMELHO' : 'PRETO'}`}
+                          </span>
+                          <div className="scale-75 md:scale-100">
+                             <StoneIcon n={coresState.targetColor === 'R' ? 1 : 8} size="md" hideNumber={true} />
+                          </div>
+                      </strong>
+                  </div>
+              ) : coresState.status === 'win' ? (
+                 <p className="text-[11px] text-gray-400 font-medium text-center leading-relaxed">
+                     Green! <strong>Lucro no {coresState.targetColor === 'R' ? 'Vermelho' : 'Preto'}.</strong> O radar já está calibrando a próxima entrada.
+                 </p>
+              ) : coresState.status === 'loss' ? (
+                 <p className="text-[11px] text-gray-400 font-medium text-center leading-relaxed">
+                     A sequência rompeu nosso G1. Modo de segurança ativado para a próxima análise da matriz 10x6.
+                 </p>
+              ) : (
+                 <p className="text-[11px] text-gray-400 font-medium text-center leading-relaxed">
+                     O Radar de Cores varre a matriz e os padrões simultaneamente. <strong>Quando a média ultrapassa 80% de precisão, ele dispara 2 tiros (Mão e G1).</strong>
+                 </p>
+              )}
+           </div>
+
+           {/* Fundo: Pedras da Entrada */}
+           <div className="w-full flex items-center justify-center gap-6 border-t border-white/5 pt-5 z-10">
+              {[...Array(2)].map((_, i) => {
+                  const stoneNum = coresState.stones[i];
+                  const isFilled = stoneNum !== undefined;
+                  return (
+                      <div key={i} className="flex flex-col items-center gap-2">
+                          {isFilled ? (
+                              <StoneIcon n={stoneNum} size="lg" />
+                          ) : (
+                              <div className="w-12 h-12 rounded-xl bg-[#1a1d24]/50 border border-dashed border-white/10 flex items-center justify-center">
+                                  <span className="text-[10px] text-gray-600 font-black tracking-widest">{i+1}ª</span>
+                              </div>
+                          )}
+                      </div>
+                  );
+              })}
+           </div>
+        </div>
+
       </div>
 
       {/* ── SEÇÃO AVANÇADA (Zonas Quentes + Minutos da IA) ── */}
@@ -820,7 +925,7 @@ export function VisaoCoresTab() {
         
         {/* Zonas Quentes do Branco */}
         <div className="flex-1 bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col">
-          <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a]">
+          <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
               <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes após o branco</span>
@@ -892,6 +997,26 @@ export function VisaoCoresTab() {
                      );
                   })}
                 </div>
+
+                <div className="mt-3 flex justify-between items-center z-10 relative">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] text-gray-500 uppercase font-bold tracking-widest">Estado Atual</span>
+                        {z.currentCycleState.type ? (
+                            <span className={`text-[10px] font-black ${z.currentCycleState.type === 'W' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                Ciclo {z.currentCycleState.count} {z.currentCycleState.type === 'W' ? 'Win' : 'Loss'} 
+                                <span className="text-gray-400 ml-1">({z.currentCycleWinrate.toFixed(0)}%)</span>
+                            </span>
+                        ) : (
+                            <span className="text-[10px] font-black text-gray-500">Aguardando</span>
+                        )}
+                    </div>
+                    <button 
+                        onClick={() => setSelectedZoneCycles(z)}
+                        className="text-[9px] font-bold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition-colors"
+                    >
+                        Análise de Ciclos
+                    </button>
+                </div>
               </div>
             ))}
           </div>
@@ -899,7 +1024,7 @@ export function VisaoCoresTab() {
 
         {/* ── MINUTOS DA IA ────────────────────── */}
         <div className="flex-[2] bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300 shrink-0">
-          <div className="px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <div className="px-5 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse"></div>
               <span className="text-[11px] font-black uppercase tracking-widest text-white">
@@ -1024,7 +1149,7 @@ export function VisaoCoresTab() {
       {/* Radar de Padrões */}
       <div className="flex flex-col gap-4 mt-4">
         <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-          <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a]">
+          <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
               <span className="text-[11px] font-black uppercase tracking-widest text-white">Radar de Padrões</span>
@@ -1058,7 +1183,7 @@ export function VisaoCoresTab() {
           </div>
 
           {/* Seção Ao Vivo + Casa Exata */}
-          <div className="p-4 border-b border-[#00c83a]/10 bg-black/20 flex flex-col lg:flex-row gap-6">
+          <div className="p-4 border-b border-[#00c83a]/10 bg-black/20 flex flex-col lg:flex-row gap-4">
             
             {/* Monitoramento Ao Vivo (Sequências) */}
             <div className="flex-1 flex flex-col w-full">
@@ -1131,10 +1256,10 @@ export function VisaoCoresTab() {
                       <div className="flex items-center gap-4">
                          <div className="flex flex-col items-center leading-none">
                             <span className="text-[7px] text-gray-500 font-bold uppercase mb-0.5">SA</span>
-                            <span className="text-[12px] font-black text-white">{c.sa}</span>
+                            <span className="text-[11px] font-black text-white">{c.sa}</span>
                          </div>
                          <div className="flex flex-col items-end leading-none min-w-[50px]">
-                            <span className={`text-[12px] font-black ${c.target === 'B' ? 'text-white drop-shadow-sm' : c.target === 'V' ? 'text-[#e51e3e]' : 'text-gray-400'}`}>{c.winrate.toFixed(1)}%</span>
+                            <span className={`text-[11px] font-black ${c.target === 'B' ? 'text-white drop-shadow-sm' : c.target === 'V' ? 'text-[#e51e3e]' : 'text-gray-400'}`}>{c.winrate.toFixed(1)}%</span>
                             <span className="text-[9px] text-white font-bold uppercase tracking-wider mt-0.5">{c.win}/{c.win + c.loss} ({c.win + c.loss}x)</span>
                          </div>
                       </div>
@@ -1205,6 +1330,121 @@ export function VisaoCoresTab() {
           </div>
         </div>
       </div>
+      {/* MODAL DE CICLOS DE ZONA */}
+      {selectedZoneCycles && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <div className="bg-[#0b0e14] border border-[#00c83a]/30 rounded-xl shadow-[0_0_40px_rgba(0,200,58,0.15)] w-full max-w-2xl overflow-hidden flex flex-col">
+                  {/* Header */}
+                  <div className="px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-white/10 flex justify-between items-center">
+                      <div className="flex flex-col">
+                          <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-[#00c83a] animate-pulse"></div>
+                              Análise de Ciclos: Zona {selectedZoneCycles.label}
+                          </h3>
+                          <span className="text-[11px] text-gray-400 font-medium mt-1">Estatísticas de conversão baseadas em sequências de resultados.</span>
+                      </div>
+                      <button onClick={() => setSelectedZoneCycles(null)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-5 flex flex-col gap-6 overflow-y-auto max-h-[80vh]">
+                      
+                      {/* Estado Atual */}
+                      <div className="bg-[#1a1d24]/50 border border-white/5 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                          <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Estado Atual da Zona</span>
+                              {selectedZoneCycles.currentCycleState.type ? (
+                                  <div className="flex items-center gap-3">
+                                      <span className={`text-lg font-black uppercase ${selectedZoneCycles.currentCycleState.type === 'W' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                          Após {selectedZoneCycles.currentCycleState.count} {selectedZoneCycles.currentCycleState.type === 'W' ? 'WIN' : 'LOSS'}
+                                      </span>
+                                      <div className="h-4 w-px bg-white/20"></div>
+                                      <span className="text-sm text-white font-bold">
+                                          Winrate: <span className={selectedZoneCycles.currentCycleWinrate >= 50 ? 'text-emerald-400' : 'text-red-400'}>{selectedZoneCycles.currentCycleWinrate.toFixed(1)}%</span>
+                                      </span>
+                                  </div>
+                              ) : (
+                                  <span className="text-sm font-black text-gray-500">Sem histórico suficiente no período</span>
+                              )}
+                          </div>
+                          {selectedZoneCycles.currentCycleTotal > 0 && (
+                              <div className="bg-black/40 px-3 py-2 rounded border border-white/5 flex gap-4 text-[10px] font-bold text-gray-400">
+                                  <div className="flex flex-col items-center">
+                                      <span>Ocorrências</span>
+                                      <span className="text-white text-xs">{selectedZoneCycles.currentCycleTotal}x</span>
+                                  </div>
+                                  <div className="flex flex-col items-center">
+                                      <span>Wins</span>
+                                      <span className="text-emerald-400 text-xs">{selectedZoneCycles.currentCycleWins}x</span>
+                                  </div>
+                              </div>
+                          )}
+                      </div>
+
+                      {/* Top 5 Lists */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          
+                          {/* Top Loss */}
+                          <div className="flex flex-col gap-2">
+                              <h4 className="text-[11px] font-black text-red-400 uppercase tracking-widest flex items-center gap-2 border-b border-red-500/20 pb-2">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                                  Top 5 Ciclos de LOSS
+                              </h4>
+                              <div className="flex flex-col gap-2">
+                                  {selectedZoneCycles.topLossCycles.map((c: any, idx: number) => (
+                                      <div key={idx} className="flex justify-between items-center bg-[#1a1d24]/40 border border-white/5 p-2 rounded hover:bg-white/[0.02] transition-colors">
+                                          <div className="flex items-center gap-2">
+                                              <div className="w-5 h-5 rounded bg-red-500/10 border border-red-500/30 text-red-500 flex items-center justify-center text-[10px] font-black">
+                                                  L{c.count}
+                                              </div>
+                                              <span className="text-[10px] font-bold text-gray-300">Após {c.count} Loss</span>
+                                          </div>
+                                          <div className="flex items-center gap-3 text-[10px] font-bold">
+                                              <span className="text-gray-500">({c.total}x)</span>
+                                              <span className={c.winrate >= 50 ? 'text-emerald-400' : 'text-gray-300'}>{c.winrate.toFixed(1)}%</span>
+                                          </div>
+                                      </div>
+                                  ))}
+                                  {selectedZoneCycles.topLossCycles.length === 0 && (
+                                      <div className="text-[10px] text-gray-500 text-center py-2">Sem dados.</div>
+                                  )}
+                              </div>
+                          </div>
+
+                          {/* Top Win */}
+                          <div className="flex flex-col gap-2">
+                              <h4 className="text-[11px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 border-b border-emerald-500/20 pb-2">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                  Top 5 Ciclos de WIN
+                              </h4>
+                              <div className="flex flex-col gap-2">
+                                  {selectedZoneCycles.topWinCycles.map((c: any, idx: number) => (
+                                      <div key={idx} className="flex justify-between items-center bg-[#1a1d24]/40 border border-white/5 p-2 rounded hover:bg-white/[0.02] transition-colors">
+                                          <div className="flex items-center gap-2">
+                                              <div className="w-5 h-5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 flex items-center justify-center text-[10px] font-black">
+                                                  W{c.count}
+                                              </div>
+                                              <span className="text-[10px] font-bold text-gray-300">Após {c.count} Win</span>
+                                          </div>
+                                          <div className="flex items-center gap-3 text-[10px] font-bold">
+                                              <span className="text-gray-500">({c.total}x)</span>
+                                              <span className={c.winrate >= 50 ? 'text-emerald-400' : 'text-gray-300'}>{c.winrate.toFixed(1)}%</span>
+                                          </div>
+                                      </div>
+                                  ))}
+                                  {selectedZoneCycles.topWinCycles.length === 0 && (
+                                      <div className="text-[10px] text-gray-500 text-center py-2">Sem dados.</div>
+                                  )}
+                              </div>
+                          </div>
+
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 }
