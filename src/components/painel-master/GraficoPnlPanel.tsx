@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries } from "lightweight-charts";
+import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries, Time } from "lightweight-charts";
 import * as htmlToImage from 'html-to-image';
 import { useSSE } from '@/contexts/SSEContext';
 
