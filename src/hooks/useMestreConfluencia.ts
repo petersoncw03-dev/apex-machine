@@ -23,7 +23,7 @@ export function useMestreConfluencia(globalData: RollData[]) {
         level: 0,
         stones: [],
     });
-    const [placarDiario, setPlacarDiario] = useState({ wins: 0, losses: 0, lastResetDate: new Date().getDate() });
+    const [placarDiario, setPlacarDiario] = useState({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: new Date().getDate() });
     
     // Processa a pontuação da pedra atual
     const { levelPoints, engineState } = useMemo(() => {
@@ -72,7 +72,7 @@ export function useMestreConfluencia(globalData: RollData[]) {
         // Reset Diário de Placar
         const today = new Date().getDate();
         if (placarDiario.lastResetDate !== today) {
-            setPlacarDiario({ wins: 0, losses: 0, lastResetDate: today });
+            setPlacarDiario({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: today });
         }
 
         setMestreState(prevState => {
@@ -84,7 +84,7 @@ export function useMestreConfluencia(globalData: RollData[]) {
                 
                 if (isBranco) {
                     nextState.status = 'win';
-                    setPlacarDiario(p => ({ ...p, wins: p.wins + 1 }));
+                    setPlacarDiario(p => ({ ...p, wins: p.wins + 1, sa: 0 }));
                     
                     // Após 7s o componente deve voltar pro standby, simularemos com setTimeout fora do state reducer
                 } else {
@@ -97,7 +97,7 @@ export function useMestreConfluencia(globalData: RollData[]) {
                         }
                     } else {
                         nextState.status = 'loss';
-                        setPlacarDiario(p => ({ ...p, losses: p.losses + 1 }));
+                        setPlacarDiario(p => ({ ...p, losses: p.losses + 1, sa: p.sa + 1, sm: Math.max(p.sm, p.sa + 1) }));
                     }
                 }
             } else {

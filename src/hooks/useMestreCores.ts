@@ -20,7 +20,7 @@ export function useMestreCores(globalData: RollData[], lookbackHours: number = 3
         scheduledMinute: null
     });
     
-    const [placarDiario, setPlacarDiario] = useState({ wins: 0, losses: 0, lastResetDate: new Date().getDate() });
+    const [placarDiario, setPlacarDiario] = useState({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: new Date().getDate() });
 
     const engineState = useMemo(() => {
         return calculateCoresEngine(globalData, lookbackHours);
@@ -36,7 +36,7 @@ export function useMestreCores(globalData: RollData[], lookbackHours: number = 3
         // Placar diário reset
         const today = new Date().getDate();
         if (placarDiario.lastResetDate !== today) {
-            setPlacarDiario({ wins: 0, losses: 0, lastResetDate: today });
+            setPlacarDiario({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: today });
         }
 
         setMestreState(prevState => {
@@ -69,13 +69,13 @@ export function useMestreCores(globalData: RollData[], lookbackHours: number = 3
                 
                 if (won) {
                     nextState.status = 'win';
-                    setPlacarDiario(p => ({ ...p, wins: p.wins + 1 }));
+                    setPlacarDiario(p => ({ ...p, wins: p.wins + 1, sa: 0 }));
                 } else {
                     if (prevState.step < 2) { // 2 Entradas (G1)
                         nextState.step = prevState.step + 1;
                     } else {
                         nextState.status = 'loss';
-                        setPlacarDiario(p => ({ ...p, losses: p.losses + 1 }));
+                        setPlacarDiario(p => ({ ...p, losses: p.losses + 1, sa: p.sa + 1, sm: Math.max(p.sm, p.sa + 1) }));
                     }
                 }
             } else {

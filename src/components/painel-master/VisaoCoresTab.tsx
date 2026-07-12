@@ -49,8 +49,8 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
   const [zonesPeriod, setZonesPeriod] = useState<number>(3);
   const [selectedZoneCycles, setSelectedZoneCycles] = useState<any>(null);
   const parsedHistory = useMemo(() => deferredHistory.map(r => ({ ...r, roll: parseInt(r.roll as string) })), [deferredHistory]);
-  const { mestreState: signalState, placarDiario, levelPoints } = useMestreConfluencia(parsedHistory as any);
-  const { mestreState: coresState } = useMestreCores(parsedHistory as any);
+  const { mestreState: signalState, placarDiario: placarBrancos, levelPoints } = useMestreConfluencia(parsedHistory as any);
+  const { mestreState: coresState, placarDiario: placarCores } = useMestreCores(parsedHistory as any);
 
   const iaSignals = useMinutosIa(parsedHistory as any, iaPeriodFilter, new Set<number>(), true, false);
   const { scores: iaScores, stats: iaStats } = iaSignals;
@@ -730,6 +730,13 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
                   </div>
 
                   <div className="flex flex-col">
+                     <div className="flex gap-2 text-[8px] font-mono text-gray-500 uppercase tracking-widest mb-0.5">
+                        <span title="Winrate">W:{placarBrancos.wins} L:{placarBrancos.losses} ({placarBrancos.wins + placarBrancos.losses > 0 ? ((placarBrancos.wins / (placarBrancos.wins + placarBrancos.losses)) * 100).toFixed(0) : 0}%)</span>
+                        <span>|</span>
+                        <span title="Sequência Atual Sem Acerto" className={placarBrancos.sa >= placarBrancos.sm && placarBrancos.sm > 0 ? 'text-amber-400' : ''}>SA:{placarBrancos.sa}</span>
+                        <span>|</span>
+                        <span title="Sequência Máxima Sem Acerto">SM:{placarBrancos.sm}</span>
+                     </div>
                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
                         Mestre dos Brancos
                         {signalState.status === 'active' && <span className="w-2 h-2 rounded-full bg-[#e85dff] animate-pulse"></span>}
@@ -828,6 +835,13 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
                   </div>
 
                   <div className="flex flex-col">
+                     <div className="flex gap-2 text-[8px] font-mono text-gray-500 uppercase tracking-widest mb-0.5">
+                        <span title="Winrate">W:{placarCores.wins} L:{placarCores.losses} ({placarCores.wins + placarCores.losses > 0 ? ((placarCores.wins / (placarCores.wins + placarCores.losses)) * 100).toFixed(0) : 0}%)</span>
+                        <span>|</span>
+                        <span title="Sequência Atual Sem Acerto" className={placarCores.sa >= placarCores.sm && placarCores.sm > 0 ? 'text-amber-400' : ''}>SA:{placarCores.sa}</span>
+                        <span>|</span>
+                        <span title="Sequência Máxima Sem Acerto">SM:{placarCores.sm}</span>
+                     </div>
                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
                         Mestre das Cores
                         {coresState.status === 'active' && <span className={`w-2 h-2 rounded-full animate-pulse ${coresState.targetColor === 'R' ? 'bg-[#e51e3e]' : 'bg-gray-300'}`}></span>}
