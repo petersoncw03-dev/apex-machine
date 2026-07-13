@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { LiveHistoryCard } from '@/components/LiveHistoryCard';
 import { useSSE } from '@/contexts/SSEContext';
-import { Target } from 'lucide-react';
+import { Target, Copy } from 'lucide-react';
 
 // Types
 interface TickerData {
@@ -442,6 +442,30 @@ export default function AnalysisPage() {
     return rows;
   };
 
+  const handleCopyPredictions = (h: number) => {
+    if (!currPredictionsMatrix) return;
+    
+    const minutes: string[] = [];
+    for (let m = 0; m < 60; m++) {
+      const isPurple = currPredictionsMatrix[h][m];
+      const isYellow = manualPredictionsMatrix ? manualPredictionsMatrix[h][m] : false;
+      
+      if (isYellow) {
+        minutes.push(`${m}*`);
+      } else if (isPurple) {
+        minutes.push(`${m}`);
+      }
+    }
+    
+    if (minutes.length === 0) {
+      alert(`Nenhuma entrada para as ${h}h.`);
+      return;
+    }
+    
+    const text = `Para o horario de ${h}h, os minutos exatos indicados para entrar, são:\n${minutes.join('\n')}`;
+    navigator.clipboard.writeText(text);
+  };
+
   if (loading && !currData.length) {
     return (
       <div className="flex h-screen items-center justify-center text-white bg-[#030303]">
@@ -476,9 +500,18 @@ export default function AnalysisPage() {
             <tr>
               <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Total</th>
               <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Minuto</th>
-              {Array.from({ length: 24 }, (_, i) => (
-                <th key={i} className="p-1 font-bold text-[10px] border border-white/20 min-w-[45px] sm:min-w-[50px]" style={{ backgroundColor: '#7a9be3', color: '#000' }}>
-                  {i.toString().padStart(2, '0')}:00
+              {Array.from({ length: 24 }, (_, h) => (
+                <th key={h} className="group relative p-1 font-bold text-[10px] border border-white/20 min-w-[45px] sm:min-w-[50px] cursor-default" style={{ backgroundColor: '#7a9be3', color: '#000' }}>
+                  <div className="flex flex-col items-center justify-center md:flex-row md:gap-1">
+                    <span>{h.toString().padStart(2, '0')}:00</span>
+                    <button 
+                      onClick={() => handleCopyPredictions(h)}
+                      className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-black/20 md:bg-black/80 text-white rounded p-0.5 mt-0.5 md:mt-0 hover:bg-black/40 md:hover:bg-black"
+                      title="Copiar previsões"
+                    >
+                      <Copy className="w-[10px] h-[10px]" />
+                    </button>
+                  </div>
                 </th>
               ))}
             </tr>

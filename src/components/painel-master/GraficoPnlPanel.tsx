@@ -22,14 +22,12 @@ interface Roll {
 const CMAP: Record<string, string> = { BRANCO: "#ffffff", VERMELHO: "#e51e3e", PRETO: "#555566" };
 const TFS = [
   { k: "tick", l: "Tick", m: 0 },
+  { k: "1m", l: "1m", m: 1 },
+  { k: "2m", l: "2m", m: 2 },
   { k: "5m", l: "5m", m: 5 },
   { k: "10m", l: "10m", m: 10 },
   { k: "15m", l: "15m", m: 15 },
-  { k: "30m", l: "30m", m: 30 },
-  { k: "1h", l: "1h", m: 60 },
-  { k: "2h", l: "2h", m: 120 },
-  { k: "3h", l: "3h", m: 180 },
-  { k: "5h", l: "5h", m: 300 }
+  { k: "1h", l: "1h", m: 60 }
 ];
 const LIMITS = [200, 500, 1000, 1500, 2000, 3000, 5000, 10000];
 
@@ -84,6 +82,11 @@ function LiveBettingStatus() {
   const timerRef = useRef<any>(null);
   const pingRef = useRef<any>(null);
 
+  const eurRateRef = useRef(eurRate);
+  useEffect(() => {
+    eurRateRef.current = eurRate;
+  }, [eurRate]);
+
   useEffect(() => {
     let ws: WebSocket;
     
@@ -127,9 +130,9 @@ function LiveBettingStatus() {
                   if (p.color !== undefined && p.color !== null) {
                      const c = p.color;
                      let payout = 0;
-                     if (c === 1) payout = parseFloat(p.total_red_eur_bet || "0") * eurRate * 2;
-                     if (c === 2) payout = parseFloat(p.total_black_eur_bet || "0") * eurRate * 2;
-                     if (c === 0) payout = parseFloat(p.total_white_eur_bet || "0") * eurRate * 14;
+                     if (c === 1) payout = parseFloat(p.total_red_eur_bet || "0") * eurRateRef.current * 2;
+                     if (c === 2) payout = parseFloat(p.total_black_eur_bet || "0") * eurRateRef.current * 2;
+                     if (c === 0) payout = parseFloat(p.total_white_eur_bet || "0") * eurRateRef.current * 14;
                      setResult({ color: c, payout });
                   }
                } else if (p.status === "complete") {
@@ -141,17 +144,17 @@ function LiveBettingStatus() {
                   if (p.color !== undefined && p.color !== null) {
                      const c = p.color;
                      let payout = 0;
-                     if (c === 1) payout = parseFloat(p.total_red_eur_bet || "0") * eurRate * 2;
-                     if (c === 2) payout = parseFloat(p.total_black_eur_bet || "0") * eurRate * 2;
-                     if (c === 0) payout = parseFloat(p.total_white_eur_bet || "0") * eurRate * 14;
+                     if (c === 1) payout = parseFloat(p.total_red_eur_bet || "0") * eurRateRef.current * 2;
+                     if (c === 2) payout = parseFloat(p.total_black_eur_bet || "0") * eurRateRef.current * 2;
+                     if (c === 0) payout = parseFloat(p.total_white_eur_bet || "0") * eurRateRef.current * 14;
                      setResult({ color: c, payout });
                   }
                }
                
                if (p.total_red_eur_bet !== undefined) {
-                  setRed({ amt: parseFloat(p.total_red_eur_bet) * eurRate, count: p.total_red_bets_placed || 0 });
-                  setWhite({ amt: parseFloat(p.total_white_eur_bet) * eurRate, count: p.total_white_bets_placed || 0 });
-                  setBlack({ amt: parseFloat(p.total_black_eur_bet) * eurRate, count: p.total_black_bets_placed || 0 });
+                  setRed({ amt: parseFloat(p.total_red_eur_bet) * eurRateRef.current, count: p.total_red_bets_placed || 0 });
+                  setWhite({ amt: parseFloat(p.total_white_eur_bet) * eurRateRef.current, count: p.total_white_bets_placed || 0 });
+                  setBlack({ amt: parseFloat(p.total_black_eur_bet) * eurRateRef.current, count: p.total_black_bets_placed || 0 });
                }
             }
           }
@@ -173,7 +176,9 @@ function LiveBettingStatus() {
       clearInterval(timerRef.current);
       if (ws) ws.close();
     };
-  }, [eurRate]);
+    // eurRate via ref para evitar reconexão do WebSocket 
+    // a cada mudança de câmbio
+  }, []);
 
   const totalAmt = red.amt + white.amt + black.amt;
   const getPct = (amt: number) => totalAmt > 0 ? (amt / totalAmt) * 100 : 0;

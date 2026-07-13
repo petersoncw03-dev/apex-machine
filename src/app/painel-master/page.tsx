@@ -135,6 +135,7 @@ export default function RadarAvancado() {
   }, []);
 
   useEffect(() => {
+    if (activeTab !== 'home') return;
     if (!globalData || globalData.length === 0) return;
 
     const now = Date.now();
@@ -143,30 +144,29 @@ export default function RadarAvancado() {
     const isB = (r: any) => r?.color?.toUpperCase() === 'PRETO' || r?.color?.toUpperCase() === 'BLACK' || r?.color?.toUpperCase() === 'P' || (Number(r?.roll) >= 8 && Number(r?.roll) <= 14);
 
     // Cores por Hora e Dia Anterior
-    const targetDate = new Date(now + coresHoraOffsetDays * 24 * 3600 * 1000);
-    const prevDate = new Date(now + (coresHoraOffsetDays - 1) * 24 * 3600 * 1000);
+    // UTC-3 = subtrair 3 horas em ms
+    const targetDate = new Date(now + coresHoraOffsetDays * 24 * 3600 * 1000 - 3 * 60 * 60 * 1000);
+    const prevDate = new Date(now + (coresHoraOffsetDays - 1) * 24 * 3600 * 1000 - 3 * 60 * 60 * 1000);
     
-    const targetDateStr = targetDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    const prevDateStr = prevDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const targetDateStr = `${targetDate.getUTCFullYear()}-${targetDate.getUTCMonth()}-${targetDate.getUTCDate()}`;
+    const prevDateStr = `${prevDate.getUTCFullYear()}-${prevDate.getUTCMonth()}-${prevDate.getUTCDate()}`;
     
     const cph = Array.from({ length: 24 }, () => ({ r: 0, b: 0, w: 0 }));
     const prevCphW = Array.from({ length: 24 }, () => 0);
 
     for (const roll of globalData) {
-      const d = new Date(roll.timestamp);
-      const rollDateStr = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      const d = new Date(new Date(roll.timestamp).getTime() - 3 * 60 * 60 * 1000);
+      const rollDateStr = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
       
       if (rollDateStr === targetDateStr) {
-        const hStr = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false });
-        const h = parseInt(hStr, 10);
+        const h = d.getUTCHours();
         if (h >= 0 && h < 24) {
           if (isR(roll)) cph[h].r++;
           else if (isB(roll)) cph[h].b++;
           else if (isW(roll)) cph[h].w++;
         }
       } else if (rollDateStr === prevDateStr && isW(roll)) {
-        const hStr = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false });
-        const h = parseInt(hStr, 10);
+        const h = d.getUTCHours();
         if (h >= 0 && h < 24) {
           prevCphW[h]++;
         }
@@ -182,9 +182,10 @@ export default function RadarAvancado() {
     
     setHotHoursPrevDay(hot);
     setCoresPorHora(cph);
-  }, [globalData, coresHoraOffsetDays]);
+  }, [globalData, coresHoraOffsetDays, activeTab]);
 
   useEffect(() => {
+    if (activeTab !== 'home') return;
     if (!globalDataDelayed || globalDataDelayed.length === 0) return;
 
     const now = Date.now();
@@ -468,7 +469,7 @@ export default function RadarAvancado() {
       black: findSeqColor(isB, seqColorLen),
       any: findSeqAnyColor(seqColorLen)
     };
-  }, [globalDataDelayed, seqColorLen]);
+  }, [globalDataDelayed, seqColorLen, activeTab]);
 
   // --- IA SIGNALS CALCULATION ---
   // (O Master Sniper AI foi removido para dar lugar ao Mestre de Confluência)
@@ -476,7 +477,14 @@ export default function RadarAvancado() {
   // --- IA STATS (SA/SM) CALCULATION ---
   const [iaMinConfluence, setIaMinConfluence] = useState(1);
 
+  // Máximo de 3.000 pedras para iaStats (suficiente para 24h+)
+  const globalData24hSliced = useMemo(() => 
+    globalData24h.slice(-3000), 
+  [globalData24h]);
+
   const iaStats = useMemo(() => {
+    if (activeTab !== 'home') return { sa: 0, sm: 0 };
+    const globalData24h = globalData24hSliced;
     if (!globalData24h || globalData24h.length < 100) return { sa: 0, sm: 0 };
 
     const getMinuteStamp = (time: number) => Math.floor(time / 60000);
@@ -577,10 +585,31 @@ export default function RadarAvancado() {
 
       const currMinNum = currentTimeStamp % 60;
       
-      const sortedMins = minCount6h
-        .map((hits, min) => ({ min, hits }))
-        .filter(x => x.hits >= 2)
-        .sort((a, b) => b.hits - a.hits);
+      // Busca linear O(N) para evitar criação de arrays 
+      // temporários no loop (reduz GC pressure em mobile)
+      const sortedMins: { min: number, hits: number }[] = [];
+      let top1 = { min: -1, hits: 1 };
+      let top2 = { min: -1, hits: 1 };
+      let top3 = { min: -1, hits: 1 };
+
+      for (let min = 0; min < 60; min++) {
+        const hits = minCount6h[min];
+        if (hits >= 2) {
+          if (hits > top1.hits) {
+            top3 = top2;
+            top2 = top1;
+            top1 = { min, hits };
+          } else if (hits > top2.hits) {
+            top3 = top2;
+            top2 = { min, hits };
+          } else if (hits > top3.hits) {
+            top3 = { min, hits };
+          }
+        }
+      }
+      if (top1.min !== -1) sortedMins.push(top1);
+      if (top2.min !== -1) sortedMins.push(top2);
+      if (top3.min !== -1) sortedMins.push(top3);
       for(let i=0; i<3 && i<sortedMins.length; i++) {
          if (sortedMins[i].min === currMinNum) signalGenList[mIdx].push(-1); // Incrementa
       }
@@ -634,7 +663,7 @@ export default function RadarAvancado() {
     }
 
     return { sa: currentSA, sm: maxSA };
-  }, [globalData24h, iaMinConfluence]);
+  }, [globalData24hSliced, iaMinConfluence, activeTab]);
 
   // SOMA
   const [somaHoursGeral, setSomaHoursGeral] = useState(12);
@@ -874,7 +903,7 @@ export default function RadarAvancado() {
       const mappedRoll = { ...newRoll, roll: Number(newRoll.roll) };
       
       const isBranco = mappedRoll.color?.toUpperCase().includes('BRANCO') || mappedRoll.color?.toUpperCase().includes('WHITE') || String(newRoll.roll) === '0';
-      console.log("[DEBUG BRANCO]", { newRoll, mappedRoll, isBranco });
+
       if (isBranco) {
          setShowBrancoToast(true);
          if (soundEnabledRef.current) {
@@ -883,19 +912,19 @@ export default function RadarAvancado() {
          setTimeout(() => setShowBrancoToast(false), 5000);
       }
 
-      console.log('SSE Recebeu:', mappedRoll);
+
       
       setGlobalData(prevData => {
         const hasIdMatch = mappedRoll.id && prevData.some(r => r.id === mappedRoll.id);
         const hasTsMatch = !mappedRoll.id && prevData.some(r => r.timestamp === mappedRoll.timestamp && r.roll === mappedRoll.roll);
         
-        console.log(`Verificando duplicada: hasIdMatch=${hasIdMatch}, hasTsMatch=${hasTsMatch}`);
+
         if (hasIdMatch || hasTsMatch) {
-           console.log('Pedra ignorada (duplicada)');
+
            return prevData;
         }
         
-        console.log('Pedra ACEITA e adicionada no estado global');
+
         const merged = [...prevData, mappedRoll];
         // newRolls always come in chronological order, no need to sort.
         // sorting by ID fails because ID is alphanumeric (e.g. 'zokgXzzVly')
@@ -908,7 +937,8 @@ export default function RadarAvancado() {
         if (!mappedRoll.id && prev.some(r => r.timestamp === mappedRoll.timestamp && r.roll === mappedRoll.roll)) return prev;
         
         const merged = [...prev, mappedRoll];
-        return merged.length > 90000 ? merged.slice(-90000) : merged;
+        // Limite reduzido de 90k para 15k — suficiente para análise
+        return merged.length > 15000 ? merged.slice(-15000) : merged;
       });
     });
     return unsub;
@@ -1162,6 +1192,7 @@ export default function RadarAvancado() {
 
   // ── MINUTOS ────────────────────────────────────────────────────────────────
   const minStats = useMemo(() => {
+    if (activeTab !== 'home') return Array.from({ length: 60 }, (_, i) => ({ min: i, hits1: 0, hits2: 0, hits: 0, sa: 0 }));
     const data = sliceCustomMin;
     const st = Array.from({ length: 60 }, (_, i) => ({ min: i, hits1: 0, hits2: 0, hits: 0, sa: 0 }));
     const last = Array(60).fill(-1);
@@ -1181,7 +1212,7 @@ export default function RadarAvancado() {
       st[m].sa = Math.max(0, Math.floor(raw / 60));
     }
     return st;
-  }, [sliceCustomMin]);
+  }, [sliceCustomMin, activeTab]);
 
   // ── Helpers visuais ───────────────────────────────────────────────────────
   const StoneIcon = ({ n, size = "md" }: { n: number, size?: "sm" | "md" | "lg" | "ticker" }) => {
@@ -1227,6 +1258,7 @@ export default function RadarAvancado() {
   // ── GALE BRANCO POR PEDRA (1h a 24h) ────────────────────────────────────
   const timeframesBranco = useMemo(() => [1, 2, 3, 4, 5, 6, 12, 24], []);
   const galeBrancoStats = useMemo(() => {
+    if (activeTab !== 'home') return timeframesBranco.map(hours => ({ hours, stats: Array.from({ length: 15 }, (_, i) => ({ stone: i, hits: 0, triggers: 0 })) }));
     return timeframesBranco.map(hours => {
       const data = sliceByHours(globalDataDelayed, hours);
       const st = Array.from({ length: 15 }, (_, i) => ({ stone: i, hits: 0, triggers: 0 }));
@@ -1246,7 +1278,7 @@ export default function RadarAvancado() {
       }
       return { hours, stats: st };
     });
-  }, [globalDataDelayed, sliceByHours, timeframesBranco, entradasBranco]);
+  }, [globalDataDelayed, sliceByHours, timeframesBranco, entradasBranco, activeTab]);
 
   return (
     <div className="h-screen overflow-hidden bg-[#030303] text-gray-200 font-sans flex flex-col relative">
@@ -1308,19 +1340,22 @@ export default function RadarAvancado() {
                 Stress Test
               </button>
               <button 
+                onClick={() => setActiveTab('grafico')} 
+                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'grafico' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+                Gráfico
+              </button>
+              
+              <span className="text-white/20 hidden md:block select-none">|</span>
+
+              <button 
                 onClick={() => isVip ? window.location.href = '/painel-master/avancado' : alert('Aba exclusiva para usuários VIP!')} 
                 className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'visao-cores' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'} ${!isVip ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={!isVip ? "Exclusivo VIP" : ""}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
                 Avançado
-              </button>
-              <button 
-                onClick={() => setActiveTab('grafico')} 
-                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'grafico' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
-                Gráfico
               </button>
              <a 
                 href="https://blaze.bet.br/pt/games/double"  

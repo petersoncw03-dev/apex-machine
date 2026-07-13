@@ -30,7 +30,7 @@ const sections: NavSection[] = [
     title: 'Ao Vivo',
     items: [
       { href: '/painel-master', label: 'Painel Master', icon: <Home size={18} />, badge: 'Live' },
-      { href: '/radar', label: 'Radar Avançado', icon: <Radio size={18} /> },
+      // { href: '/radar', label: 'Radar Avançado', icon: <Radio size={18} /> },
       // { href: '/radar-rec', label: 'Radar na REC', icon: <Zap size={18} />, badge: 'Novo' },
       // { href: '/radar-chuva', label: 'Radar de Chuva', icon: <Droplets size={18} />, badge: 'Novo' },
     ]

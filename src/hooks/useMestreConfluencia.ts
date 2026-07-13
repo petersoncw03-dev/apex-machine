@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { calculateRadar } from './engine/engines/radarEngine';
 import { calculateIA } from './engine/engines/iaEngine';
 
@@ -63,10 +63,16 @@ export function useMestreConfluencia(globalData: RollData[]) {
         };
     }, [globalData]);
 
+    const lastRollRef = useRef<string | null>(null);
+
     // Máquina de estados baseada na mudança da última pedra do globalData
     useEffect(() => {
         if (!globalData || globalData.length < 50) return;
         const newRoll = globalData[globalData.length - 1];
+        
+        if (lastRollRef.current === (newRoll.id || newRoll.timestamp)) return;
+        lastRollRef.current = newRoll.id || newRoll.timestamp;
+
         const isBranco = newRoll.color.toUpperCase() === 'BRANCO' || newRoll.color.toUpperCase() === 'B' || newRoll.color.toUpperCase() === 'WHITE' || Number(newRoll.roll) === 0;
 
         // Reset Diário de Placar
@@ -75,46 +81,44 @@ export function useMestreConfluencia(globalData: RollData[]) {
             setPlacarDiario({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: today });
         }
 
-        setMestreState(prevState => {
-            let nextState = { ...prevState };
+        let nextState = { ...mestreState };
 
-            if (prevState.status === 'active') {
-                // A pedra atual conta para as rodadas ativas
-                nextState.stones = [...prevState.stones, newRoll.roll];
+        if (mestreState.status === 'active') {
+            // A pedra atual conta para as rodadas ativas
+            nextState.stones = [...mestreState.stones, newRoll.roll];
+            
+            if (isBranco) {
+                nextState.status = 'win';
+                setPlacarDiario({ ...placarDiario, wins: placarDiario.wins + 1, sa: 0 });
                 
-                if (isBranco) {
-                    nextState.status = 'win';
-                    setPlacarDiario(p => ({ ...p, wins: p.wins + 1, sa: 0 }));
-                    
-                    // Após 7s o componente deve voltar pro standby, simularemos com setTimeout fora do state reducer
-                } else {
-                    if (prevState.step < 6) {
-                        nextState.step = prevState.step + 1;
-                        if (levelPoints > prevState.level) {
-                            nextState.level = levelPoints;
-                            nextState.step = 1; // Upgrade reinicia a contagem
-                            nextState.stones = []; // Reinicia as pedras do ciclo
-                        }
-                    } else {
-                        nextState.status = 'loss';
-                        setPlacarDiario(p => ({ ...p, losses: p.losses + 1, sa: p.sa + 1, sm: Math.max(p.sm, p.sa + 1) }));
-                    }
-                }
+                // Após 7s o componente deve voltar pro standby, simularemos com setTimeout fora do state reducer
             } else {
-                // Se estava WIN ou LOSS, o timeout externo vai resetar para standby.
-                // Mas se engatilha um novo sinal, já podemos sobrescrever para active.
-                if (levelPoints >= 3 && prevState.status === 'standby') {
-                    nextState = {
-                        status: 'active',
-                        step: 1,
-                        level: levelPoints,
-                        stones: [],
-                    };
+                if (mestreState.step < 6) {
+                    nextState.step = mestreState.step + 1;
+                    if (levelPoints > mestreState.level) {
+                        nextState.level = levelPoints;
+                        nextState.step = 1; // Upgrade reinicia a contagem
+                        nextState.stones = []; // Reinicia as pedras do ciclo
+                    }
+                } else {
+                    nextState.status = 'loss';
+                    setPlacarDiario({ ...placarDiario, losses: placarDiario.losses + 1, sa: placarDiario.sa + 1, sm: Math.max(placarDiario.sm, placarDiario.sa + 1) });
                 }
             }
-            return nextState;
-        });
-    }, [globalData]);
+        } else {
+            // Se estava WIN ou LOSS, o timeout externo vai resetar para standby.
+            // Mas se engatilha um novo sinal, já podemos sobrescrever para active.
+            if (levelPoints >= 3 && mestreState.status === 'standby') {
+                nextState = {
+                    status: 'active',
+                    step: 1,
+                    level: levelPoints,
+                    stones: [],
+                };
+            }
+        }
+        setMestreState(nextState);
+    }, [globalData, mestreState, levelPoints, placarDiario]);
 
     // Lida com o reset automático de WIN/LOSS para STANDBY após 7s (igual no backend)
     useEffect(() => {

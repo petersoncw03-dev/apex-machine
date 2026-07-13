@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSSE } from '@/contexts/SSEContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -58,6 +58,71 @@ interface ActiveCycle {
   totalInvested: number;
 }
 
+const GroupCardMemo = React.memo(({ 
+  size, 
+  stats, 
+  cycles, 
+  audioEnabled, 
+  onToggleAudio 
+}: {
+  size: number;
+  stats: any;
+  cycles: any[];
+  audioEnabled: boolean;
+  onToggleAudio: (size: number) => void;
+}) => {
+  const s = stats;
+  const total = s.wins + s.losses;
+  const tx = total > 0 ? ((s.wins / total) * 100).toFixed(0) : '0';
+  const currentActive = cycles.length;
+  const highlight = s.sa >= s.sm - 1 && s.sa > 0;
+
+  return (
+    <motion.div whileHover={{ y: -5 }} className="bg-[#0f141e]/80 backdrop-blur-xl border border-white/5 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative transition-all duration-300 [&>*:first-child]:rounded-t-lg [&>*:last-child]:rounded-b-lg p-5 gap-4 group">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00c83a]/40 to-transparent"></div>
+      <div className="flex justify-between items-start">
+        <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-black uppercase tracking-tighter">Confluência</span><h3 className="text-xl font-black text-white">{size}{size === 14 ? '+' : ''} Estrat.</h3></div>
+        <div className={`p-2 rounded-xl border ${currentActive > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-white/5 border-white/10'}`}><span className={`text-[9px] font-black ${currentActive > 0 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`}>{currentActive > 0 ? `${currentActive} ATIVOS` : 'EM ESPERA'}</span></div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest"><span className="text-gray-400">Assertividade</span><span className={parseInt(tx) >= 75 ? 'text-[#4ade80]' : 'text-white'}>{tx}% TX</span></div>
+        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${tx}%` }} className={`h-full ${parseInt(tx) >= 80 ? 'bg-[#4ade80]' : 'bg-[#eab308]'}`}></motion.div></div>
+      </div>
+      <div className="grid grid-cols-4 gap-2 pt-2">
+        <div className="bg-white/5 rounded-xl p-2 flex flex-col items-center"><span className="text-[7px] text-gray-500 font-black uppercase">Wins</span><span className="text-xs font-black text-[#4ade80]">{s.wins}</span></div>
+        <div className="bg-white/5 rounded-xl p-2 flex flex-col items-center"><span className="text-[7px] text-gray-500 font-black uppercase">Losses</span><span className="text-xs font-black text-[#f12c4c]">{s.losses}</span></div>
+        <div className={`rounded-xl p-2 flex flex-col items-center transition-colors ${highlight ? 'bg-[#8b008b]' : 'bg-white/5'}`}><span className="text-[7px] text-gray-500 font-black uppercase">SM</span><span className="text-xs font-black text-white">{s.sm}</span></div>
+        <div className={`rounded-xl p-2 flex flex-col items-center transition-colors ${highlight ? 'bg-[#8b008b]' : 'bg-white/5'}`}><span className="text-[7px] text-gray-500 font-black uppercase">SA</span><span className="text-xs font-black text-white">{s.sa}</span></div>
+      </div>
+      {cycles.map((c, idx) => (
+        <div key={c.id} className="mt-2 flex items-center justify-between gap-1 bg-[#12141c] border border-white/10 px-3 py-2 rounded-xl text-[10px] font-black text-white shadow-xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full duration-1000"></div>
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#eab308] shadow-[0_0_10px_rgba(234,179,8,0.5)]"></div>
+          <span className="flex items-center gap-1.5 text-gray-400 pl-2">#{idx+1}</span>
+          <span className="text-[#4ade80] font-bold text-xs">{c.winRate}%</span>
+          <span className="text-gray-500 flex items-center gap-1">SM <b className="text-white">{c.sm}</b></span>
+          <span className={`flex items-center gap-1 ${c.sa > 0 ? 'text-[#f12c4c]' : 'text-gray-500'}`}>SA <b className="text-white">{c.sa}</b></span>
+          <span className="bg-white/5 px-2 py-0.5 rounded border border-white/10 text-gray-300 font-mono text-[9px]">{c.entriesLeft}/{c.maxEntries}</span>
+          <span className="text-[#eab308] tracking-widest bg-[#eab308]/10 px-2 py-1 rounded-lg border border-[#eab308]/20 whitespace-nowrap">R$ {c.currentValue.toFixed(2)}</span>
+        </div>
+      ))}
+      
+      <button 
+        onClick={() => onToggleAudio(size)}
+        className={`absolute top-4 right-4 p-2 rounded-full transition-all ${audioEnabled ? 'bg-[#eab308] text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white'}`}
+        title="Ativar Sino para este Card"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={audioEnabled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+      </button>
+    </motion.div>
+  );
+}, (prev, next) => {
+  return prev.size === next.size && 
+         prev.stats === next.stats && 
+         prev.audioEnabled === next.audioEnabled &&
+         JSON.stringify(prev.cycles) === JSON.stringify(next.cycles);
+});
+
 export default function RadarPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,6 +150,10 @@ export default function RadarPage() {
 
   const [initialStake, setInitialStake] = useState<number>(1.00);
   const [audioEnabledFor, setAudioEnabledFor] = useState<number[]>([]);
+  
+  const toggleAudio = useCallback((size: number) => {
+    setAudioEnabledFor(prev => prev.includes(size) ? prev.filter(p => p !== size) : [...prev, size]);
+  }, []);
   
   const playAlert = useCallback(() => {
     try {
@@ -660,7 +729,7 @@ export default function RadarPage() {
                   </thead>
                   <tbody>
                     {liveOpportunities.map((stat) => (
-                      <motion.tr layout key={stat.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                      <motion.tr key={stat.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                         <td className="p-2 border-r border-white/5 flex gap-1 justify-center">
                           {stat.patternArray.map((v, i) => {
                             const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
@@ -709,53 +778,16 @@ export default function RadarPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[6, 7, 8, 9, 10, 11, 12, 13, 14].map(size => {
-                const s = groupStats[size];
-                const total = s.wins + s.losses;
-                const tx = total > 0 ? ((s.wins / total) * 100).toFixed(0) : '0';
-                const currentActive = activeCycles.filter(c => c.size === size).length;
-                const highlight = s.sa >= s.sm - 1 && s.sa > 0;
-                return (
-                  <motion.div key={size} whileHover={{ y: -5 }} className={`${CARD} p-5 gap-4 group`}>
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00c83a]/40 to-transparent"></div>
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-black uppercase tracking-tighter">Confluência</span><h3 className="text-xl font-black text-white">{size}{size === 14 ? '+' : ''} Estrat.</h3></div>
-                      <div className={`p-2 rounded-xl border ${currentActive > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-white/5 border-white/10'}`}><span className={`text-[9px] font-black ${currentActive > 0 ? 'text-red-500 animate-pulse' : 'text-gray-500'}`}>{currentActive > 0 ? `${currentActive} ATIVOS` : 'EM ESPERA'}</span></div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest"><span className="text-gray-400">Assertividade</span><span className={parseInt(tx) >= 75 ? 'text-[#4ade80]' : 'text-white'}>{tx}% TX</span></div>
-                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${tx}%` }} className={`h-full ${parseInt(tx) >= 80 ? 'bg-[#4ade80]' : 'bg-[#eab308]'}`}></motion.div></div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 pt-2">
-                      <div className="bg-white/5 rounded-xl p-2 flex flex-col items-center"><span className="text-[7px] text-gray-500 font-black uppercase">Wins</span><span className="text-xs font-black text-[#4ade80]">{s.wins}</span></div>
-                      <div className="bg-white/5 rounded-xl p-2 flex flex-col items-center"><span className="text-[7px] text-gray-500 font-black uppercase">Losses</span><span className="text-xs font-black text-[#f12c4c]">{s.losses}</span></div>
-                      <div className={`rounded-xl p-2 flex flex-col items-center transition-colors ${highlight ? 'bg-[#8b008b]' : 'bg-white/5'}`}><span className="text-[7px] text-gray-500 font-black uppercase">SM</span><span className="text-xs font-black text-white">{s.sm}</span></div>
-                      <div className={`rounded-xl p-2 flex flex-col items-center transition-colors ${highlight ? 'bg-[#8b008b]' : 'bg-white/5'}`}><span className="text-[7px] text-gray-500 font-black uppercase">SA</span><span className="text-xs font-black text-white">{s.sa}</span></div>
-                    </div>
-                    {activeCycles.filter(c => c.size === size).map((c, idx) => (
-                      <div key={c.id} className="mt-2 flex items-center justify-between gap-1 bg-[#12141c] border border-white/10 px-3 py-2 rounded-xl text-[10px] font-black text-white shadow-xl relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full duration-1000"></div>
-                        <div className="absolute top-0 left-0 w-1 h-full bg-[#eab308] shadow-[0_0_10px_rgba(234,179,8,0.5)]"></div>
-                        <span className="flex items-center gap-1.5 text-gray-400 pl-2">#{idx+1}</span>
-                        <span className="text-[#4ade80] font-bold text-xs">{c.winRate}%</span>
-                        <span className="text-gray-500 flex items-center gap-1">SM <b className="text-white">{c.sm}</b></span>
-                        <span className={`flex items-center gap-1 ${c.sa > 0 ? 'text-[#f12c4c]' : 'text-gray-500'}`}>SA <b className="text-white">{c.sa}</b></span>
-                        <span className="bg-white/5 px-2 py-0.5 rounded border border-white/10 text-gray-300 font-mono text-[9px]">{c.entriesLeft}/{c.maxEntries}</span>
-                        <span className="text-[#eab308] tracking-widest bg-[#eab308]/10 px-2 py-1 rounded-lg border border-[#eab308]/20 whitespace-nowrap">R$ {c.currentValue.toFixed(2)}</span>
-                      </div>
-                    ))}
-                    
-                    {/* Botão Sino do Card */}
-                    <button 
-                      onClick={() => setAudioEnabledFor(prev => prev.includes(size) ? prev.filter(p => p !== size) : [...prev, size])}
-                      className={`absolute top-4 right-4 p-2 rounded-full transition-all ${audioEnabledFor.includes(size) ? 'bg-[#eab308] text-black shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white'}`}
-                      title="Ativar Sino para este Card"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={audioEnabledFor.includes(size) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                    </button>
-                  </motion.div>
-                );
-              })}
+              {[6, 7, 8, 9, 10, 11, 12, 13, 14].map(size => (
+                <GroupCardMemo 
+                  key={size}
+                  size={size}
+                  stats={groupStats[size]}
+                  cycles={activeCycles.filter(c => c.size === size)}
+                  audioEnabled={audioEnabledFor.includes(size)}
+                  onToggleAudio={toggleAudio}
+                />
+              ))}
             </div>
 
           </div>

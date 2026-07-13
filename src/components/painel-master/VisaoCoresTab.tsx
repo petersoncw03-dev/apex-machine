@@ -781,18 +781,18 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
            </div>
 
            {/* Estatisticas */}
-           <div className="w-full flex justify-center mb-1 z-10 mt-1">
-              <div className="flex gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest items-center">
-                 <span title="Winrate" className="text-gray-300 font-bold">
+           <div className="w-full flex justify-center -mb-7 z-10 mt-3 translate-y-4 relative">
+              <div className="flex gap-4 text-[13px] font-mono text-gray-300 uppercase tracking-widest items-center drop-shadow-md">
+                 <span title="Winrate" className="text-gray-200 font-bold">
                     W: <span className="text-emerald-400">{placarBrancos.wins}</span> L: <span className="text-red-400">{placarBrancos.losses}</span> 
                     <strong className="text-white ml-1">({placarBrancos.wins + placarBrancos.losses > 0 ? ((placarBrancos.wins / (placarBrancos.wins + placarBrancos.losses)) * 100).toFixed(0) : 0}%)</strong>
                  </span>
-                 <span className="text-white/20">|</span>
-                 <span title="Sequência Atual Sem Acerto" className={`font-bold ${placarBrancos.sa >= placarBrancos.sm && placarBrancos.sm > 0 ? 'text-amber-400' : 'text-gray-300'}`}>
+                 <span className="text-white/30">|</span>
+                 <span title="Sequência Atual Sem Acerto" className={`font-bold ${placarBrancos.sa >= placarBrancos.sm && placarBrancos.sm > 0 ? 'text-amber-400' : 'text-gray-200'}`}>
                     SA: <span className={placarBrancos.sa >= placarBrancos.sm && placarBrancos.sm > 0 ? 'text-amber-400' : 'text-white'}>{placarBrancos.sa}</span>
                  </span>
-                 <span className="text-white/20">|</span>
-                 <span title="Sequência Máxima Sem Acerto" className="text-gray-300 font-bold">
+                 <span className="text-white/30">|</span>
+                 <span title="Sequência Máxima Sem Acerto" className="text-gray-200 font-bold">
                     SM: <span className="text-white">{placarBrancos.sm}</span>
                  </span>
               </div>
@@ -917,18 +917,18 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
            </div>
 
            {/* Estatisticas */}
-           <div className="w-full flex justify-center mb-1 z-10 mt-1">
-              <div className="flex gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest items-center">
-                 <span title="Winrate" className="text-gray-300 font-bold">
+           <div className="w-full flex justify-center -mb-7 z-10 mt-3 translate-y-4 relative">
+              <div className="flex gap-4 text-[13px] font-mono text-gray-300 uppercase tracking-widest items-center drop-shadow-md">
+                 <span title="Winrate" className="text-gray-200 font-bold">
                     W: <span className="text-emerald-400">{placarCores.wins}</span> L: <span className="text-red-400">{placarCores.losses}</span> 
                     <strong className="text-white ml-1">({placarCores.wins + placarCores.losses > 0 ? ((placarCores.wins / (placarCores.wins + placarCores.losses)) * 100).toFixed(0) : 0}%)</strong>
                  </span>
-                 <span className="text-white/20">|</span>
-                 <span title="Sequência Atual Sem Acerto" className={`font-bold ${placarCores.sa >= placarCores.sm && placarCores.sm > 0 ? 'text-amber-400' : 'text-gray-300'}`}>
+                 <span className="text-white/30">|</span>
+                 <span title="Sequência Atual Sem Acerto" className={`font-bold ${placarCores.sa >= placarCores.sm && placarCores.sm > 0 ? 'text-amber-400' : 'text-gray-200'}`}>
                     SA: <span className={placarCores.sa >= placarCores.sm && placarCores.sm > 0 ? 'text-amber-400' : 'text-white'}>{placarCores.sa}</span>
                  </span>
-                 <span className="text-white/20">|</span>
-                 <span title="Sequência Máxima Sem Acerto" className="text-gray-300 font-bold">
+                 <span className="text-white/30">|</span>
+                 <span title="Sequência Máxima Sem Acerto" className="text-gray-200 font-bold">
                     SM: <span className="text-white">{placarCores.sm}</span>
                  </span>
               </div>
