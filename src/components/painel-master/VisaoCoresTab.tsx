@@ -781,7 +781,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
            </div>
 
            {/* Estatisticas */}
-           <div className="w-full flex justify-center pb-3 z-10 mt-2">
+           <div className="w-full flex justify-center mb-1 z-10 mt-1">
               <div className="flex gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest items-center">
                  <span title="Winrate" className="text-gray-300 font-bold">
                     W: <span className="text-emerald-400">{placarBrancos.wins}</span> L: <span className="text-red-400">{placarBrancos.losses}</span> 
@@ -917,7 +917,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
            </div>
 
            {/* Estatisticas */}
-           <div className="w-full flex justify-center pb-3 z-10 mt-2">
+           <div className="w-full flex justify-center mb-1 z-10 mt-1">
               <div className="flex gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest items-center">
                  <span title="Winrate" className="text-gray-300 font-bold">
                     W: <span className="text-emerald-400">{placarCores.wins}</span> L: <span className="text-red-400">{placarCores.losses}</span> 
