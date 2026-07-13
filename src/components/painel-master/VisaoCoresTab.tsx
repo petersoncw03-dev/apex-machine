@@ -780,34 +780,41 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
               </p>
            </div>
 
+           {/* Estatisticas */}
+           <div className="w-full flex justify-center pb-3 z-10 mt-2">
+              <div className="flex gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest items-center">
+                 <span title="Winrate" className="text-gray-300 font-bold">
+                    W: <span className="text-emerald-400">{placarBrancos.wins}</span> L: <span className="text-red-400">{placarBrancos.losses}</span> 
+                    <strong className="text-white ml-1">({placarBrancos.wins + placarBrancos.losses > 0 ? ((placarBrancos.wins / (placarBrancos.wins + placarBrancos.losses)) * 100).toFixed(0) : 0}%)</strong>
+                 </span>
+                 <span className="text-white/20">|</span>
+                 <span title="Sequência Atual Sem Acerto" className={`font-bold ${placarBrancos.sa >= placarBrancos.sm && placarBrancos.sm > 0 ? 'text-amber-400' : 'text-gray-300'}`}>
+                    SA: <span className={placarBrancos.sa >= placarBrancos.sm && placarBrancos.sm > 0 ? 'text-amber-400' : 'text-white'}>{placarBrancos.sa}</span>
+                 </span>
+                 <span className="text-white/20">|</span>
+                 <span title="Sequência Máxima Sem Acerto" className="text-gray-300 font-bold">
+                    SM: <span className="text-white">{placarBrancos.sm}</span>
+                 </span>
+              </div>
+           </div>
+
            {/* Fundo: Pedras da Entrada */}
-           <div className="w-full flex flex-col pt-3 border-t border-white/5 z-10 gap-3">
-              <div className="flex justify-center w-full">
-                 <div className="flex gap-3 text-[9px] font-mono text-gray-500 uppercase tracking-widest">
-                    <span title="Winrate">W:{placarBrancos.wins} L:{placarBrancos.losses} <strong className="text-white">({placarBrancos.wins + placarBrancos.losses > 0 ? ((placarBrancos.wins / (placarBrancos.wins + placarBrancos.losses)) * 100).toFixed(0) : 0}%)</strong></span>
-                    <span>|</span>
-                    <span title="Sequência Atual Sem Acerto" className={placarBrancos.sa >= placarBrancos.sm && placarBrancos.sm > 0 ? 'text-amber-400 font-bold' : ''}>SA:{placarBrancos.sa}</span>
-                    <span>|</span>
-                    <span title="Sequência Máxima Sem Acerto">SM:{placarBrancos.sm}</span>
-                 </div>
-              </div>
-              <div className="w-full flex items-center justify-between gap-3">
-                 {[...Array(6)].map((_, i) => {
-                     const stoneNum = signalState.stones[i];
-                     const isFilled = stoneNum !== undefined;
-                     return (
-                         <div key={i} className="flex flex-col items-center gap-2 flex-1">
-                             {isFilled ? (
-                                 <StoneIcon n={stoneNum} size="lg" />
-                             ) : (
-                                 <div className="w-12 h-12 rounded-xl bg-[#1a1d24]/50 border border-dashed border-white/10 flex items-center justify-center">
-                                     <span className="text-[10px] text-gray-600 font-black tracking-widest">{i+1}ª</span>
-                                 </div>
-                             )}
-                         </div>
-                     );
-                 })}
-              </div>
+           <div className="w-full flex items-center justify-between gap-3 border-t border-white/5 pt-5 z-10">
+              {[...Array(6)].map((_, i) => {
+                  const stoneNum = signalState.stones[i];
+                  const isFilled = stoneNum !== undefined;
+                  return (
+                      <div key={i} className="flex flex-col items-center gap-2 flex-1">
+                          {isFilled ? (
+                              <StoneIcon n={stoneNum} size="lg" />
+                          ) : (
+                              <div className="w-12 h-12 rounded-xl bg-[#1a1d24]/50 border border-dashed border-white/10 flex items-center justify-center">
+                                  <span className="text-[10px] text-gray-600 font-black tracking-widest">{i+1}ª</span>
+                              </div>
+                          )}
+                      </div>
+                  );
+              })}
            </div>
         </div>
 
@@ -909,34 +916,41 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
               )}
            </div>
 
+           {/* Estatisticas */}
+           <div className="w-full flex justify-center pb-3 z-10 mt-2">
+              <div className="flex gap-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest items-center">
+                 <span title="Winrate" className="text-gray-300 font-bold">
+                    W: <span className="text-emerald-400">{placarCores.wins}</span> L: <span className="text-red-400">{placarCores.losses}</span> 
+                    <strong className="text-white ml-1">({placarCores.wins + placarCores.losses > 0 ? ((placarCores.wins / (placarCores.wins + placarCores.losses)) * 100).toFixed(0) : 0}%)</strong>
+                 </span>
+                 <span className="text-white/20">|</span>
+                 <span title="Sequência Atual Sem Acerto" className={`font-bold ${placarCores.sa >= placarCores.sm && placarCores.sm > 0 ? 'text-amber-400' : 'text-gray-300'}`}>
+                    SA: <span className={placarCores.sa >= placarCores.sm && placarCores.sm > 0 ? 'text-amber-400' : 'text-white'}>{placarCores.sa}</span>
+                 </span>
+                 <span className="text-white/20">|</span>
+                 <span title="Sequência Máxima Sem Acerto" className="text-gray-300 font-bold">
+                    SM: <span className="text-white">{placarCores.sm}</span>
+                 </span>
+              </div>
+           </div>
+
            {/* Fundo: Pedras da Entrada */}
-           <div className="w-full flex flex-col pt-3 border-t border-white/5 z-10 gap-3">
-              <div className="flex justify-center w-full">
-                 <div className="flex gap-3 text-[9px] font-mono text-gray-500 uppercase tracking-widest">
-                    <span title="Winrate">W:{placarCores.wins} L:{placarCores.losses} <strong className="text-white">({placarCores.wins + placarCores.losses > 0 ? ((placarCores.wins / (placarCores.wins + placarCores.losses)) * 100).toFixed(0) : 0}%)</strong></span>
-                    <span>|</span>
-                    <span title="Sequência Atual Sem Acerto" className={placarCores.sa >= placarCores.sm && placarCores.sm > 0 ? 'text-amber-400 font-bold' : ''}>SA:{placarCores.sa}</span>
-                    <span>|</span>
-                    <span title="Sequência Máxima Sem Acerto">SM:{placarCores.sm}</span>
-                 </div>
-              </div>
-              <div className="w-full flex items-center justify-center gap-6">
-                 {[...Array(2)].map((_, i) => {
-                     const stoneNum = coresState.stones[i];
-                     const isFilled = stoneNum !== undefined;
-                     return (
-                         <div key={i} className="flex flex-col items-center gap-2">
-                             {isFilled ? (
-                                 <StoneIcon n={stoneNum} size="lg" />
-                             ) : (
-                                 <div className="w-12 h-12 rounded-xl bg-[#1a1d24]/50 border border-dashed border-white/10 flex items-center justify-center">
-                                     <span className="text-[10px] text-gray-600 font-black tracking-widest">{i+1}ª</span>
-                                 </div>
-                             )}
-                         </div>
-                     );
-                 })}
-              </div>
+           <div className="w-full flex items-center justify-center gap-6 border-t border-white/5 pt-5 z-10">
+              {[...Array(2)].map((_, i) => {
+                  const stoneNum = coresState.stones[i];
+                  const isFilled = stoneNum !== undefined;
+                  return (
+                      <div key={i} className="flex flex-col items-center gap-2">
+                          {isFilled ? (
+                              <StoneIcon n={stoneNum} size="lg" />
+                          ) : (
+                              <div className="w-12 h-12 rounded-xl bg-[#1a1d24]/50 border border-dashed border-white/10 flex items-center justify-center">
+                                  <span className="text-[10px] text-gray-600 font-black tracking-widest">{i+1}ª</span>
+                              </div>
+                          )}
+                      </div>
+                  );
+              })}
            </div>
         </div>
 
