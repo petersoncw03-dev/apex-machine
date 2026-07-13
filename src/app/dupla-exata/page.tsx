@@ -438,7 +438,7 @@ export default function DuplaExataPage() {
 
       {/* HISTÓRICO E INTEGRAÇÃO */}
       <section className="bg-[#121214] border border-[#2a2a35] rounded-xl overflow-x-auto p-4 shadow-xl shrink-0">
-         <FixedColumnsHistory data={data.slice(-200)} stats={stats} />
+         <FixedColumnsHistory data={data.slice(-200)} stats={stats} numEntradas={numEntradas} />
       </section>
 
       {/* MODAL COPIAR TODOS */}
@@ -487,14 +487,14 @@ export default function DuplaExataPage() {
   );
 }
 
-function FixedColumnsHistory({ data, stats }: { data: any[], stats?: any[] }) {
+function FixedColumnsHistory({ data, stats, numEntradas }: { data: any[], stats?: any[], numEntradas: number }) {
    const [preds, setPreds] = useState<Record<string, string>>({});
    const [integrationOn, setIntegrationOn] = useState(false);
    const [integrationStartTimeMs, setIntegrationStartTimeMs] = useState<number>(0);
    const [score, setScore] = useState<{ w: number, l: number, sa: number, sm: number, cycleHistory: {type: 'W'|'L', count: number}[], currentCycleType: 'W'|'L'|null, currentCycleCount: number }>({ w: 0, l: 0, sa: 0, sm: 0, cycleHistory: [], currentCycleType: null, currentCycleCount: 0 });
    const evaluatedKeysRef = useRef<Set<string>>(new Set());
    const evaluatedVisualsRef = useRef<Record<string, string>>({});
-   const previousAutoTargetsRef = useRef<Record<string, string>>({});
+   const previousAutoTargetsRef = useRef<Record<string, { cor: string; count: number }>>({});
    const hindsightKeysRef = useRef<Set<string>>(new Set());
 
    const cyclePred = (key: string) => {
@@ -550,7 +550,7 @@ function FixedColumnsHistory({ data, stats }: { data: any[], stats?: any[] }) {
    }, [data]);
 
    const autoTargets = useMemo(() => {
-      const targets: Record<string, string> = {};
+      const targets: Record<string, { cor: string; count: number }> = {};
       if (!integrationOn || !stats || stats.length === 0 || data.length === 0) return targets;
 
       const triggersByPair: Record<string, { casa: number, cor: string }[]> = {};
@@ -570,35 +570,51 @@ function FixedColumnsHistory({ data, stats }: { data: any[], stats?: any[] }) {
          if (!targetList) continue;
 
          for (const targetItem of targetList) {
-             const targetIdx = i + targetItem.casa;
-             let targetTs: number;
+             for (let e = 0; e < numEntradas; e++) {
+                 const targetIdx = i + targetItem.casa + e;
+                 let targetTs: number;
+                 let hit = false;
 
-             if (targetIdx < data.length) {
-                 const targetStone = data[targetIdx];
-                 targetTs = targetStone.timestamp ? new Date(targetStone.timestamp).getTime() : (targetStone.created_at ? new Date(targetStone.created_at).getTime() : Date.now());
-             } else {
-                 const latestStone = data[data.length - 1];
-                 const latestTs = latestStone.timestamp ? new Date(latestStone.timestamp).getTime() : (latestStone.created_at ? new Date(latestStone.created_at).getTime() : Date.now());
-                 const remaining = targetIdx - (data.length - 1);
-                 targetTs = latestTs + remaining * 30 * 1000;
-             }
+                 if (targetIdx < data.length) {
+                     const targetStone = data[targetIdx];
+                     targetTs = targetStone.timestamp ? new Date(targetStone.timestamp).getTime() : (targetStone.created_at ? new Date(targetStone.created_at).getTime() : Date.now());
+                     
+                     const isBranco = targetStone.color.includes('Branco') || targetStone.roll === '0';
+                     const isRed = targetStone.color.includes('Vermelho') || (parseInt(targetStone.roll as string) >= 1 && parseInt(targetStone.roll as string) <= 7);
+                     const isBlack = targetStone.color.includes('Preto') || (parseInt(targetStone.roll as string) >= 8 && parseInt(targetStone.roll as string) <= 14);
+                     
+                     if (targetItem.cor === 'branco' && isBranco) hit = true;
+                     if (targetItem.cor === 'red' && isRed) hit = true;
+                     if (targetItem.cor === 'black' && isBlack) hit = true;
+                 } else {
+                     const latestStone = data[data.length - 1];
+                     const latestTs = latestStone.timestamp ? new Date(latestStone.timestamp).getTime() : (latestStone.created_at ? new Date(latestStone.created_at).getTime() : Date.now());
+                     const remaining = targetIdx - (data.length - 1);
+                     targetTs = latestTs + remaining * 30 * 1000;
+                 }
 
-             const dt = new Date(targetTs - 3 * 3600 * 1000);
-             const blockId = Math.floor(dt.getTime() / (10 * 60 * 1000));
-             const col = dt.getUTCMinutes() % 10;
-             const split = dt.getUTCSeconds() >= 30 ? 1 : 0;
-             const cellKey = `${blockId}-${col}-${split}`;
-             
-             if (targets[cellKey] && targets[cellKey] !== targetItem.cor) {
-                 targets[cellKey] = 'misto';
-             } else {
-                 targets[cellKey] = targetItem.cor;
+                 const dt = new Date(targetTs - 3 * 3600 * 1000);
+                 const blockId = Math.floor(dt.getTime() / (10 * 60 * 1000));
+                 const col = dt.getUTCMinutes() % 10;
+                 const split = dt.getUTCSeconds() >= 30 ? 1 : 0;
+                 const cellKey = `${blockId}-${col}-${split}`;
+                 
+                 if (targets[cellKey]) {
+                     targets[cellKey].count++;
+                     if (targets[cellKey].cor !== targetItem.cor && targets[cellKey].cor !== 'misto') {
+                         targets[cellKey].cor = 'misto';
+                     }
+                 } else {
+                     targets[cellKey] = { cor: targetItem.cor, count: 1 };
+                 }
+
+                 if (hit) break;
              }
          }
       }
 
       return targets;
-   }, [data, stats, integrationOn]);
+   }, [data, stats, integrationOn, numEntradas]);
 
    const activeTargets = useMemo(() => {
        const combined = { ...evaluatedVisualsRef.current, ...autoTargets, ...preds };
@@ -623,7 +639,8 @@ function FixedColumnsHistory({ data, stats }: { data: any[], stats?: any[] }) {
 
       const targetsToEvaluate = { ...activeTargets, ...previousAutoTargetsRef.current, ...preds };
 
-      for (const [key, predColor] of Object.entries(targetsToEvaluate)) {
+      for (const [key, targetData] of Object.entries(targetsToEvaluate)) {
+         const predColor = typeof targetData === 'string' ? targetData : (targetData as any).cor;
          if (evaluatedKeysRef.current.has(key)) continue;
 
          const [bkStr, cStr, sStr] = key.split('-');
@@ -829,7 +846,7 @@ function FixedColumnsHistory({ data, stats }: { data: any[], stats?: any[] }) {
                      const key = `${bk}-${cIdx}-${sIdx}`;
                      const manualPred = preds[key];
                      const autoTarget = autoTargets[key];
-                     const pred = manualPred || autoTarget;
+                     const pred = manualPred || (autoTarget ? autoTarget.cor : undefined);
                      const localTimeMs = bk * 10 * 60 * 1000 + cIdx * 60 * 1000;
                      const localDate = new Date(localTimeMs);
                      const timeStr = `${localDate.getUTCHours().toString().padStart(2, '0')}:${localDate.getUTCMinutes().toString().padStart(2, '0')}`;
@@ -859,11 +876,18 @@ function FixedColumnsHistory({ data, stats }: { data: any[], stats?: any[] }) {
                      let inner = null;
                      const isAutoTargetRender = autoTarget && !manualPred;
                      const alvoBadge = isAutoTargetRender ? (
-                        <div className="absolute top-0.5 w-full flex justify-center z-10">
-                           <span className="animate-pulse bg-[#001f3f]/60 border border-[#001f3f]/80 text-cyan-400 text-[8px] font-black px-1 rounded shadow-sm uppercase tracking-widest">
-                              Alvo
-                           </span>
-                        </div>
+                        <>
+                          <div className="absolute top-0.5 w-full flex justify-center z-10">
+                             <span className="animate-pulse bg-[#001f3f]/60 border border-[#001f3f]/80 text-cyan-400 text-[8px] font-black px-1 rounded shadow-sm uppercase tracking-widest">
+                                Alvo
+                             </span>
+                          </div>
+                          {autoTarget.count > 1 && (
+                              <div className="absolute -top-1.5 -right-1.5 bg-cyan-500 text-slate-900 text-[9px] font-black w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(6,182,212,0.8)] z-20 border-[1.5px] border-[#0a0a0f]">
+                                {autoTarget.count}
+                              </div>
+                          )}
+                        </>
                      ) : null;
 
                      if (pred === 'red') {
