@@ -196,9 +196,9 @@ export default function LoginPage() {
           {/* Links e Termos */}
           {!isRegister ? (
             <div className="flex justify-end -mt-1">
-              <a href="#" className="text-xs font-mono text-white/40 hover:underline hover:text-[#00ff41] transition-colors">
+              <Link href="/recuperar-senha" className="text-xs font-mono text-white/40 hover:underline hover:text-[#00ff41] transition-colors">
                 Esqueci minha senha
-              </a>
+              </Link>
             </div>
           ) : (
             <div className="flex items-center gap-2 mt-1">

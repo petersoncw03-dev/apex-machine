@@ -466,6 +466,19 @@ export default function AnalysisPage() {
     navigator.clipboard.writeText(text);
   };
 
+  const handleCopyZeroWhites = (totals: number[], label: string) => {
+    const zeroMins = totals.reduce((acc, total, min) => {
+      if (total === 0) acc.push(min);
+      return acc;
+    }, [] as number[]);
+    if (zeroMins.length === 0) {
+      alert(`Nenhum minuto com 0 brancos em ${label}.`);
+      return;
+    }
+    const text = `Minutos sem branco (${label}):\n${zeroMins.join('\n')}`;
+    navigator.clipboard.writeText(text);
+  };
+
   if (loading && !currData.length) {
     return (
       <div className="flex h-screen items-center justify-center text-white bg-[#030303]">
@@ -493,8 +506,17 @@ export default function AnalysisPage() {
       </section>
 
       {/* Excel‑style grid – current day */}
-      <section className="overflow-auto rounded-lg border border-white/5 bg-[#0a0a0f]">
-        <h3 className="text-sm font-bold text-center py-2 text-white">Hoje</h3>
+      <section className="overflow-auto rounded-lg border border-white/5 bg-[#0a0a0f] pt-2 relative">
+        <div className="flex items-center mb-2 px-2 sticky left-0 w-max z-10">
+           <button 
+              onClick={() => handleCopyZeroWhites(minuteTotalsCurr, 'Hoje')}
+              className="bg-[#12141c] hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white rounded px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest transition-colors flex items-center gap-2"
+           >
+              <Copy size={12} />
+              Copiar minutos com 0 brancos ({minuteTotalsCurr.filter(t => t === 0).length})
+           </button>
+           <h3 className="text-sm font-bold text-white absolute left-[50vw] -translate-x-1/2 hidden md:block">Hoje</h3>
+        </div>
         <table className="w-full min-w-max table-fixed border-collapse">
           <thead>
             <tr>
@@ -521,8 +543,17 @@ export default function AnalysisPage() {
       </section>
 
       {/* Excel‑style grid – previous day */}
-      <section className="overflow-auto rounded-lg border border-white/5 bg-[#0a0a0f]">
-        <h3 className="text-sm font-bold text-center py-2 text-white">Dia Anterior</h3>
+      <section className="overflow-auto rounded-lg border border-white/5 bg-[#0a0a0f] pt-2 relative">
+        <div className="flex items-center mb-2 px-2 sticky left-0 w-max z-10">
+           <button 
+              onClick={() => handleCopyZeroWhites(minuteTotalsPrev, 'Ontem')}
+              className="bg-[#12141c] hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white rounded px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest transition-colors flex items-center gap-2"
+           >
+              <Copy size={12} />
+              Copiar minutos com 0 brancos ({minuteTotalsPrev.filter(t => t === 0).length})
+           </button>
+           <h3 className="text-sm font-bold text-white absolute left-[50vw] -translate-x-1/2 hidden md:block">Dia Anterior</h3>
+        </div>
         <table className="w-full min-w-max table-fixed border-collapse">
           <thead>
             <tr>

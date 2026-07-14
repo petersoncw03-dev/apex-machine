@@ -73,7 +73,7 @@ export async function requireActivePlan(): Promise<void> {
   const isPremium = profile?.plan === 'premium';
   const hasExpiry = !!profile?.plan_expires_at;
   const isNotExpired =
-    hasExpiry && new Date(profile.plan_expires_at) > new Date();
+    hasExpiry && (new Date(profile.plan_expires_at).getTime() + 3 * 60 * 60 * 1000) > Date.now();
 
   // 4. Verificar plano válido e não expirado
   const hasValidPlan = isPremium && isNotExpired;

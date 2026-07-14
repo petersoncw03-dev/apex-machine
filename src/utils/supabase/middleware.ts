@@ -102,7 +102,7 @@ export async function updateSession(request: NextRequest) {
 
       const isPremium = profile?.plan === 'premium'
       const isNotExpired = profile?.plan_expires_at
-        ? new Date(profile.plan_expires_at) > new Date()
+        ? (new Date(profile.plan_expires_at).getTime() + 3 * 60 * 60 * 1000) > Date.now()
         : false
 
       if (!isPremium || !isNotExpired) {

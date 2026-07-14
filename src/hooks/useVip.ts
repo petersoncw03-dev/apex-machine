@@ -41,8 +41,9 @@ export function useVip() {
         // Verifica se o plano é premium
         if (plan === 'premium' || plan === 'vip') {
           if (profile.plan_expires_at) {
-            // Tem data de expiração, verifica se ainda é válida
-            const expiresAt = new Date(profile.plan_expires_at).getTime();
+            // Adicionamos +3 horas de tolerância (offset do Brasil)
+            // para evitar que 23:59 UTC bloqueie o cliente as 20:59 no horário local
+            const expiresAt = new Date(profile.plan_expires_at).getTime() + (3 * 60 * 60 * 1000);
             if (expiresAt > Date.now()) {
               setIsVip(true);
             } else {

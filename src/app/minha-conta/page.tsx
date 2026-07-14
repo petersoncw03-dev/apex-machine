@@ -222,7 +222,7 @@ export default function MinhaContaPage() {
         <div className="flex flex-col gap-3">
           <button 
             onClick={() => {
-              alert('Link para troca de senha será enviado para o email em breve!');
+              router.push('/nova-senha');
             }}
             className="flex items-center justify-between w-full p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group"
           >
