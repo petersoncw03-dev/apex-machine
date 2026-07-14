@@ -175,44 +175,29 @@ export default function MinhaContaPage() {
               )}
            </div>
 
-           {/* Roleta Diária */}
-           <div className="bg-gradient-to-br from-[#1a1c23] to-[#0f141e] border border-[#00c83a]/20 p-5 rounded-2xl relative overflow-hidden shadow-[0_0_20px_rgba(0,200,58,0.05)]">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#00c83a]/10 rounded-full blur-2xl -mr-10 -mt-10" />
+           {/* Roleta Diária (Em Breve) */}
+           <div className="bg-gradient-to-br from-[#1a1c23] to-[#0f141e] border border-white/5 p-5 rounded-2xl relative overflow-hidden opacity-60">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10" />
               
               <div className="flex flex-col items-center justify-center relative z-10 text-center">
-                 <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition-all duration-1000 ${rouletteSpinning ? 'animate-spin bg-[#00c83a] shadow-[0_0_30px_rgba(0,200,58,0.6)]' : canSpin ? 'bg-[#00c83a]/20 text-[#00c83a] shadow-[0_0_15px_rgba(0,200,58,0.2)]' : 'bg-gray-800 text-gray-500'}`}>
-                    <Dices size={24} className={rouletteSpinning ? 'text-black' : ''} />
+                 <div className="w-14 h-14 rounded-full flex items-center justify-center mb-3 bg-gray-800/50 text-gray-500">
+                    <Dices size={24} />
                  </div>
                  
-                 <h3 className="text-sm font-black text-white uppercase tracking-wider mb-1">Roleta da Sorte Diária</h3>
+                 <h3 className="text-sm font-black text-white uppercase tracking-wider mb-1 flex items-center gap-2">
+                    Roleta da Sorte
+                    <span className="bg-red-500/20 border border-red-500/50 text-red-400 text-[8px] px-1.5 py-0.5 rounded shadow-sm">EM BREVE</span>
+                 </h3>
                  
-                 {!rouletteResult && (
-                   <p className="text-[10px] text-gray-400 font-medium mb-4 px-4">
-                     {canSpin 
-                       ? 'Gire a roleta diariamente e concorra a até 5 dias Premium grátis! Boa sorte!'
-                       : 'Você já girou a roleta hoje. Volte amanhã para tentar novamente!'}
-                   </p>
-                 )}
-
-                 {rouletteResult && (
-                   <div className="mb-4 animate-in zoom-in duration-300">
-                     <div className={`text-lg font-black uppercase tracking-wider ${rouletteResult.prizeDays > 0 ? 'text-[#00c83a] drop-shadow-[0_0_8px_rgba(0,200,58,0.8)]' : 'text-gray-400'}`}>
-                        {rouletteResult.prizeName}
-                     </div>
-                     {rouletteResult.prizeDays > 0 && <div className="text-[10px] text-white mt-1 opacity-70">Os dias foram adicionados à sua conta.</div>}
-                   </div>
-                 )}
+                 <p className="text-[10px] text-gray-400 font-medium mb-4 px-4">
+                    Estamos reformulando nosso sistema de prêmios e bônus. A roleta voltará em breve com recompensas ainda melhores!
+                 </p>
 
                  <button 
-                   onClick={handleSpinRoulette}
-                   disabled={!canSpin || rouletteSpinning}
-                   className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                     canSpin && !rouletteSpinning
-                     ? 'bg-[#00c83a] text-black shadow-[0_0_15px_rgba(0,200,58,0.4)] hover:bg-[#00ff41] hover:scale-[1.02]' 
-                     : 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
-                   }`}
+                   disabled
+                   className="w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed"
                  >
-                   {rouletteSpinning ? 'Sorteando...' : canSpin ? 'Girar Roleta Agora' : 'Disponível Amanhã'}
+                   Bloqueado Temporariamente
                  </button>
               </div>
            </div>
