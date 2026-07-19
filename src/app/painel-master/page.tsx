@@ -1985,8 +1985,8 @@ export default function RadarAvancado() {
                   </div>
                 </div>
 
-                <div className="w-full flex justify-center bg-transparent">
-                  <div className="flex flex-col gap-3 p-3 w-full max-w-[1100px]">
+                <div className="w-full flex md:justify-center justify-start bg-transparent overflow-x-auto custom-scrollbar">
+                  <div className="flex flex-col gap-3 p-3 w-max md:w-full min-w-[700px] md:min-w-0 md:max-w-[1100px]">
                     {[0, 10, 20, 30, 40, 50].map(start => {
                       const rowSum = Array.from({ length: 10 }, (_, i) => minStats[start + i].hits).reduce((a, b) => a + b, 0);
 
@@ -2045,14 +2045,14 @@ export default function RadarAvancado() {
                           </div>
 
                           {/* Bloco de Soma da Linha */}
-                          <div className="w-[110px] shrink-0 flex flex-col border border-white/5 rounded-xl overflow-hidden bg-[#131722] shadow-lg">
-                            <div className="bg-[#0b0e14] text-slate-400 font-bold text-[12px] py-1.5 text-center border-b border-white/5">
+                          <div className="w-[80px] md:w-[110px] shrink-0 flex flex-col border border-white/5 rounded-xl overflow-hidden bg-[#131722] shadow-lg">
+                            <div className="bg-[#0b0e14] text-slate-400 font-bold text-[9px] md:text-[12px] py-1.5 text-center border-b border-white/5">
                               {String(start).padStart(2, '0')} - {String(start + 9).padStart(2, '0')}
                             </div>
                             <div className="flex-1 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
                               <div className="absolute inset-0 bg-gradient-to-t from-slate-400/5 to-transparent opacity-50"></div>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5 z-10">Soma Total</span>
-                              <span className="text-slate-100 text-[22px] font-black z-10 drop-shadow-md">{rowSum}</span>
+                              <span className="text-[7px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5 z-10">Soma Total</span>
+                              <span className="text-slate-100 text-[16px] md:text-[22px] font-black z-10 drop-shadow-md">{rowSum}</span>
                             </div>
                           </div>
 
@@ -2113,14 +2113,14 @@ export default function RadarAvancado() {
                       </div>
 
                       {/* Bloco de Soma da Linha inteira (Placeholder para alinhar) */}
-                      <div className="w-[110px] shrink-0 flex flex-col border border-white/5 rounded-xl overflow-hidden bg-[#131722] shadow-lg">
-                        <div className="bg-[#0b0e14] text-slate-400 font-bold text-[12px] py-1.5 text-center border-b border-white/5 uppercase tracking-widest">
+                      <div className="w-[80px] md:w-[110px] shrink-0 flex flex-col border border-white/5 rounded-xl overflow-hidden bg-[#131722] shadow-lg">
+                        <div className="bg-[#0b0e14] text-slate-400 font-bold text-[9px] md:text-[12px] py-1.5 text-center border-b border-white/5 uppercase tracking-widest">
                           TOTAIS
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-400/5 to-transparent opacity-50"></div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5 z-10">Soma Global</span>
-                          <span className="text-slate-100 text-[22px] font-black z-10 drop-shadow-md">
+                          <span className="text-[7px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5 z-10">Soma Global</span>
+                          <span className="text-slate-100 text-[16px] md:text-[22px] font-black z-10 drop-shadow-md">
                             {Array.from({ length: 60 }, (_, i) => minStats[i].hits).reduce((a, b) => a + b, 0)}
                           </span>
                         </div>

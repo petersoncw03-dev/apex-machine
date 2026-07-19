@@ -39,11 +39,11 @@ export function useMestreCores(globalData: RollData[], lookbackHours: number = 3
         const isRed = newRoll.roll >= 1 && newRoll.roll <= 7;
         const isBlack = newRoll.roll >= 8 && newRoll.roll <= 14;
 
-        // Placar diário reset
-        const today = new Date().getDate();
-        if (placarDiario.lastResetDate !== today) {
-            setPlacarDiario({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: today });
-        }
+        // Placar diário reset (Desativado a pedido do usuário)
+        // const today = new Date().getDate();
+        // if (placarDiario.lastResetDate !== today) {
+        //     setPlacarDiario({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: today });
+        // }
 
         let nextState = { ...mestreState };
 

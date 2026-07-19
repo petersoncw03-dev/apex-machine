@@ -359,7 +359,7 @@ export default function AnalysisPage() {
     return (
       <div className="flex flex-col mb-4">
         <h3 className="text-xs font-bold mb-2 uppercase text-gray-400 tracking-wider">{title}</h3>
-        <div className="flex w-full border border-white/20 rounded overflow-hidden">
+        <div className="flex w-full border border-white/20 rounded overflow-x-auto">
           {Array.from({ length: 24 }, (_, i) => {
             const isBest = bestHouses.includes(i);
             const isManual = isInteractive && manualHouse === i;
@@ -372,29 +372,29 @@ export default function AnalysisPage() {
             const assertivity = total === 0 ? '--%' : ((counts[i] / total) * 100).toFixed(1) + '%';
             
             return (
-              <div key={i} className="flex-1 flex flex-col border-r border-white/20 last:border-r-0">
-                <div className="py-1 text-center text-[11px] font-black border-b border-white/20 flex justify-center items-center gap-1" style={styleClass}>
+              <div key={i} className="flex-none w-[45px] md:w-auto md:flex-1 flex flex-col border-r border-white/20 last:border-r-0">
+                <div className="py-1 text-center text-[10px] md:text-[11px] font-black border-b border-white/20 flex justify-center items-center gap-1" style={styleClass}>
                   {i + 1}
                   {isInteractive && (
                     <button 
                       onClick={() => setManualHouse(manualHouse === i ? null : i)}
-                      className={`w-2 h-2 rounded-full border transition-all cursor-pointer shadow-sm ${
+                      className={`w-2 h-2 rounded-full border transition-all cursor-pointer shadow-sm shrink-0 ${
                         manualHouse === i ? 'border-black bg-black/60 scale-125' : 'border-black/30 hover:border-black/60 bg-white/20'
                       }`}
                       title={manualHouse === i ? 'Remover seleção manual' : 'Destacar previsões desta casa'}
                     />
                   )}
                 </div>
-                <div className="py-1 text-center text-[12px] font-bold border-b border-white/20" style={styleClass}>
+                <div className="py-1 text-center text-[10px] md:text-[12px] font-bold border-b border-white/20" style={styleClass}>
                   {counts[i]}
                 </div>
-                <div className="py-0.5 text-center text-[9px] font-bold bg-[#1a1a24] text-green-400 border-b border-white/10" title={`Assertividade (Win: ${counts[i]} / Loss: ${losses[i]})`}>
+                <div className="py-0.5 text-center text-[8px] md:text-[9px] font-bold bg-[#1a1a24] text-green-400 border-b border-white/10" title={`Assertividade (Win: ${counts[i]} / Loss: ${losses[i]})`}>
                   {assertivity}
                 </div>
-                <div className="py-0.5 text-center text-[9px] font-bold bg-[#1a1a24] text-red-400">
+                <div className="py-0.5 text-center text-[8px] md:text-[9px] font-bold bg-[#1a1a24] text-red-400">
                   SM {smArray[i]}
                 </div>
-                <div className="py-0.5 text-center text-[9px] font-bold bg-[#1a1a24] text-red-500">
+                <div className="py-0.5 text-center text-[8px] md:text-[9px] font-bold bg-[#1a1a24] text-red-500">
                   SA {saArray[i]}
                 </div>
               </div>
@@ -416,8 +416,8 @@ export default function AnalysisPage() {
       
       rows.push(
         <tr key={m}>
-          <td className="p-1 text-center font-bold text-[11px] border border-white/20" style={styleTotal}>{total}</td>
-          <td className="p-1 text-center font-bold text-[11px] border border-white/20" style={{ backgroundColor: '#7a9be3', color: '#000' }}>{m}</td>
+          <td className="p-1 text-center font-bold text-[9px] md:text-[11px] border border-white/20 min-w-[32px] md:min-w-[64px] sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.5)] md:static md:shadow-none" style={styleTotal}>{total}</td>
+          <td className="p-1 text-center font-bold text-[9px] md:text-[11px] border border-white/20 min-w-[32px] md:min-w-[64px] sticky left-[32px] z-10 shadow-[2px_0_5px_rgba(0,0,0,0.5)] md:static md:shadow-none" style={{ backgroundColor: '#7a9be3', color: '#000' }}>{m}</td>
           {Array.from({ length: 24 }, (_, h) => {
             const isWhite = matrix[h][m];
             const isPrediction = predictionsMatrix ? predictionsMatrix[h][m] : false;
@@ -520,8 +520,8 @@ export default function AnalysisPage() {
         <table className="w-full min-w-max table-fixed border-collapse">
           <thead>
             <tr>
-              <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Total</th>
-              <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Minuto</th>
+              <th className="p-1 font-bold text-[9px] md:text-xs border border-white/20 min-w-[32px] md:min-w-[64px] sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.5)] md:static md:shadow-none" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Tot</th>
+              <th className="p-1 font-bold text-[9px] md:text-xs border border-white/20 min-w-[32px] md:min-w-[64px] sticky left-[32px] z-20 shadow-[2px_0_5px_rgba(0,0,0,0.5)] md:static md:shadow-none" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Min</th>
               {Array.from({ length: 24 }, (_, h) => (
                 <th key={h} className="group relative p-1 font-bold text-[10px] border border-white/20 min-w-[45px] sm:min-w-[50px] cursor-default" style={{ backgroundColor: '#7a9be3', color: '#000' }}>
                   <div className="flex flex-col items-center justify-center md:flex-row md:gap-1">
@@ -557,8 +557,8 @@ export default function AnalysisPage() {
         <table className="w-full min-w-max table-fixed border-collapse">
           <thead>
             <tr>
-              <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Total</th>
-              <th className="p-1 font-bold text-xs border border-white/20 w-16" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Minuto</th>
+              <th className="p-1 font-bold text-[9px] md:text-xs border border-white/20 min-w-[32px] md:min-w-[64px] sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.5)] md:static md:shadow-none" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Tot</th>
+              <th className="p-1 font-bold text-[9px] md:text-xs border border-white/20 min-w-[32px] md:min-w-[64px] sticky left-[32px] z-20 shadow-[2px_0_5px_rgba(0,0,0,0.5)] md:static md:shadow-none" style={{ backgroundColor: '#7a9be3', color: '#000' }}>Min</th>
               {Array.from({ length: 24 }, (_, i) => (
                 <th key={i} className="p-1 font-bold text-[10px] border border-white/20 min-w-[45px] sm:min-w-[50px]" style={{ backgroundColor: '#7a9be3', color: '#000' }}>
                   {i.toString().padStart(2, '0')}:00

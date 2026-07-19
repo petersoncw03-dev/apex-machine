@@ -1,0 +1,20 @@
+======================================================
+  SISTEMA DE AFILIADOS - APEX MACHINE (SPLIT DE PAGAMENTO)
+======================================================
+
+Por ser Pessoa Física (CPF), a forma mais segura, escalável e 100% legal de criar um programa de afiliados é terceirizar o repasse através de um Gateway de Pagamento (Kiwify, PerfectPay, Eduzz, Hotmart, etc.).
+
+COMO FUNCIONA O SPLIT AUTOMÁTICO?
+1. Plataforma: Você hospeda o seu checkout (página de pagamento) em uma dessas plataformas.
+2. Cadastro do Afiliado: Você ativa o "Programa de Afiliados" lá dentro e define a porcentagem de comissão (ex: 30%). O próprio afiliado se cadastra na plataforma e ganha um link exclusivo.
+3. A Venda: Quando um cliente compra pelo link do afiliado, o dinheiro NÃO VEM TODO para a sua conta. A própria plataforma (Kiwify/PerfectPay) entra em ação:
+   - Tira a taxa deles.
+   - Pega a porcentagem do afiliado e manda direto para o saldo da conta do afiliado.
+   - Pega a sua porcentagem e manda para o seu saldo.
+4. Renovações (Recorrência): Tratando-se de uma assinatura, nos meses seguintes, quando houver a cobrança automática, a plataforma repete o split e envia a comissão ao afiliado de forma totalmente automática.
+
+VANTAGENS DESTE MODELO PARA QUEM É CPF:
+- Risco Zero de Bitributação (Imposto de Renda): O dinheiro do afiliado nem chega a bater na sua conta física. Se batesse, a Receita Federal cobraria IRPF (até 27,5%) sobre o valor total. Com o Split, você só responde perante a Receita sobre a sua parte.
+- Zero Burocracia Financeira: Você não precisa organizar planilhas ou fazer PIX manualmente para dezenas de afiliados no começo do mês.
+- Prevenção de Bloqueios Bancários: Seu banco não vai bloquear sua conta corrente física por realizar e receber dezenas de movimentações atípicas (PIX) para pessoas variadas.
+- Automação Total: A única coisa que o nosso sistema da Apex Machine precisa fazer é receber um "Aviso" (Webhook) da plataforma quando o pagamento for aprovado para liberar o login do cliente. Toda a logística do dinheiro é resolvida externamente.

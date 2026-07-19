@@ -75,11 +75,11 @@ export function useMestreConfluencia(globalData: RollData[]) {
 
         const isBranco = newRoll.color.toUpperCase() === 'BRANCO' || newRoll.color.toUpperCase() === 'B' || newRoll.color.toUpperCase() === 'WHITE' || Number(newRoll.roll) === 0;
 
-        // Reset Diário de Placar
-        const today = new Date().getDate();
-        if (placarDiario.lastResetDate !== today) {
-            setPlacarDiario({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: today });
-        }
+        // Reset Diário de Placar (Desativado a pedido do usuário)
+        // const today = new Date().getDate();
+        // if (placarDiario.lastResetDate !== today) {
+        //     setPlacarDiario({ wins: 0, losses: 0, sa: 0, sm: 0, lastResetDate: today });
+        // }
 
         let nextState = { ...mestreState };
 

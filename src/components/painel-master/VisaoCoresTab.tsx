@@ -7,6 +7,7 @@ import { useMestreConfluencia } from '@/hooks/useMestreConfluencia';
 import { useMestreCores } from '@/hooks/useMestreCores';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Activity, Clock, Droplets } from 'lucide-react';
+import SniperMinutos from './SniperMinutos';
 
 interface RollData {
   id: string;
@@ -26,6 +27,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
   const [localHistory, setLocalHistory] = useState<RollData[]>([]);
   const [loading, setLoading] = useState(!globalData);
   const [radarMode, setRadarMode] = useState<'branco' | 'cor' | 'branco_3' | 'cor_1'>('branco');
+  const [radarExpanded, setRadarExpanded] = useState(false);
 
   const history = (globalData && globalData.length > 0) ? globalData : localHistory;
   const [deferredHistory, setDeferredHistory] = useState<any[]>(history);
@@ -48,6 +50,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
   const [iaPeriodFilter, setIaPeriodFilter] = useState<number>(3);
   const [zonesPeriod, setZonesPeriod] = useState<number>(3);
   const [selectedZoneCycles, setSelectedZoneCycles] = useState<any>(null);
+  const [loadingDeep, setLoadingDeep] = useState(false);
   const parsedHistory = useMemo(() => deferredHistory.map(r => ({ ...r, roll: parseInt(r.roll as string) })), [deferredHistory]);
   const { mestreState: signalState, placarDiario: placarBrancos, levelPoints } = useMestreConfluencia(parsedHistory as any);
   const { mestreState: coresState, placarDiario: placarCores } = useMestreCores(parsedHistory as any);
@@ -193,7 +196,8 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
     };
 
     // Branco: usa até 1440 pedras. Cor: usa até 480 pedras.
-    const sliceAmount = isBrancoMode ? -1440 : -480;
+    const expandFactor = radarExpanded ? 2 : 1;
+    const sliceAmount = (isBrancoMode ? -1440 : -480) * expandFactor;
     const h2h = deferredHistory.slice(sliceAmount);
     if (h2h.length === 0) return { lastNumber: 0, livePatterns: {} as Record<number, any>, topCasas: [] as any[], 3: [], 4: [], 5: [], 6: [] };
 
@@ -205,12 +209,12 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
     const livePatterns: Record<number, any> = {};
 
     for (const size of sizes) {
-       const sliceSize = isBrancoMode 
+       const sliceSize = (isBrancoMode 
            ? (size === 4 ? 600 : size === 5 ? 960 : 1440) 
-           : (size === 4 ? 240 : size === 5 ? 360 : 480);
+           : (size === 4 ? 240 : size === 5 ? 360 : 480)) * expandFactor;
        const currentRolls = rolls.slice(-sliceSize);
 
-       const patMap = new Map<string, { win: number, loss: number, winV: number, lossV: number, winP: number, lossP: number, winL: number, lossL: number, winVL: number, lossVL: number, winPL: number, lossPL: number }>();
+       const patMap = new Map<string, { win: number, loss: number, winV: number, lossV: number, winP: number, lossP: number, winL: number, lossL: number, winVL: number, lossVL: number, winPL: number, lossPL: number, historyB: ('W'|'L')[], historyV: ('W'|'L')[], historyP: ('W'|'L')[] }>();
        
        const liveSlice = currentRolls.slice(-size);
        const livePatStr = liveSlice.map(r => r.color).join('');
@@ -220,7 +224,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
            const patLastNum = currentRolls[i + size - 1].num;
            
            if (!patMap.has(patStr)) {
-               patMap.set(patStr, { win:0, loss:0, winV:0, lossV:0, winP:0, lossP:0, winL:0, lossL:0, winVL:0, lossVL:0, winPL:0, lossPL:0 });
+               patMap.set(patStr, { win:0, loss:0, winV:0, lossV:0, winP:0, lossP:0, winL:0, lossL:0, winVL:0, lossVL:0, winPL:0, lossPL:0, historyB: [], historyV: [], historyP: [] });
            }
            const data = patMap.get(patStr)!;
            
@@ -232,9 +236,9 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
                if (c === 'P') hitP = true;
            }
            
-           if (hitB) data.win++; else data.loss++;
-           if (hitV) data.winV++; else data.lossV++;
-           if (hitP) data.winP++; else data.lossP++;
+           if (hitB) { data.win++; data.historyB.push('W'); } else { data.loss++; data.historyB.push('L'); }
+           if (hitV) { data.winV++; data.historyV.push('W'); } else { data.lossV++; data.historyV.push('L'); }
+           if (hitP) { data.winP++; data.historyP.push('W'); } else { data.lossP++; data.historyP.push('L'); }
            
            if (patLastNum === lastRollNumber) {
                if (hitB) data.winL++; else data.lossL++;
@@ -253,7 +257,29 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
               if (total >= 3 || isLive) {
                  const winrate = total > 0 ? (data.win / total) * 100 : 0;
                  const wrL = (isLive && data.winL + data.lossL > 0) ? (data.winL / (data.winL + data.lossL)) * 100 : null;
-                 const statObj = { pat, target: 'B', win: data.win, loss: data.loss, winrate, wrL, total, isLive, totalL: data.winL + data.lossL };
+                 let cycle = null;
+                 if (isLive) {
+                     let type: 'W'|'L'|null = null;
+                     let count = 0;
+                     for (const out of data.historyB) {
+                         if (type === out) count++;
+                         else { type = out; count = 1; }
+                     }
+                     let totalCy = 0, winsCy = 0, tType = null, tCount = 0;
+                     for (let i = 0; i < data.historyB.length; i++) {
+                         const out = data.historyB[i];
+                         if (tType === out) tCount++;
+                         else { tType = out; tCount = 1; }
+                         if (tType === type && tCount === count) {
+                             if (i + 1 < data.historyB.length) {
+                                 totalCy++;
+                                 if (data.historyB[i+1] === 'W') winsCy++;
+                             }
+                         }
+                     }
+                     cycle = { type, count, winrate: totalCy > 0 ? (winsCy / totalCy) * 100 : 0 };
+                 }
+                 const statObj = { pat, target: 'B', win: data.win, loss: data.loss, winrate, wrL, total, isLive, totalL: data.winL + data.lossL, cycle };
                  
                  if (!patStr.includes('B')) {
                      results[size].push(statObj);
@@ -273,7 +299,30 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
                  : ((data.winPL + data.lossPL > 0) ? (data.winPL / (data.winPL + data.lossPL)) * 100 : null);
                  
               if (total >= 3 || isLive) {
-                 const statObj = { pat, target, win, loss, winrate, wrL, total, isLive, totalL: target === 'V' ? data.winVL + data.lossVL : data.winPL + data.lossPL };
+                 let cycle = null;
+                 if (isLive) {
+                     const hist = target === 'V' ? data.historyV : data.historyP;
+                     let type: 'W'|'L'|null = null;
+                     let count = 0;
+                     for (const out of hist) {
+                         if (type === out) count++;
+                         else { type = out; count = 1; }
+                     }
+                     let totalCy = 0, winsCy = 0, tType = null, tCount = 0;
+                     for (let i = 0; i < hist.length; i++) {
+                         const out = hist[i];
+                         if (tType === out) tCount++;
+                         else { tType = out; tCount = 1; }
+                         if (tType === type && tCount === count) {
+                             if (i + 1 < hist.length) {
+                                 totalCy++;
+                                 if (hist[i+1] === 'W') winsCy++;
+                             }
+                         }
+                     }
+                     cycle = { type, count, winrate: totalCy > 0 ? (winsCy / totalCy) * 100 : 0 };
+                 }
+                 const statObj = { pat, target, win, loss, winrate, wrL, total, isLive, totalL: target === 'V' ? data.winVL + data.lossVL : data.winPL + data.lossPL, cycle };
                  
                  if (!patStr.includes('B')) {
                      results[size].push(statObj);
@@ -289,7 +338,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
 
     // -- LÓGICA CASA EXATA TOP 5 --
     const casasLimit = 10;
-    const numEntradas = radarMode === 'branco' ? 6 : 2;
+    const numEntradas = targetMargin;
     const topCasasExatas: any[] = [];
     
     const ce_stats = Array.from({ length: 15 }, () => ({
@@ -415,7 +464,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
     const topCasas = diversifiedTop.slice(0, 5);
 
     return { lastNumber: lastRollNumber, livePatterns, topCasas, ...results };
-  }, [deferredHistory, radarMode]);
+  }, [deferredHistory, radarMode, radarExpanded]);
 
   const zonesStats = useMemo(() => {
      if (deferredHistory.length === 0) return { blocks: [], currentGap: 0 };
@@ -495,6 +544,20 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
            }
         }
         
+        const fullCycles: { type: 'W'|'L', count: number }[] = [];
+        for (const out of outcomesAll) {
+           if (fullCycles.length === 0) {
+              fullCycles.push({ type: out, count: 1 });
+           } else {
+              const last = fullCycles[fullCycles.length - 1];
+              if (last.type === out) {
+                 last.count++;
+              } else {
+                 fullCycles.push({ type: out, count: 1 });
+              }
+           }
+        }
+        
         // NOVO: Cálculo Estatístico dos Ciclos (usa ALL)
         const cycleStats: { W: Record<number, {win: number, loss: number}>, L: Record<number, {win: number, loss: number}> } = { W: {}, L: {} };
         let runningType: 'W'|'L'|null = null;
@@ -544,6 +607,49 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
             currentCycleWinrate = currentCycleTotal > 0 ? (st.win / currentCycleTotal) * 100 : 0;
         }
 
+        const metaOutcomes: ('W'|'L')[] = [];
+        if (currentCycleState.type && currentCycleState.count > 0) {
+            let tType = null;
+            let tCount = 0;
+            for (let i = 0; i < outcomesAll.length; i++) {
+                const out = outcomesAll[i];
+                if (tType === out) tCount++;
+                else { tType = out; tCount = 1; }
+                if (tType === currentCycleState.type && tCount === currentCycleState.count) {
+                    if (i + 1 < outcomesAll.length) {
+                        metaOutcomes.push(outcomesAll[i+1]);
+                    }
+                }
+            }
+        }
+        const metaCycles: { type: 'W'|'L', count: number }[] = [];
+        for (const out of metaOutcomes) {
+           if (metaCycles.length === 0) metaCycles.push({ type: out, count: 1 });
+           else {
+              const last = metaCycles[metaCycles.length - 1];
+              if (last.type === out) last.count++;
+              else metaCycles.push({ type: out, count: 1 });
+           }
+        }
+        const currentMetaState = metaCycles.length > 0 ? metaCycles[metaCycles.length - 1] : { type: null, count: 0 };
+        let metaWinrate = 0, metaTotal = 0, metaWins = 0;
+        if (currentMetaState.type) {
+            let mType = null;
+            let mCount = 0;
+            for (let i = 0; i < metaOutcomes.length; i++) {
+                const out = metaOutcomes[i];
+                if (mType === out) mCount++;
+                else { mType = out; mCount = 1; }
+                if (mType === currentMetaState.type && mCount === currentMetaState.count) {
+                    if (i + 1 < metaOutcomes.length) {
+                        if (metaOutcomes[i+1] === mType) metaTotal++;
+                        else { metaTotal++; metaWins++; }
+                    }
+                }
+            }
+            metaWinrate = metaTotal > 0 ? (metaWins / metaTotal) * 100 : 0;
+        }
+
         const total = wins + losses;
         const winrate = total > 0 ? (wins / total) * 100 : 0;
         
@@ -551,12 +657,158 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
         if (nextEnt >= z.s && nextEnt <= z.e) status = 'ativo';
         else if (nextEnt > z.e) status = 'passou';
         
-        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-7), topLossCycles, topWinCycles, currentCycleState, currentCycleWinrate, currentCycleTotal, currentCycleWins };
+        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-7), fullCycles, topLossCycles, topWinCycles, currentCycleState, currentCycleWinrate, currentCycleTotal, currentCycleWins, metaCycles, currentMetaState, metaWinrate, metaTotal, metaWins };
      });
      
      return { blocks, currentGap: periodCurrentGap };
   }, [deferredHistory, zonesPeriod]);
 
+
+  const handleFetchDeep = async () => {
+      if (!selectedZoneCycles) return;
+      setLoadingDeep(true);
+      try {
+          const res = await fetch('/api/results/period?hours=720');
+          if (res.ok) {
+              const data = await res.json();
+              const arr = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+              if (arr.length > 0) {
+                  const z = selectedZoneCycles;
+                  
+                  const whiteIndices = arr.reduce((acc, r, i) => {
+                      const n = parseInt(r.roll as string);
+                      if (r.color?.includes('Branco') || n === 0) acc.push(i);
+                      return acc;
+                  }, [] as number[]);
+                  
+                  if (whiteIndices.length > 0) {
+                      const allGaps: number[] = [];
+                      for (let i = 1; i < whiteIndices.length; i++) {
+                          allGaps.push(whiteIndices[i] - whiteIndices[i-1]);
+                      }
+                      const allCurrentGap = arr.length - 1 - whiteIndices[whiteIndices.length - 1];
+                      
+                      const outcomesAll: ('W'|'L')[] = [];
+                      for (const g of allGaps) {
+                          if (g >= z.s && g <= z.e) outcomesAll.push('W');
+                          else if (g > z.e) outcomesAll.push('L');
+                      }
+                      if (allCurrentGap >= z.e) outcomesAll.push('L');
+                      
+                      const deepFullCycles: { type: 'W'|'L', count: number }[] = [];
+                      for (const out of outcomesAll) {
+                         if (deepFullCycles.length === 0) {
+                            deepFullCycles.push({ type: out, count: 1 });
+                         } else {
+                            const last = deepFullCycles[deepFullCycles.length - 1];
+                            if (last.type === out) {
+                               last.count++;
+                            } else {
+                               deepFullCycles.push({ type: out, count: 1 });
+                            }
+                         }
+                      }
+                      
+                      const cycleStats: { W: Record<number, {win: number, loss: number}>, L: Record<number, {win: number, loss: number}> } = { W: {}, L: {} };
+                      let runningType: 'W'|'L'|null = null;
+                      let runningCount = 0;
+                      
+                      for (let i = 0; i < outcomesAll.length; i++) {
+                          const out = outcomesAll[i];
+                          if (runningType && runningCount > 0) {
+                              if (!cycleStats[runningType][runningCount]) cycleStats[runningType][runningCount] = { win: 0, loss: 0 };
+                              if (out === 'W') cycleStats[runningType][runningCount].win++;
+                              else cycleStats[runningType][runningCount].loss++;
+                          }
+                          if (runningType === out) {
+                              runningCount++;
+                          } else {
+                              runningType = out;
+                              runningCount = 1;
+                          }
+                      }
+                      
+                      const mapToSorted = (obj: Record<number, {win: number, loss: number}>, type: 'W'|'L') => {
+                          return Object.entries(obj).map(([count, stats]) => {
+                              const total = stats.win + stats.loss;
+                              const winrate = total > 0 ? (stats.win / total) * 100 : 0;
+                              return { type, count: Number(count), win: stats.win, loss: stats.loss, winrate, total };
+                          }).filter(c => c.total > 0).sort((a, b) => b.winrate - a.winrate || b.total - a.total).slice(0, 5);
+                      };
+                      
+                      const currentCycleState = { type: runningType, count: runningCount };
+                      let currentCycleWinrate = 0, currentCycleTotal = 0, currentCycleWins = 0;
+                      if (runningType && cycleStats[runningType][runningCount]) {
+                          const st = cycleStats[runningType][runningCount];
+                          currentCycleTotal = st.win + st.loss;
+                          currentCycleWins = st.win;
+                          currentCycleWinrate = currentCycleTotal > 0 ? (st.win / currentCycleTotal) * 100 : 0;
+                      }
+
+                      const metaOutcomes: ('W'|'L')[] = [];
+                      if (currentCycleState.type && currentCycleState.count > 0) {
+                          let tType = null;
+                          let tCount = 0;
+                          for (let i = 0; i < outcomesAll.length; i++) {
+                              const out = outcomesAll[i];
+                              if (tType === out) tCount++;
+                              else { tType = out; tCount = 1; }
+                              if (tType === currentCycleState.type && tCount === currentCycleState.count) {
+                                  if (i + 1 < outcomesAll.length) {
+                                      metaOutcomes.push(outcomesAll[i+1]);
+                                  }
+                              }
+                          }
+                      }
+                      const metaCycles: { type: 'W'|'L', count: number }[] = [];
+                      for (const out of metaOutcomes) {
+                         if (metaCycles.length === 0) metaCycles.push({ type: out, count: 1 });
+                         else {
+                            const last = metaCycles[metaCycles.length - 1];
+                            if (last.type === out) last.count++;
+                            else metaCycles.push({ type: out, count: 1 });
+                         }
+                      }
+                      const currentMetaState = metaCycles.length > 0 ? metaCycles[metaCycles.length - 1] : { type: null, count: 0 };
+                      let metaWinrate = 0, metaTotal = 0, metaWins = 0;
+                      if (currentMetaState.type) {
+                          let mType = null;
+                          let mCount = 0;
+                          for (let i = 0; i < metaOutcomes.length; i++) {
+                              const out = metaOutcomes[i];
+                              if (mType === out) mCount++;
+                              else { mType = out; mCount = 1; }
+                              if (mType === currentMetaState.type && mCount === currentMetaState.count) {
+                                  if (i + 1 < metaOutcomes.length) {
+                                      if (metaOutcomes[i+1] === mType) metaTotal++;
+                                      else { metaTotal++; metaWins++; }
+                                  }
+                              }
+                          }
+                          metaWinrate = metaTotal > 0 ? (metaWins / metaTotal) * 100 : 0;
+                      }
+                      
+                      setSelectedZoneCycles({
+                          ...selectedZoneCycles,
+                          fullCycles: deepFullCycles,
+                          topLossCycles: mapToSorted(cycleStats.L, 'L'),
+                          topWinCycles: mapToSorted(cycleStats.W, 'W'),
+                          currentCycleState,
+                          currentCycleTotal,
+                          currentCycleWins,
+                          currentCycleWinrate,
+                          metaCycles,
+                          currentMetaState,
+                          metaWinrate,
+                          metaTotal,
+                          metaWins
+                      });
+                  }
+              }
+          }
+      } catch (e) {}
+      setLoadingDeep(false);
+  };
 
   if (loading) {
     return (
@@ -1192,6 +1444,13 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
             </div>
             <div className="flex gap-2">
               <button 
+                onClick={() => setRadarExpanded(!radarExpanded)}
+                className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors flex items-center gap-1 ${radarExpanded ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
+              >
+                {radarExpanded ? '- Padrão' : '+ Dados'}
+              </button>
+              <div className="w-px bg-white/10 mx-1"></div>
+              <button 
                 onClick={() => setRadarMode('branco_3')}
                 className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${radarMode === 'branco_3' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
               >
@@ -1235,6 +1494,16 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
                     <div key={tamanho} className="bg-[#1a1d24]/50 border border-white/5 rounded-lg p-3 flex flex-col gap-2 relative overflow-hidden">
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] font-black text-gray-300 tracking-wider">{tamanho} Pedras</span>
+                        {live.cycle && live.cycle.type && (
+                            <div className="flex items-center gap-1.5" title={`Ciclo de Quebra (Winrate: ${live.cycle.winrate.toFixed(1)}%)`}>
+                                <div className={`min-w-[16px] h-[16px] flex items-center justify-center rounded text-[9px] font-black shadow-sm ${
+                                    live.cycle.type === 'W' ? 'bg-[#00c83a]/20 text-[#00c83a] border border-[#00c83a]/40' : 'bg-[#e51e3e]/15 text-[#e51e3e] border border-[#e51e3e]/40'
+                                }`}>
+                                    {live.cycle.count}
+                                </div>
+                                <span className={`text-[9px] font-black ${live.cycle.winrate >= 50 ? 'text-emerald-400' : 'text-gray-400'}`}>{live.cycle.winrate.toFixed(0)}%</span>
+                            </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-1.5">
@@ -1366,6 +1635,12 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
           </div>
         </div>
       </div>
+
+      {/* Sniper de Minutos (Nova Ferramenta Preditiva) */}
+      <div className="flex flex-col gap-4 mt-4">
+         <SniperMinutos globalData={globalData || []} />
+      </div>
+
       {/* MODAL DE CICLOS DE ZONA */}
       {selectedZoneCycles && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -1379,9 +1654,28 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
                           </h3>
                           <span className="text-[11px] text-gray-400 font-medium mt-1">Estatísticas de conversão baseadas em sequências de resultados.</span>
                       </div>
-                      <button onClick={() => setSelectedZoneCycles(null)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                      </button>
+                      <div className="flex items-center gap-3">
+                          <button 
+                              onClick={handleFetchDeep} 
+                              disabled={loadingDeep}
+                              className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-2 ${loadingDeep ? 'bg-white/5 text-gray-500 border-white/5 cursor-not-allowed' : 'bg-[#00c83a]/10 text-[#00c83a] border-[#00c83a]/30 hover:bg-[#00c83a]/20'}`}
+                          >
+                              {loadingDeep ? (
+                                  <>
+                                      <div className="w-3 h-3 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                                      Carregando...
+                                  </>
+                              ) : (
+                                  <>
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                      Puxar 30 Dias
+                                  </>
+                              )}
+                          </button>
+                          <button onClick={() => setSelectedZoneCycles(null)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          </button>
+                      </div>
                   </div>
 
                   {/* Content */}
@@ -1418,6 +1712,65 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
                               </div>
                           )}
                       </div>
+                      
+                      {/* Histórico de Ciclos em Linha */}
+                      <div className="flex flex-col gap-2 w-full border-b border-white/5 pb-4 mb-2">
+                          <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest pl-1">Histórico de Ciclos (Cronológico)</span>
+                          <div className="flex gap-1.5 overflow-x-auto pb-3 pt-1 px-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent w-full">
+                              {selectedZoneCycles.fullCycles && selectedZoneCycles.fullCycles.slice().reverse().map((cy: any, ci: number) => {
+                                 const isNewest = ci === 0;
+                                 return (
+                                   <div key={ci} className="relative flex flex-col items-center justify-center shrink-0">
+                                     <div className={`min-w-[22px] h-[22px] px-1 flex items-center justify-center rounded-[5px] text-[11px] font-black font-mono shadow-sm transition-all ${
+                                        cy.type === 'W' 
+                                          ? 'bg-[#00c83a]/20 text-[#00c83a] border-[#00c83a]/40' 
+                                          : 'bg-[#e51e3e]/15 text-[#e51e3e] border-[#e51e3e]/40'
+                                     } ${isNewest ? 'border scale-110 shadow-[0_0_8px_rgba(255,255,255,0.15)] ring-1 ring-white/20 z-10 opacity-100' : 'border opacity-70 hover:opacity-100'}`}>
+                                       {cy.count}
+                                     </div>
+                                     {isNewest && (
+                                       <div className="absolute -bottom-2.5 w-1 h-1 rounded-full bg-white animate-pulse shadow-[0_0_5px_white]"></div>
+                                     )}
+                                   </div>
+                                 );
+                              })}
+                          </div>
+                      </div>
+
+                      {/* Ciclo do Ciclo do Estado Atual */}
+                      {selectedZoneCycles.currentCycleState.type && selectedZoneCycles.currentMetaState && selectedZoneCycles.currentMetaState.type && (
+                          <div className="flex flex-col gap-3 w-full mt-1 mb-4 p-4 bg-gradient-to-r from-black/60 to-black/30 border border-[#00c83a]/20 rounded-xl shadow-[inset_0_0_20px_rgba(0,200,58,0.03)]">
+                              <span className="text-[11px] text-[#00c83a] uppercase font-black tracking-widest">
+                                  Ciclo do Ciclo
+                              </span>
+                              
+                              <div className="flex items-center gap-6">
+                                  <div className="relative flex flex-col items-center justify-center shrink-0">
+                                      <div className={`min-w-[40px] h-[40px] px-2 flex items-center justify-center rounded-lg text-lg font-black font-mono shadow-lg border-2 ${
+                                          selectedZoneCycles.currentMetaState.type === 'W' 
+                                            ? 'bg-[#00c83a]/20 text-[#00c83a] border-[#00c83a]/50 shadow-[0_0_15px_rgba(0,200,58,0.2)]' 
+                                            : 'bg-[#e51e3e]/15 text-[#e51e3e] border-[#e51e3e]/50 shadow-[0_0_15px_rgba(229,30,62,0.2)]'
+                                      }`}>
+                                          {selectedZoneCycles.currentMetaState.count}
+                                      </div>
+                                      <div className="absolute -bottom-3 w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_white]"></div>
+                                  </div>
+                                  
+                                  <div className="flex flex-col">
+                                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Winrate de Quebra</span>
+                                      <div className="flex items-baseline gap-1">
+                                          <span className={`text-2xl font-black ${selectedZoneCycles.metaWinrate >= 50 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]' : 'text-gray-300'}`}>
+                                              {selectedZoneCycles.metaWinrate.toFixed(1)}%
+                                          </span>
+                                      </div>
+                                  </div>
+                              </div>
+                              
+                              <div className="text-[10px] text-gray-400 font-medium leading-relaxed mt-1 bg-black/30 p-2.5 rounded border border-white/5">
+                                  Esta estatística revela padrões ocultos do algoritmo. Quando o winrate do Ciclo do Ciclo está alto, significa que historicamente o estado atual tem uma <strong>probabilidade drástica de quebrar e pagar o branco</strong> na próxima oportunidade. Use isso para confirmar entradas extremas.
+                              </div>
+                          </div>
+                      )}
 
                       {/* Top 5 Lists */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

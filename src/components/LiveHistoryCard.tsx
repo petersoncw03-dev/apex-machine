@@ -69,6 +69,34 @@ export function LiveHistoryCard({ data, maxItems = 40 }: LiveHistoryCardProps) {
     };
   }, []);
 
+  // Calcula a Modalidade do Mercado (Surf vs Xadrez)
+  const marketMode = React.useMemo(() => {
+    if (data.length < 20) return null;
+    
+    // Filtra só V e P das últimas pedras até ter 20 válidas (ignora brancos para ler a cor)
+    const validColors = [];
+    for (let i = data.length - 1; i >= 0 && validColors.length < 20; i--) {
+       const r = data[i];
+       const n = typeof r.roll === 'string' ? parseInt(r.roll) : r.roll;
+       const colorStr = (r.color || '').toLowerCase();
+       if (n === 0 || colorStr.includes('branco') || colorStr.includes('white')) continue;
+       if ((n >= 1 && n <= 7) || colorStr.includes('vermelho') || colorStr.includes('red')) validColors.push('V');
+       else validColors.push('P');
+    }
+    
+    if (validColors.length < 20) return null;
+    
+    // Conta quantas vezes a cor trocou
+    let changes = 0;
+    for (let i = 0; i < validColors.length - 1; i++) {
+       if (validColors[i] !== validColors[i+1]) changes++;
+    }
+    
+    if (changes <= 6) return { type: 'surf', text: '🏄 Surf em alta', color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30 shadow-[0_0_15px_rgba(34,211,238,0.2)]' };
+    if (changes >= 13) return { type: 'xadrez', text: '♟️ Xadrez em alta', color: 'text-fuchsia-400 bg-fuchsia-400/10 border-fuchsia-400/30 shadow-[0_0_15px_rgba(232,121,249,0.2)]' };
+    return null;
+  }, [data]);
+
   const displayData = data.slice(-maxItems);
 
   return (
@@ -82,6 +110,14 @@ export function LiveHistoryCard({ data, maxItems = 40 }: LiveHistoryCardProps) {
                </span>
                <span className="text-[14px] font-black tracking-wide text-white">Tempo Real</span>
             </div>
+            
+            {marketMode && (
+              <div className="ml-2 flex items-center">
+                 <div className={`px-3 py-1 rounded-md border text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 animate-pulse ${marketMode.color}`}>
+                   {marketMode.text}
+                 </div>
+              </div>
+            )}
          </div>
          
          <div className="flex items-center gap-4">
