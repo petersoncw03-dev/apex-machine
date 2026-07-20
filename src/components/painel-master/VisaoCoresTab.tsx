@@ -474,7 +474,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
      const rolls = deferredHistory.slice(sliceAmount);
      
      const extractGaps = (arr: any[]) => {
-         const whiteIndices = arr.reduce((acc, r, i) => {
+         const whiteIndices = arr.reduce((acc: number[], r: any, i: number) => {
             const n = parseInt(r.roll as string);
             if (r.color?.includes('Branco') || n === 0) acc.push(i);
             return acc;
@@ -675,7 +675,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
               if (arr.length > 0) {
                   const z = selectedZoneCycles;
                   
-                  const whiteIndices = arr.reduce((acc, r, i) => {
+                  const whiteIndices = arr.reduce((acc: number[], r: any, i: number) => {
                       const n = parseInt(r.roll as string);
                       if (r.color?.includes('Branco') || n === 0) acc.push(i);
                       return acc;
