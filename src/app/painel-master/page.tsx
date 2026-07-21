@@ -3270,11 +3270,11 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
                </div>
                <div>
                   <label className={F_LABEL}>Data inicial</label>
-                  <input type="text" placeholder="DD/MM/AAAA" onFocus={(e) => e.target.type='date'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} className={F_INPUT} value={fDateStart} onChange={e => setFDateStart(e.target.value)} />
+                  <input type="date" className={F_INPUT} value={fDateStart} onChange={e => setFDateStart(e.target.value)} />
                </div>
                <div>
                   <label className={F_LABEL}>Data final</label>
-                  <input type="text" placeholder="DD/MM/AAAA" onFocus={(e) => e.target.type='date'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} className={F_INPUT} value={fDateEnd} onChange={e => setFDateEnd(e.target.value)} />
+                  <input type="date" className={F_INPUT} value={fDateEnd} onChange={e => setFDateEnd(e.target.value)} />
                </div>
                <div>
                   <label className={F_LABEL}>Hora inicial</label>
