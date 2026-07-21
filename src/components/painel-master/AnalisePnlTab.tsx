@@ -79,17 +79,16 @@ export default function AnalisePnlTab({ globalData }: { globalData: Roll[] }) {
             currentGale++;
             entriesLeftInThisTrigger--;
 
-            // O USUÁRIO PEDIU: se a pedra for gatilho de novo, aborta como LOSS e reinicia!
+            // O USUÁRIO PEDIU: SA e Loss contado por entrada!
+            totalLosses++;
+            sa++;
+            if (sa > sm) sm = sa;
+
+            // O USUÁRIO PEDIU: se a pedra for gatilho de novo, reinicia as entradas!
             if (isTrigger) {
-                totalLosses++;
-                sa++;
-                if (sa > sm) sm = sa;
                 overlap = true; // flag to trigger restart
                 isBetting = false; // end the current cycle prematurely
             } else if (entriesLeftInThisTrigger <= 0 || currentGale > MAX_ABSOLUTE_GALES) {
-                totalLosses++;
-                sa++;
-                if (sa > sm) sm = sa;
                 isBetting = false;
                 currentGale = 0;
             }
