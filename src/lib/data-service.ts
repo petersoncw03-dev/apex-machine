@@ -16,7 +16,7 @@ export interface Result {
 export async function getResultsFromDB(limit: number): Promise<Result[] | null> {
   try {
     const result = await query(
-      'SELECT id, color, roll, timestamp, COALESCE(wagered, total_bets) as total_bets, COALESCE(winnings, total_payout) as total_payout, COALESCE(profit, house_profit) as house_profit FROM results ORDER BY timestamp DESC, id DESC LIMIT $1',
+      'SELECT id, color, roll, timestamp, total_bets, total_payout, house_profit FROM results ORDER BY timestamp DESC, id DESC LIMIT $1',
       [limit]
     );
     return result.rows;
@@ -30,11 +30,12 @@ export async function getResultsPeriodFromDB(hours: number, onlyWhites: boolean 
   try {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
     
-    let queryStr = 'SELECT id, color, roll, timestamp, COALESCE(wagered, total_bets) as total_bets, COALESCE(winnings, total_payout) as total_payout, COALESCE(profit, house_profit) as house_profit FROM results WHERE timestamp >= $1 ORDER BY timestamp ASC, id ASC';
+    let queryStr = 'SELECT id, color, roll, timestamp, total_bets, total_payout, house_profit FROM results WHERE timestamp >= $1 ORDER BY timestamp ASC, id ASC';
     
     if (onlyWhites) {
       queryStr = "SELECT id, color, roll, timestamp FROM results WHERE timestamp >= $1 AND (roll::text = '0' OR color ILIKE '%branco%' OR color ILIKE '%white%') ORDER BY timestamp ASC, id ASC";
-    } else if (compact) {
+    } else if (compact || hours >= 720) { 
+      // Otimização Prevenção OOM: Se for mais de 30 dias (720h), forçar o compact para evitar carregar colunas extras para os 260k+ registros
       queryStr = "SELECT id, color, roll, timestamp FROM results WHERE timestamp >= $1 ORDER BY timestamp ASC, id ASC";
     }
 
