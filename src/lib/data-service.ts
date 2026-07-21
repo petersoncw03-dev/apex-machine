@@ -41,10 +41,10 @@ export async function getResultsPeriodFromDB(hours: number, onlyWhites: boolean 
     }
     
     if (onlyWhites) {
-      queryStr = queryStr.replace('total_bets, total_payout, house_profit ', ''); // remove if onlyWhites
+      queryStr = queryStr.replace(', total_bets, total_payout, house_profit', ''); // remove if onlyWhites
       queryStr += "AND (roll::text = '0' OR color ILIKE '%branco%' OR color ILIKE '%white%') ";
     } else if (compact || hours >= 720 || (startDate && endDate)) { 
-      queryStr = queryStr.replace('total_bets, total_payout, house_profit ', '');
+      queryStr = queryStr.replace(', total_bets, total_payout, house_profit', '');
     }
 
     queryStr += 'ORDER BY timestamp ASC, id ASC';
