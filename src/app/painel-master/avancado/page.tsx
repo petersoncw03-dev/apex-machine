@@ -1253,26 +1253,12 @@ export default function RadarAvancado() {
                Avançado
              </button>
              <button 
-               onClick={() => window.location.href = '/painel-master'} 
-               className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'history' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-             >
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-               Histórico
-             </button>
-             <button 
-               onClick={() => window.location.href = '/painel-master'} 
-               className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'resumos' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-             >
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-               Resumos
-             </button>
-             <button 
                 onClick={() => isVip ? setActiveTab('analise-pnl') : alert('Aba exclusiva para usuários VIP!')} 
                 className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'analise-pnl' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'} ${!isVip ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={!isVip ? "Exclusivo VIP" : ""}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                Stress Test
+                Simulador
               </button>
               <button 
                 onClick={() => setActiveTab('grafico')} 
@@ -1286,11 +1272,9 @@ export default function RadarAvancado() {
 
               <button 
                 onClick={() => window.location.href = '/painel-master'} 
-                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'home' ? 'bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,200,58,0.4)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5`}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                Painel Master
-              </button>
              <a 
                 href="https://blaze.bet.br/pt/games/double"  
                 target="_blank" 

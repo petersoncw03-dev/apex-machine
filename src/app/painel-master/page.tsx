@@ -1337,7 +1337,7 @@ export default function RadarAvancado() {
                 title={!isVip ? "Exclusivo VIP" : ""}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                Stress Test
+                Simulador
               </button>
               <button 
                 onClick={() => setActiveTab('grafico')} 

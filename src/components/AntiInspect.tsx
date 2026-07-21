@@ -42,7 +42,6 @@ export default function AntiInspect() {
     document.addEventListener('keydown', handleKeyDown);
 
     // 3. Bloqueador via Debugger (Armadilha Agressiva)
-    // Isso vai travar a página a cada 1 segundo se o DevTools estiver aberto.
     const blockInspect = setInterval(() => {
       (function() {
         try {
