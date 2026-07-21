@@ -2938,8 +2938,27 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
      });
   };
 
-  const handleApplyFilter = () => {
-     setAppliedFilters({ fQty, fDateStart, fDateEnd, fTimeStart, fTimeEnd, fColor, fNum, fHour, fMin, fSec, fLastMin });
+  const handleApplyFilter = async () => {
+     if (fDateStart || fDateEnd) {
+         setLoading(true);
+         try {
+            let url = `/api/results/period?hours=720`; 
+            if (fDateStart) url += `&startDate=${fDateStart}`;
+            if (fDateEnd) url += `&endDate=${fDateEnd}`;
+            
+            const res = await fetch(url);
+            const json = await res.json();
+            const arr = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+            
+            setHistRealTime(false);
+            setFrozenData(arr);
+         } catch(e) {
+            console.error(e);
+         } finally {
+            setLoading(false);
+         }
+     }
+     setAppliedFilters({ fQty, fDateStart, fDateEnd, fTimeStart, fTimeEnd, fColor, fNum, fHour, fMin, fLastMin });
   };
 
   const handleExportCSV = () => {
@@ -3004,16 +3023,33 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
          if (appliedFilters.fTimeStart || appliedFilters.fTimeEnd) {
              arr = arr.filter(r => {
                  const loc = new Date(new Date(r.timestamp).getTime() - 3 * 3600 * 1000);
-                 const mins = loc.getUTCHours() * 60 + loc.getUTCMinutes();
                  let pass = true;
-                 if (appliedFilters.fTimeStart) {
-                     const [sh, sm] = appliedFilters.fTimeStart.split(':').map(Number);
-                     if (mins < sh * 60 + sm) pass = false;
+                 
+                 const parseTime = (str) => {
+                     if (!str) return null;
+                     if (!str.includes(':')) {
+                         // Se tem só numero, vamos assumir que é minuto (ignorando a hora)
+                         return { onlyMins: parseInt(str) };
+                     }
+                     const [h, m] = str.split(':').map(Number);
+                     return { abs: h * 60 + m };
+                 };
+
+                 const start = parseTime(appliedFilters.fTimeStart);
+                 const end = parseTime(appliedFilters.fTimeEnd);
+
+                 if (start && start.onlyMins !== undefined) {
+                     // Filtro baseado APENAS no minuto (qualquer hora)
+                     const m = loc.getUTCMinutes();
+                     if (start && m < start.onlyMins) pass = false;
+                     if (end && m > end.onlyMins) pass = false;
+                 } else {
+                     // Filtro baseado em tempo absoluto HH:MM
+                     const mins = loc.getUTCHours() * 60 + loc.getUTCMinutes();
+                     if (start && mins < start.abs) pass = false;
+                     if (end && mins > end.abs) pass = false;
                  }
-                 if (appliedFilters.fTimeEnd) {
-                     const [eh, em] = appliedFilters.fTimeEnd.split(':').map(Number);
-                     if (mins > eh * 60 + em) pass = false;
-                 }
+                 
                  return pass;
              });
          }
@@ -3046,12 +3082,7 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
              });
          }
 
-         if (appliedFilters.fSec !== 'Todos') {
-             arr = arr.filter(r => {
-                 const loc = new Date(new Date(r.timestamp).getTime() - 3 * 3600 * 1000);
-                 return loc.getUTCSeconds() === Number(appliedFilters.fSec);
-             });
-         }
+
 
          if (appliedFilters.fLastMin !== 'Todos') {
              arr = arr.filter(r => {
@@ -3121,7 +3152,7 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
             <Toggle label="Tempo real" checked={histRealTime} onChange={() => setHistRealTime(!histRealTime)} />
             <Toggle label="Colunas fixas" checked={histFixedCols} onChange={() => setHistFixedCols(!histFixedCols)} />
             <Toggle label="Sentido inverso" checked={histReverse} onChange={() => setHistReverse(!histReverse)} />
-            <Toggle label="Exibir segundos" checked={histShowSeconds} onChange={() => setHistShowSeconds(!histShowSeconds)} />
+            <Toggle label="Exibir milissegundos" checked={histShowSeconds} onChange={() => setHistShowSeconds(!histShowSeconds)} />
          </div>
       </div>
 
@@ -3175,11 +3206,11 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
                </div>
                <div>
                   <label className={F_LABEL}>Hora inicial</label>
-                  <input type="time" className={F_INPUT} value={fTimeStart} onChange={e => setFTimeStart(e.target.value)} />
+                  <input type="text" placeholder="HH:MM ou só Minuto (ex: 15)" className={F_INPUT} value={fTimeStart} onChange={e => setFTimeStart(e.target.value)} />
                </div>
                <div>
                   <label className={F_LABEL}>Hora final</label>
-                  <input type="time" className={F_INPUT} value={fTimeEnd} onChange={e => setFTimeEnd(e.target.value)} />
+                  <input type="text" placeholder="HH:MM ou só Minuto (ex: 15)" className={F_INPUT} value={fTimeEnd} onChange={e => setFTimeEnd(e.target.value)} />
                </div>
             </div>
 
@@ -3215,13 +3246,7 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
                      {Array.from({length: 60}, (_,i) => <option key={i} value={i.toString().padStart(2,'0')}>{i.toString().padStart(2,'0')}</option>)}
                   </select>
                </div>
-               <div>
-                  <label className={F_LABEL}>Por segundo</label>
-                  <select className={F_SELECT} value={fSec} onChange={e => setFSec(e.target.value)}>
-                     <option>Todos</option>
-                     {Array.from({length: 60}, (_,i) => <option key={i} value={i.toString().padStart(2,'0')}>{i.toString().padStart(2,'0')}</option>)}
-                  </select>
-               </div>
+
                <div>
                   <label className={F_LABEL}>Pelo último minuto</label>
                   <select className={F_SELECT} value={fLastMin} onChange={e => setFLastMin(e.target.value)}>

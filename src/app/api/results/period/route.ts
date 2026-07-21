@@ -9,9 +9,11 @@ export async function GET(request: NextRequest) {
   const hours = parseInt(searchParams.get('hours') || '24', 10);
   const onlyWhites = searchParams.get('onlyWhites') === 'true';
   const compact = searchParams.get('compact') === 'true';
+  const startDate = searchParams.get('startDate') || undefined;
+  const endDate = searchParams.get('endDate') || undefined;
 
   // Tenta Postgres primeiro
-  let data = await getResultsPeriodFromDB(hours, onlyWhites, compact);
+  let data = await getResultsPeriodFromDB(hours, onlyWhites, compact, startDate, endDate);
   let source = 'postgres';
 
   // Se falhar, define data como array vazio

@@ -26,23 +26,30 @@ export async function getResultsFromDB(limit: number): Promise<Result[] | null> 
   }
 }
 
-export async function getResultsPeriodFromDB(hours: number, onlyWhites: boolean = false, compact: boolean = false): Promise<Result[] | null> {
+export async function getResultsPeriodFromDB(hours: number, onlyWhites: boolean = false, compact: boolean = false, startDate?: string, endDate?: string): Promise<Result[] | null> {
   try {
-    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    let queryStr = 'SELECT id, color, roll, timestamp, total_bets, total_payout, house_profit FROM results WHERE ';
+    const params: any[] = [];
     
-    let queryStr = 'SELECT id, color, roll, timestamp, total_bets, total_payout, house_profit FROM results WHERE timestamp >= $1 ORDER BY timestamp ASC, id ASC';
+    if (startDate && endDate) {
+      queryStr += 'timestamp >= $1 AND timestamp <= $2 ';
+      params.push(new Date(startDate), new Date(endDate));
+    } else {
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+      queryStr += 'timestamp >= $1 ';
+      params.push(since);
+    }
     
     if (onlyWhites) {
-      queryStr = "SELECT id, color, roll, timestamp FROM results WHERE timestamp >= $1 AND (roll::text = '0' OR color ILIKE '%branco%' OR color ILIKE '%white%') ORDER BY timestamp ASC, id ASC";
-    } else if (compact || hours >= 720) { 
-      // Otimização Prevenção OOM: Se for mais de 30 dias (720h), forçar o compact para evitar carregar colunas extras para os 260k+ registros
-      queryStr = "SELECT id, color, roll, timestamp FROM results WHERE timestamp >= $1 ORDER BY timestamp ASC, id ASC";
+      queryStr = queryStr.replace('total_bets, total_payout, house_profit ', ''); // remove if onlyWhites
+      queryStr += "AND (roll::text = '0' OR color ILIKE '%branco%' OR color ILIKE '%white%') ";
+    } else if (compact || hours >= 720 || (startDate && endDate)) { 
+      queryStr = queryStr.replace('total_bets, total_payout, house_profit ', '');
     }
 
-    const result = await query(
-      queryStr,
-      [since]
-    );
+    queryStr += 'ORDER BY timestamp ASC, id ASC';
+
+    const result = await query(queryStr, params);
     return result.rows;
   } catch (error: any) {
     console.error('Postgres Error:', error.message || error);
