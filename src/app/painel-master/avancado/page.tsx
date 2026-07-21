@@ -2944,8 +2944,8 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
          setLoading(true);
          try {
             let url = `/api/results/period?hours=720`; 
-            if (fDateStart) url += `&startDate=${fDateStart}`;
-            if (fDateEnd) url += `&endDate=${fDateEnd}`;
+            if (fDateStart) url += `&startDate=${fDateStart}T00:00:00-03:00`;
+            if (fDateEnd) url += `&endDate=${fDateEnd}T23:59:59-03:00`;
             
             const res = await fetch(url);
             const json = await res.json();
@@ -3199,11 +3199,11 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
                </div>
                <div>
                   <label className={F_LABEL}>Data inicial</label>
-                  <input type="date" className={F_INPUT} value={fDateStart} onChange={e => setFDateStart(e.target.value)} />
+                  <input type="text" placeholder="DD/MM/AAAA" onFocus={(e) => e.target.type='date'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} className={F_INPUT} value={fDateStart} onChange={e => setFDateStart(e.target.value)} />
                </div>
                <div>
                   <label className={F_LABEL}>Data final</label>
-                  <input type="date" className={F_INPUT} value={fDateEnd} onChange={e => setFDateEnd(e.target.value)} />
+                  <input type="text" placeholder="DD/MM/AAAA" onFocus={(e) => e.target.type='date'} onBlur={(e) => {if(!e.target.value) e.target.type='text'}} className={F_INPUT} value={fDateEnd} onChange={e => setFDateEnd(e.target.value)} />
                </div>
                <div>
                   <label className={F_LABEL}>Hora inicial</label>
