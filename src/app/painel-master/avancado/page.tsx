@@ -2454,6 +2454,7 @@ function RealTimeClock() {
 }
 
 function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, histFixedCols, setHistFixedCols, histReverse, setHistReverse, histShowSeconds, setHistShowSeconds, isVip }: any) {
+  const [loading, setLoading] = useState(false);
   const [frozenData, setFrozenData] = useState<any[]>([]);
   const [activeTool, setActiveTool] = useState<'filtros' | 'notificador' | 'validador'>('filtros');
   
@@ -3260,10 +3261,11 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
             <div className="flex pt-4 border-t border-[#2a2a35]">
                <button 
                   onClick={handleApplyFilter}
-                  className="bg-[#00c83a] hover:bg-blue-600 text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg"
+                  disabled={loading}
+                  className={`text-white text-[11px] font-black tracking-widest px-8 py-3 rounded-lg transition-colors uppercase flex items-center gap-2 shadow-lg ${loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-[#00c83a] hover:bg-blue-600'}`}
                >
                   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                  Filtrar
+                  {loading ? 'Buscando...' : 'Filtrar'}
                </button>
             </div>
                </>
