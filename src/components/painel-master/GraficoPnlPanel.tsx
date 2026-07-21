@@ -130,9 +130,9 @@ function LiveBettingStatus() {
                   if (p.color !== undefined && p.color !== null) {
                      const c = p.color;
                      let payout = 0;
-                     if (c === 1) payout = parseFloat(p.total_red_eur_bet || "0") * eurRateRef.current * 2;
-                     if (c === 2) payout = parseFloat(p.total_black_eur_bet || "0") * eurRateRef.current * 2;
-                     if (c === 0) payout = parseFloat(p.total_white_eur_bet || "0") * eurRateRef.current * 14;
+                     if (c === 1) payout = parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0") * eurRateRef.current * 2;
+                     if (c === 2) payout = parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0") * eurRateRef.current * 2;
+                     if (c === 0) payout = parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0") * eurRateRef.current * 14;
                      setResult({ color: c, payout });
                   }
                } else if (p.status === "complete") {
@@ -144,17 +144,17 @@ function LiveBettingStatus() {
                   if (p.color !== undefined && p.color !== null) {
                      const c = p.color;
                      let payout = 0;
-                     if (c === 1) payout = parseFloat(p.total_red_eur_bet || "0") * eurRateRef.current * 2;
-                     if (c === 2) payout = parseFloat(p.total_black_eur_bet || "0") * eurRateRef.current * 2;
-                     if (c === 0) payout = parseFloat(p.total_white_eur_bet || "0") * eurRateRef.current * 14;
+                     if (c === 1) payout = parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0") * eurRateRef.current * 2;
+                     if (c === 2) payout = parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0") * eurRateRef.current * 2;
+                     if (c === 0) payout = parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0") * eurRateRef.current * 14;
                      setResult({ color: c, payout });
                   }
                }
                
-               if (p.total_red_eur_bet !== undefined) {
-                  setRed({ amt: parseFloat(p.total_red_eur_bet) * eurRateRef.current, count: p.total_red_bets_placed || 0 });
-                  setWhite({ amt: parseFloat(p.total_white_eur_bet) * eurRateRef.current, count: p.total_white_bets_placed || 0 });
-                  setBlack({ amt: parseFloat(p.total_black_eur_bet) * eurRateRef.current, count: p.total_black_bets_placed || 0 });
+               if (p.total_red_bet !== undefined || p.total_red_eur_bet !== undefined) {
+                  setRed({ amt: parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0") * eurRateRef.current, count: p.total_red_bets_placed || 0 });
+                  setWhite({ amt: parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0") * eurRateRef.current, count: p.total_white_bets_placed || 0 });
+                  setBlack({ amt: parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0") * eurRateRef.current, count: p.total_black_bets_placed || 0 });
                }
             }
           }

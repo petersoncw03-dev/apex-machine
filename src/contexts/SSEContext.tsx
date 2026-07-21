@@ -103,9 +103,9 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
                        if (p.color === 0) colorStr = "Branco";
                        else if (p.color === 1) colorStr = "Vermelho";
 
-                       const redBets = parseFloat(p.total_red_eur_bet || "0");
-                       const whiteBets = parseFloat(p.total_white_eur_bet || "0");
-                       const blackBets = parseFloat(p.total_black_eur_bet || "0");
+                       const redBets = parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0");
+                       const whiteBets = parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0");
+                       const blackBets = parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0");
                        const tb = redBets + whiteBets + blackBets;
                        
                        let tp = 0;
