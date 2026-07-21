@@ -34,7 +34,7 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
         if (res.ok) {
           const json = await res.json();
           const arr = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
-          const mappedData = [...arr].reverse().map((r: any) => ({
+          const mappedData = [...arr].map((r: any) => ({
             ...r,
             color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
             roll: r.roll?.toString()
@@ -61,13 +61,13 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
     if (periodDays === 7 || !extendedData) return globalData;
     if (!globalData || globalData.length === 0) return extendedData;
     
-    // globalData is newest-first. The oldest item is at the end.
-    const oldestGlobalId = Number(globalData[globalData.length - 1].id);
-    // extendedData is also newest-first now (because we reversed it).
+    // globalData is oldest-first. The newest item is at the end.
+    const oldestGlobalId = Number(globalData[0].id);
+    // extendedData is also oldest-first.
     // We want items in extendedData that are OLDER than oldestGlobalId (meaning d.id < oldestGlobalId).
     const olderData = extendedData.filter(d => Number(d.id) < oldestGlobalId);
-    // Newest items first: globalData comes first, then the olderData.
-    return [...globalData, ...olderData];
+    // Oldest items first: olderData comes first, then globalData.
+    return [...olderData, ...globalData];
   }, [globalData, extendedData, periodDays]);
 
   // Filtra dados para o periodo escolhido
@@ -127,7 +127,13 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
     const minuteOutcomes: Record<number, boolean[]> = {};
     for (let i = 0; i < 60; i++) minuteOutcomes[i] = [];
 
+    const nowD = new Date(Date.now() - 3 * 3600 * 1000);
+    const currentHKey = `${nowD.getUTCFullYear()}-${nowD.getUTCMonth()}-${nowD.getUTCDate()}-${nowD.getUTCHours()}-${nowD.getUTCMinutes()}`;
+
     mapKeys.forEach((isW, key) => {
+         // Se estamos no minuto ATUAL e ainda não deu WIN, não conta como LOSS ainda, pois faltam entradas (o minuto não acabou)
+         if (key === currentHKey && !isW) return;
+         
          const m = parseInt(key.split('-')[4]);
          minuteOutcomes[m].push(isW);
     });
