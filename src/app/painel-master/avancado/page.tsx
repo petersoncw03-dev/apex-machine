@@ -1099,7 +1099,7 @@ export default function RadarAvancado() {
       });
     }
     return result;
-  }, [deferredScannerData, scanMin, scanSortCol, scanSortDir, globalDataDelayed.length]);
+  }, [deferredScannerData, scanMin, scanSortCol, scanSortDir, globalData.length]);
 
   const handleScanSort = (col: 'SA' | 'SM') => {
     if (scanSortCol === col) {
