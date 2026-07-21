@@ -3100,7 +3100,7 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
                  const loc = new Date(new Date(r.timestamp).getTime() - 3 * 3600 * 1000);
                  let pass = true;
                  
-                 const parseTime = (str: string) => {
+                 const parseTime = (str: string): { onlyMins?: number, abs?: number } | null => {
                      if (!str) return null;
                      if (!str.includes(':')) {
                          return { onlyMins: parseInt(str) };
@@ -3114,12 +3114,12 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
 
                  if (start && start.onlyMins !== undefined) {
                      const m = loc.getUTCMinutes();
-                     if (start && m < start.onlyMins) pass = false;
-                     if (end && m > end.onlyMins) pass = false;
+                     if (start && start.onlyMins !== undefined && m < start.onlyMins) pass = false;
+                     if (end && end.onlyMins !== undefined && m > end.onlyMins) pass = false;
                  } else {
                      const mins = loc.getUTCHours() * 60 + loc.getUTCMinutes();
-                     if (start && mins < start.abs) pass = false;
-                     if (end && mins > end.abs) pass = false;
+                     if (start && start.abs !== undefined && mins < start.abs) pass = false;
+                     if (end && end.abs !== undefined && mins > end.abs) pass = false;
                  }
                  
                  return pass;
