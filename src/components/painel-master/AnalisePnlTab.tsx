@@ -53,6 +53,7 @@ export default function AnalisePnlTab({ globalData }: { globalData: Roll[] }) {
 
       for (const stone of data) {
         const isTrigger = Number(stone.roll) === triggerStone;
+        let overlap = false;
 
         if (isBetting) {
           const isWin = stone.color.toLowerCase().includes('branco') || Number(stone.roll) === 0 || stone.color.toLowerCase().includes('white') || stone.color.toLowerCase() === 'b';
@@ -74,25 +75,31 @@ export default function AnalisePnlTab({ globalData }: { globalData: Roll[] }) {
             history.push({ isWin: false, betAmount, pnlBefore, pnlAfter: pnl });
             
             if (currentGale < 30) cycleLosses[currentGale]++;
-            totalLosses++;
-            sa++;
-            if (sa > sm) sm = sa;
             
             currentGale++;
             entriesLeftInThisTrigger--;
 
-            if (currentGale > MAX_ABSOLUTE_GALES) {
-              isBetting = false;
-              currentGale = 0;
-            } else if (entriesLeftInThisTrigger <= 0) {
-              isBetting = false;
+            // O USUÁRIO PEDIU: se a pedra for gatilho de novo, aborta como LOSS e reinicia!
+            if (isTrigger) {
+                totalLosses++;
+                sa++;
+                if (sa > sm) sm = sa;
+                overlap = true; // flag to trigger restart
+                isBetting = false; // end the current cycle prematurely
+            } else if (entriesLeftInThisTrigger <= 0 || currentGale > MAX_ABSOLUTE_GALES) {
+                totalLosses++;
+                sa++;
+                if (sa > sm) sm = sa;
+                isBetting = false;
+                currentGale = 0;
             }
           }
         }
         
-        if (isTrigger) {
+        if (isTrigger && (!isBetting || overlap)) {
           isBetting = true;
           entriesLeftInThisTrigger = entriesLimit;
+          currentGale = 0; // REINICIA A APOSTA!
         }
       }
 
