@@ -415,9 +415,12 @@ export default function AnalistaSimulador() {
              if (pendingBets.length > 0) {
                  const currentBet = pendingBets[0];
                  if (currentBet.target === triggeredTarget) {
-                     if (maxEntriesTriggered > currentBet.entriesLeft) {
-                         currentBet.entriesLeft = maxEntriesTriggered;
+                     if (config.continuousRead) {
+                         if (maxEntriesTriggered > currentBet.entriesLeft) {
+                             currentBet.entriesLeft = maxEntriesTriggered;
+                         }
                      }
+                     // Se continuousRead for false, ignora o novo gatilho e deixa a aposta atual terminar!
                  }
              } else {
                  currentScore.triggers++;
