@@ -2231,10 +2231,6 @@ export default function RadarAvancado() {
                 />
               ) : activeTab === 'resumos' ? (
                 <ResumoDiarioPanel globalData={globalData} />
-              ) : activeTab === 'grafico' ? (
-                <GraficoPnlPanel isVip={isVip} globalData={globalData} />
-              ) : activeTab === 'analise-pnl' ? (
-                <AnalisePnlTab globalData={globalData} />
               ) : null}
             </div>
 

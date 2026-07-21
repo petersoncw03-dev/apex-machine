@@ -34,7 +34,12 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
         if (res.ok) {
           const json = await res.json();
           const arr = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
-          setExtendedData(arr);
+          const mappedData = [...arr].reverse().map((r: any) => ({
+            ...r,
+            color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
+            roll: r.roll?.toString()
+          }));
+          setExtendedData(mappedData);
         }
       } catch (e) {
         console.error('Erro ao buscar 14 dias:', e);
@@ -56,9 +61,13 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
     if (periodDays === 7 || !extendedData) return globalData;
     if (!globalData || globalData.length === 0) return extendedData;
     
-    const firstGlobalId = Number(globalData[0].id);
-    const olderData = extendedData.filter(d => Number(d.id) < firstGlobalId);
-    return [...olderData, ...globalData];
+    // globalData is newest-first. The oldest item is at the end.
+    const oldestGlobalId = Number(globalData[globalData.length - 1].id);
+    // extendedData is also newest-first now (because we reversed it).
+    // We want items in extendedData that are OLDER than oldestGlobalId (meaning d.id < oldestGlobalId).
+    const olderData = extendedData.filter(d => Number(d.id) < oldestGlobalId);
+    // Newest items first: globalData comes first, then the olderData.
+    return [...globalData, ...olderData];
   }, [globalData, extendedData, periodDays]);
 
   // Filtra dados para o periodo escolhido
