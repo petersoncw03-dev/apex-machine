@@ -3,15 +3,71 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
 export default function SniperMinutos({ globalData }: { globalData: any[] }) {
-  const [periodDays, setPeriodDays] = useState<7 | 15>(7);
+  const [periodDays, setPeriodDays] = useState<7 | 14>(7);
+  const [extendedData, setExtendedData] = useState<any[] | null>(null);
+  const [loadingExtended, setLoadingExtended] = useState(false);
+  const inactivityTimer = React.useRef<NodeJS.Timeout | null>(null);
 
-  // Filtra dados para o periodo escolhido (7 ou 14 dias)
+  // Reseta o timer de inatividade quando o usuário interage
+  const resetInactivityTimer = () => {
+    if (periodDays !== 14) return;
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    inactivityTimer.current = setTimeout(() => {
+      setPeriodDays(7);
+      setExtendedData(null);
+    }, 3 * 60 * 1000); // 3 minutos
+  };
+
+  // Limpa o timer no unmount
+  useEffect(() => {
+    return () => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    };
+  }, []);
+
+  const handleSetPeriod = async (days: 7 | 14) => {
+    setPeriodDays(days);
+    if (days === 14 && !extendedData) {
+      setLoadingExtended(true);
+      try {
+        const res = await fetch(`/api/results/period?hours=336`); // 14 dias
+        if (res.ok) {
+          const json = await res.json();
+          const arr = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+          setExtendedData(arr);
+        }
+      } catch (e) {
+        console.error('Erro ao buscar 14 dias:', e);
+      } finally {
+        setLoadingExtended(false);
+      }
+    }
+    
+    if (days === 7) {
+      setExtendedData(null);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    } else {
+      resetInactivityTimer();
+    }
+  };
+
+  // Mescla os dados extras com os dados globais mais recentes (que recebem websocket)
+  const mergedData = useMemo(() => {
+    if (periodDays === 7 || !extendedData) return globalData;
+    if (!globalData || globalData.length === 0) return extendedData;
+    
+    const firstGlobalId = Number(globalData[0].id);
+    const olderData = extendedData.filter(d => Number(d.id) < firstGlobalId);
+    return [...olderData, ...globalData];
+  }, [globalData, extendedData, periodDays]);
+
+  // Filtra dados para o periodo escolhido
   const dataPeriod = useMemo(() => {
-    if (!globalData || globalData.length === 0) return [];
+    if (!mergedData || mergedData.length === 0) return [];
     const now = Date.now();
     const cutoff = now - periodDays * 24 * 3600 * 1000;
-    return globalData.filter(d => new Date(d.timestamp).getTime() >= cutoff);
-  }, [globalData, periodDays]);
+    return mergedData.filter(d => new Date(d.timestamp).getTime() >= cutoff);
+  }, [mergedData, periodDays]);
 
   const generalWinrate2Days = useMemo(() => {
      if (!globalData || globalData.length === 0) return new Array(60).fill(0);
@@ -118,7 +174,11 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
   }, [dataPeriod, generalWinrate2Days]);
 
   return (
-    <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col mt-4">
+    <div 
+      className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col mt-4"
+      onMouseMove={resetInactivityTimer}
+      onClick={resetInactivityTimer}
+    >
       <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a]">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
@@ -126,17 +186,17 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => setPeriodDays(7)}
+            onClick={() => handleSetPeriod(7)}
             className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${periodDays === 7 ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
           >
             7 Dias
           </button>
           <button 
-            onClick={() => setPeriodDays(15)}
-            className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${periodDays === 15 ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
-            title="Requer que a 'Base de Histórico' no topo da página esteja em 15 Dias"
+            onClick={() => handleSetPeriod(14)}
+            className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${periodDays === 14 ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
+            title="Carrega 14 dias independentemente. Volta para 7 dias após 3 min de inatividade."
           >
-            15 Dias
+            {loadingExtended ? 'Carregando...' : '14 Dias'}
           </button>
         </div>
       </div>
@@ -190,9 +250,14 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
                )
            })}
 
-           {ranking.length === 0 && (
+           {ranking.length === 0 && !loadingExtended && (
                <div className="col-span-full py-10 flex items-center justify-center text-gray-500 text-[11px] font-bold uppercase tracking-widest">
                    Processando histórico de dados...
+               </div>
+           )}
+           {loadingExtended && (
+               <div className="col-span-full py-10 flex items-center justify-center text-[#00c83a] text-[11px] font-bold uppercase tracking-widest animate-pulse">
+                   Baixando base histórica pesada (14 Dias)...
                </div>
            )}
         </div>
