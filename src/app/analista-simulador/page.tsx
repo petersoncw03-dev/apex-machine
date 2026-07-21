@@ -356,17 +356,20 @@ export default function AnalistaSimulador() {
                  newlyResolved = true;
              } else {
                  bet.entriesLeft--;
+                 
+                 // O USUÁRIO PEDIU: Incrementar por ENTRADA (pedra), não por ciclo!
+                 currentScore.losses++;
+                 currentScore.currentSa++;
+                 if (currentScore.currentSa > currentScore.maxSa) currentScore.maxSa = currentScore.currentSa;
+                 if (localCycleHistory.length > 0 && localCycleHistory[localCycleHistory.length - 1].type === 'L') {
+                     localCycleHistory[localCycleHistory.length - 1].count++;
+                 } else {
+                     localCycleHistory.push({ type: 'L', count: 1 });
+                 }
+                 
                  if (bet.entriesLeft > 0) {
                      newPending.push(bet);
                  } else {
-                     currentScore.losses++;
-                     currentScore.currentSa++;
-                     if (currentScore.currentSa > currentScore.maxSa) currentScore.maxSa = currentScore.currentSa;
-                     if (localCycleHistory.length > 0 && localCycleHistory[localCycleHistory.length - 1].type === 'L') {
-                         localCycleHistory[localCycleHistory.length - 1].count++;
-                     } else {
-                         localCycleHistory.push({ type: 'L', count: 1 });
-                     }
                      newlyResolved = true;
                  }
              }

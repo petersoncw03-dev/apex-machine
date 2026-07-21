@@ -62,10 +62,10 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
     if (!globalData || globalData.length === 0) return extendedData;
     
     // globalData is oldest-first. The newest item is at the end.
-    const oldestGlobalId = Number(globalData[0].id);
+    const oldestGlobalTimestamp = new Date(globalData[0].timestamp).getTime();
     // extendedData is also oldest-first.
-    // We want items in extendedData that are OLDER than oldestGlobalId (meaning d.id < oldestGlobalId).
-    const olderData = extendedData.filter(d => Number(d.id) < oldestGlobalId);
+    // We want items in extendedData that are OLDER than the oldest item in globalData.
+    const olderData = extendedData.filter(d => new Date(d.timestamp).getTime() < oldestGlobalTimestamp);
     // Oldest items first: olderData comes first, then globalData.
     return [...olderData, ...globalData];
   }, [globalData, extendedData, periodDays]);
