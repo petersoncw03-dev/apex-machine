@@ -415,12 +415,10 @@ export default function AnalistaSimulador() {
              if (pendingBets.length > 0) {
                  const currentBet = pendingBets[0];
                  if (currentBet.target === triggeredTarget) {
-                     if (config.continuousRead) {
-                         if (maxEntriesTriggered > currentBet.entriesLeft) {
-                             currentBet.entriesLeft = maxEntriesTriggered;
-                         }
+                     // O USUÁRIO PEDIU: SEMPRE REINICIAR AS ENTRADAS SE BATER DE NOVO!
+                     if (maxEntriesTriggered > currentBet.entriesLeft) {
+                         currentBet.entriesLeft = maxEntriesTriggered;
                      }
-                     // Se continuousRead for false, ignora o novo gatilho e deixa a aposta atual terminar!
                  }
              } else {
                  currentScore.triggers++;
@@ -519,7 +517,7 @@ export default function AnalistaSimulador() {
                       }
                       
                       for (let e = minEntries; e <= maxEntries; e++) {
-                          if (patternState[key].entriesData[e].activeEntriesLeft > 0) continue;
+                          // O USUÁRIO PEDIU: SEMPRE REINICIAR AS ENTRADAS SE BATER DE NOVO!
                           patternState[key].entriesData[e].triggers++;
                           patternState[key].entriesData[e].activeEntriesLeft = e;
                       }
@@ -875,10 +873,7 @@ const runFullDiscoveryEntrada = (config: any, currentData: Roll[], isAuto: boole
                 }
                 
                 for (let e = minEntries; e <= maxEntries; e++) {
-                    if (!continuousRead && (patternState[key].entriesData[e].activeEntriesLeft > 0 || patternState[key].entriesData[e].cooldown > 0)) {
-                        continue;
-                    }
-
+                    // O USUÁRIO PEDIU: SEMPRE REINICIAR AS ENTRADAS SE BATER DE NOVO!
                     patternState[key].entriesData[e].triggers++;
                     patternState[key].entriesData[e].activeEntriesLeft = e;
                 }
