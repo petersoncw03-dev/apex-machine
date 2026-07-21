@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
 export default function SniperMinutos({ globalData }: { globalData: any[] }) {
-  const [periodDays, setPeriodDays] = useState<7 | 14>(7);
+  const [periodDays, setPeriodDays] = useState<7 | 15>(7);
 
   // Filtra dados para o periodo escolhido (7 ou 14 dias)
   const dataPeriod = useMemo(() => {
@@ -47,8 +47,8 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
 
     const mapKeys = new Map<string, boolean>();
     // Indexar de oldest to newest para construir a linha do tempo cronológica
-    // globalData: [newest, ..., oldest]
-    for (let i = dataPeriod.length - 1; i >= 0; i--) {
+    // globalData: [oldest, ..., newest] (vindo do Postgres ASC)
+    for (let i = 0; i < dataPeriod.length; i++) {
         const r = dataPeriod[i];
         const d = new Date(new Date(r.timestamp).getTime() - 3 * 3600 * 1000);
         const m = d.getUTCMinutes();
@@ -132,10 +132,11 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
             7 Dias
           </button>
           <button 
-            onClick={() => setPeriodDays(14)}
-            className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${periodDays === 14 ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
+            onClick={() => setPeriodDays(15)}
+            className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${periodDays === 15 ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
+            title="Requer que a 'Base de Histórico' no topo da página esteja em 15 Dias"
           >
-            14 Dias
+            15 Dias
           </button>
         </div>
       </div>
