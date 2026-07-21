@@ -932,14 +932,17 @@ export default function RadarAvancado() {
         dataRef.current = trimmed;
         return trimmed;
       });
-      setScannerData(prev => {
-        if (mappedRoll.id && prev.some(r => r.id === mappedRoll.id)) return prev;
-        if (!mappedRoll.id && prev.some(r => r.timestamp === mappedRoll.timestamp && r.roll === mappedRoll.roll)) return prev;
-        
-        const merged = [...prev, mappedRoll];
-        // Limite reduzido de 90k para 15k — suficiente para análise
-        return merged.length > 15000 ? merged.slice(-15000) : merged;
-      });
+      // Apenas adiciona ao ScannerData se for BRANCO (reduz o peso em 14x!)
+      if (isBranco) {
+         setScannerData(prev => {
+           if (mappedRoll.id && prev.some(r => r.id === mappedRoll.id)) return prev;
+           if (!mappedRoll.id && prev.some(r => r.timestamp === mappedRoll.timestamp && r.roll === mappedRoll.roll)) return prev;
+           
+           const merged = [...prev, mappedRoll];
+           // Limite gigante para suportar 120+ dias apenas de brancos (~25k pedras)
+           return merged.length > 50000 ? merged.slice(-50000) : merged;
+         });
+      }
     });
     return unsub;
   }, [subscribe]);
@@ -1162,7 +1165,7 @@ export default function RadarAvancado() {
       });
     }
     return result;
-  }, [sliceCustomMin, scanMin, scanSortCol, scanSortDir]);
+  }, [deferredScannerData, scanMin, scanSortCol, scanSortDir, globalDataDelayed.length]);
 
   const handleScanSort = (col: 'SA' | 'SM') => {
     if (scanSortCol === col) {
