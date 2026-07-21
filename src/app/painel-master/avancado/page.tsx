@@ -1275,7 +1275,9 @@ export default function RadarAvancado() {
                 className={`px-5 py-3 md:px-4 md:py-2 rounded-lg text-[13px] md:text-[12px] font-semibold whitespace-nowrap transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5`}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 md:w-4 md:h-4"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-             <a 
+                Painel Master
+              </button>
+              <a 
                 href="https://blaze.bet.br/pt/games/double"  
                 target="_blank" 
                 rel="noopener noreferrer" 
