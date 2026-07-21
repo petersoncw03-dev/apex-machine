@@ -3026,7 +3026,7 @@ function HistoryPanel({ playAlert, globalData, histRealTime, setHistRealTime, hi
                  const loc = new Date(new Date(r.timestamp).getTime() - 3 * 3600 * 1000);
                  let pass = true;
                  
-                 const parseTime = (str) => {
+                 const parseTime = (str: string) => {
                      if (!str) return null;
                      if (!str.includes(':')) {
                          // Se tem só numero, vamos assumir que é minuto (ignorando a hora)
