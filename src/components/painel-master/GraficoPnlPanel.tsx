@@ -31,22 +31,28 @@ const TFS = [
 ];
 const LIMITS = [200, 500, 1000, 1500, 2000, 3000, 5000, 10000];
 
-function buildTick(data: Roll[], eurRate: number) {
+function buildTick(data: Roll[]) {
   let acc = 0; const times: number[] = [];
   return data.map(r => {
-    const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
-    let t = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
-    if (times.length && t <= times[times.length - 1]) t = times[times.length - 1] + 1;
+    const key = r.id || (r.timestamp + r.color + r.roll);
+    let t = globalTimeCache.get(key);
+    if (t === undefined) {
+      const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
+      const rawT = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
+      t = Math.max(rawT, globalLastT + 1);
+      globalTimeCache.set(key, t);
+    }
+    globalLastT = t;
     times.push(t);
     const prev = acc;
-    const profit = parseFloat(String(r.house_profit || 0)) * eurRate;
+    const profit = parseFloat(String(r.house_profit || 0));
     acc = parseFloat((acc + profit).toFixed(2));
     const c = CMAP[r.color?.toUpperCase()] ?? "#555566";
     return { candle: { time: t as Time, open: prev, high: Math.max(prev, acc), low: Math.min(prev, acc), close: acc, color: c, wickColor: c, borderColor: c }, acc, time: t };
   });
 }
 
-function buildAgg(data: Roll[], minutes: number, eurRate: number) {
+function buildAgg(data: Roll[], minutes: number) {
   let acc = 0; const bMap = new Map<number, { open: number, high: number, low: number, close: number }>();
   const bOrder: number[] = [];
   const interval = minutes * 60;
@@ -54,7 +60,7 @@ function buildAgg(data: Roll[], minutes: number, eurRate: number) {
     const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
     const t = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
     const bs = Math.floor(t / interval) * interval;
-    const profit = parseFloat(String(r.house_profit || 0)) * eurRate;
+    const profit = parseFloat(String(r.house_profit || 0));
     acc = parseFloat((acc + profit).toFixed(2));
     if (!bMap.has(bs)) {
       bMap.set(bs, { open: acc - profit, high: acc, low: acc, close: acc });
@@ -261,7 +267,13 @@ function LiveBettingStatus() {
   );
 }
 
+const globalTimeCache = new Map<string, number>();
+let globalLastT = 0;
+
 export default function GraficoPnlPanel({ globalData, isVip = false }: { globalData: Roll[], isVip?: boolean }) {
+  const isMounted = useRef(true);
+  useEffect(() => { isMounted.current = true; return () => { isMounted.current = false; }; }, []);
+
   const cRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const chart = useRef<any>(null), candle = useRef<any>(null);
@@ -307,16 +319,158 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   const [indColor, setIndColor] = useState("#facc15");
   const [indThick, setIndThick] = useState(1.5);
   const [profit, setProfit] = useState(0);
-  const [limit, setLimit] = useState(500);
+  const [limitLabel, setLimitLabel] = useState(500);
   const [showPeriod, setShowPeriod] = useState(false);
+  const [startUnix, setStartUnix] = useState<number | null>(null);
   const [toast, setToast] = useState<{show: boolean, msg: string, type: 'success' | 'error'}>({show: false, msg: "", type: 'success'});
+
+  useEffect(() => {
+    if (startUnix === null && globalData.length > 0) {
+      const idx = Math.max(0, globalData.length - limitLabel);
+      if (globalData[idx]) {
+        setStartUnix(Math.floor(new Date(globalData[idx].timestamp).getTime() / 1000));
+      }
+    }
+  }, [globalData.length, startUnix, limitLabel]);
+
+  const applyLimit = (l: number) => {
+    setLimitLabel(l);
+    const idx = Math.max(0, globalData.length - l);
+    if (globalData[idx]) {
+      setStartUnix(Math.floor(new Date(globalData[idx].timestamp).getTime() / 1000));
+    } else {
+      setStartUnix(0);
+    }
+    setShowPeriod(false);
+  };
   
-  const activeData = globalData.slice(-limit);
+  // -- DRAWING MODE --
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const drawnLinesMap = useRef<Map<string, any>>(new Map());
+  const drawingStartPt = useRef<{time: any, value: number} | null>(null);
+  const previewLine = useRef<any>(null);
+
+  useEffect(() => {
+    if (!chart.current) return;
+
+    chart.current.applyOptions({
+      handleScroll: !isDrawingMode,
+      handleScale: !isDrawingMode,
+    });
+
+    const resolveTime = (param: any) => {
+      let time = param.time;
+      if (time === undefined && param.point && chart.current) {
+        const t = chart.current.timeScale().coordinateToTime(param.point.x);
+        if (t !== null && t !== undefined) {
+          time = t;
+        } else if (param.logical !== null && param.logical !== undefined) {
+          time = globalLastT + (param.logical * 60);
+        }
+      }
+      return typeof time === 'number' ? time : undefined;
+    };
+
+    const handleClick = (param: any) => {
+      if (!isDrawingMode || !param.point) return;
+      const time = resolveTime(param);
+      if (time === undefined) return;
+      
+      const price = candle.current?.coordinateToPrice(param.point.y);
+      if (price === null || price === undefined || Math.abs(price) > 10000000) return;
+
+      if (!drawingStartPt.current) {
+        drawingStartPt.current = { time, value: price };
+          previewLine.current = chart.current.addSeries(LineSeries, { 
+            color: '#00c83a', 
+            lineWidth: 2, 
+            lineStyle: 0, 
+            crosshairMarkerVisible: true, 
+            priceLineVisible: false, 
+            lastValueVisible: false
+          });
+        previewLine.current.setData([{ time: time, value: price }]);
+      } else {
+        const pt2 = { time, value: price };
+        const pt1 = drawingStartPt.current;
+        
+        if (Number(pt1.time) === Number(pt2.time)) {
+          return;
+        }
+
+        drawingStartPt.current = null;
+        
+        if (previewLine.current) {
+          const sorted = [pt1, pt2].sort((a, b) => Number(a.time) - Number(b.time));
+          previewLine.current.setData(sorted);
+          previewLine.current.applyOptions({ crosshairMarkerVisible: false });
+          
+          const id = 'line_' + Date.now();
+          drawnLinesMap.current.set(id, previewLine.current);
+          
+          previewLine.current = null;
+          
+          // Sai do modo de desenho automaticamente após criar 1 linha
+          setIsDrawingMode(false);
+        }
+      }
+    };
+
+    // ... local vars for loop prevention
+    let lastX: any = null;
+    let lastY: any = null;
+
+    const handleMove = (param: any) => {
+      if (!isDrawingMode || !drawingStartPt.current || !previewLine.current) return;
+      if (!param.point) return;
+      
+      const time = resolveTime(param);
+      if (time === undefined) return;
+      
+      if (lastX === param.point.x && lastY === param.point.y) return;
+      lastX = param.point.x;
+      lastY = param.point.y;
+
+      const price = candle.current?.coordinateToPrice(param.point.y);
+      if (price === null || price === undefined || Math.abs(price) > 10000000) return;
+      
+      const pt1 = drawingStartPt.current;
+      const pt2 = { time: time, value: price };
+      
+      if (Number(pt1.time) === Number(pt2.time)) {
+        previewLine.current.setData([{ time: pt1.time, value: pt1.value }]);
+        return;
+      }
+      
+      const sorted = [pt1, pt2].sort((a, b) => Number(a.time) - Number(b.time));
+      previewLine.current.setData(sorted);
+    };
+
+    chart.current.subscribeClick(handleClick);
+    chart.current.subscribeCrosshairMove(handleMove);
+
+    return () => {
+      if (chart.current) {
+        chart.current.unsubscribeClick(handleClick);
+        chart.current.unsubscribeCrosshairMove(handleMove);
+      }
+    };
+  }, [isDrawingMode]);
+
+  const clearDrawnLines = () => {
+    drawnLinesMap.current.forEach(s => {
+      if (chart.current) {
+        try { chart.current.removeSeries(s); } catch {}
+      }
+    });
+    drawnLinesMap.current.clear();
+  };
+  // -------------------
 
   const getBuilt = useCallback((data: Roll[]) => {
     const tfObj = TFS.find(t => t.k === tf)!;
-    return tfObj.m === 0 ? buildTick(data, eurRate) : buildAgg(data, tfObj.m, eurRate);
-  }, [tf, eurRate]);
+    return tfObj.m === 0 ? buildTick(data) : buildAgg(data, tfObj.m);
+  }, [tf]);
 
   const updateInds = useCallback((accumulated: number[], times: number[], indList: Ind[]) => {
     indList.forEach(ind => {
@@ -338,15 +492,39 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   }, []);
 
   const renderAll = useCallback((fit = false) => {
-    if (!candle.current || !activeData.length) return;
-    const built = getBuilt(activeData);
+    if (!isMounted.current || !candle.current || !globalData.length) return;
+    const builtAll = getBuilt(globalData);
+    const built = startUnix ? builtAll.filter(b => Number(b.time) >= startUnix) : builtAll;
+    
     const safeCandles = built.map(b => b.candle).filter(c => !isNaN(Number(c.time)) && !isNaN(c.open) && !isNaN(c.high) && !isNaN(c.low) && !isNaN(c.close));
-    candle.current.setData(safeCandles as any);
-    if (fit) chart.current?.timeScale().fitContent();
-    const accs = built.map(b => b.acc); const times = built.map(b => b.time);
-    setProfit(accs[accs.length - 1] ?? 0);
-    setInds(prev => { updateInds(accs, times, prev); return prev; });
-  }, [getBuilt, activeData, updateInds]);
+    
+    const lastTime = safeCandles.length > 0 ? Number(safeCandles[safeCandles.length - 1].time) : 0;
+    const padding = [];
+    if (lastTime > 0) {
+      for (let i = 1; i <= 150; i++) {
+        padding.push({ time: lastTime + (i * 60) });
+      }
+    }
+
+    try {
+      const timeScale = chart.current?.timeScale();
+      const oldRange = timeScale?.getVisibleLogicalRange();
+
+      candle.current.setData([...safeCandles, ...padding] as any);
+      
+      const accs = built.map(b => b.acc); const times = built.map(b => b.time);
+      setProfit(accs[accs.length - 1] ?? 0);
+      setInds(prev => { updateInds(accs, times, prev); return prev; });
+      
+      if (fit) {
+        timeScale?.fitContent();
+      } else if (oldRange && oldRange.to < safeCandles.length - 2) {
+        timeScale?.setVisibleLogicalRange(oldRange);
+      }
+    } catch (e) {
+      console.warn("RenderAll Error Suppressed:", e);
+    }
+  }, [getBuilt, globalData, startUnix, updateInds]);
 
   // Init chart
   useEffect(() => {
@@ -364,7 +542,14 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     const ro = new ResizeObserver(() => { if (cRef.current && chart.current) chart.current.applyOptions({ width: cRef.current.clientWidth, height: cRef.current.clientHeight }); });
     if (cRef.current) ro.observe(cRef.current);
   
-  return () => { ro.disconnect(); try { c.remove(); } catch (e) { } chart.current = null; candle.current = null; sMap.current.clear(); };
+  return () => { 
+    ro.disconnect(); 
+    try { c.remove(); } catch (e) { } 
+    chart.current = null; 
+    candle.current = null; 
+    sMap.current.clear(); 
+    drawnLinesMap.current.clear();
+  };
   }, []);
 
   const addInd = () => {
@@ -380,7 +565,9 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
       sMap.current.set(key + "_middle", sm);
       sMap.current.set(key + "_lower", sl);
       
-      const built = getBuilt(activeData); const accs = built.map(b => b.acc); const times = built.map(b => b.time);
+      const builtAll = getBuilt(globalData);
+      const built = startUnix ? builtAll.filter(b => Number(b.time) >= startUnix) : builtAll;
+      const accs = built.map(b => b.acc); const times = built.map(b => b.time);
       const vals = calcBB(accs, p, 2);
       su.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).upper } : null).filter(Boolean) as any);
       sm.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).middle } : null).filter(Boolean) as any);
@@ -388,7 +575,9 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     } else {
       const s = chart.current.addSeries(LineSeries, { color, lineWidth: indThick, lineStyle: indType === "ema" ? 1 : 0, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
       sMap.current.set(key, s);
-      const built = getBuilt(activeData); const accs = built.map(b => b.acc); const times = built.map(b => b.time);
+      const builtAll = getBuilt(globalData);
+      const built = startUnix ? builtAll.filter(b => Number(b.time) >= startUnix) : builtAll;
+      const accs = built.map(b => b.acc); const times = built.map(b => b.time);
       const vals = indType === "sma" ? calcSMA(accs, p) : calcEMA(accs, p);
       s.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: vals[i] } : null).filter(Boolean) as any);
     }
@@ -430,13 +619,13 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     if (tf !== prevTf.current) {
       shouldFit = true;
       prevTf.current = tf;
-    } else if (activeData.length > 0 && prevLen.current === 0) {
+    } else if (globalData.length > 0 && prevLen.current === 0) {
       shouldFit = true;
     }
-    prevLen.current = activeData.length;
+    prevLen.current = globalData.length;
 
     renderAll(shouldFit);
-  }, [tf, activeData, renderAll]);
+  }, [tf, globalData, renderAll]);
 
   const zoomIn = () => { const r = chart.current?.timeScale().getVisibleLogicalRange(); if (!r) return; const c = (r.from + r.to) / 2, sz = (r.to - r.from) * 0.35; chart.current.timeScale().setVisibleLogicalRange({ from: c - sz, to: c + sz }); };
   const zoomOut = () => { const r = chart.current?.timeScale().getVisibleLogicalRange(); if (!r) return; const c = (r.from + r.to) / 2, sz = (r.to - r.from) * 0.7; chart.current.timeScale().setVisibleLogicalRange({ from: c - sz, to: c + sz }); };
@@ -556,13 +745,12 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
             </FloatBtn>
             {showPeriod && (
               <div className="absolute bottom-12 right-0 bg-[#0f141e]/95 backdrop-blur-md border border-[#00c83a]/30 rounded-xl p-2 flex flex-col gap-1 min-w-[110px] shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-                {LIMITS.map(l => (
-                  <button key={l} onClick={() => { setLimit(l); setShowPeriod(false); renderAll(true); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-left uppercase tracking-widest ${limit === l ? "bg-[#00c83a] text-white" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>{l >= 1000 ? `${l / 1000}k` : l} result.</button>
+                {[250, 500, 1000, 2000, 3000, 5000, 10000].map(l => (
+                  <button key={l} onClick={() => { applyLimit(l); renderAll(true); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-left uppercase tracking-widest ${limitLabel === l ? "bg-[#00c83a] text-white" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>{l >= 1000 ? `${l / 1000}k` : l} result.</button>
                 ))}
               </div>
             )}
           </div>
-
           <FloatBtn onClick={zoomOut}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12" /></svg>
           </FloatBtn>
@@ -575,7 +763,21 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
           <FloatBtn onClick={zoomIn}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
           </FloatBtn>
-          <FloatBtn onClick={() => setShowSide(v => !v)} active={showSide}>
+
+          <FloatBtn onClick={() => { 
+              setIsDrawingMode(!isDrawingMode); 
+              if(isDrawingMode && previewLine.current) { 
+                try { chart.current.removeSeries(previewLine.current); } catch {} 
+                previewLine.current=null; drawingStartPt.current=null; 
+              } 
+            }} active={isDrawingMode} title="Desenhar Linha Livre">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="20" x2="20" y2="4" /><circle cx="4" cy="20" r="2" fill="currentColor"/><circle cx="20" cy="4" r="2" fill="currentColor"/></svg>
+          </FloatBtn>
+          <FloatBtn onClick={clearDrawnLines} title="Limpar Desenhos">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+          </FloatBtn>
+
+          <FloatBtn onClick={() => setShowSide(v => !v)} active={showSide} title="Indicadores Analíticos">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
           </FloatBtn>
         </div>

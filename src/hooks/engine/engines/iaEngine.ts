@@ -118,7 +118,7 @@ interface AbsMinSlot {
     maxCreatorTime: number;
 }
 
-export function calculateIA(globalData: RollData[], periodHours: number = 12, disabledStrats: Set<number> = new Set(), withMargin: boolean = true, smartFilter: boolean = false) {
+export function calculateIA(globalData: RollData[], periodHours: number = 12, disabledStrats: Set<number> = new Set(), withMargin: boolean = true, smartFilter: boolean = false, filterHours: number = 0, filterMinWinrate: number = 0, filterMinSignals: number = 0) {
     const localDisabledStrats = new Set(disabledStrats);
     const scores = Array(60).fill(0);
     const activeStratsByMin = Array(60).fill(null).map(() => [] as number[]);
@@ -279,26 +279,34 @@ export function calculateIA(globalData: RollData[], periodHours: number = 12, di
     const sortedAbsMins = Array.from(absMinSlots.keys()).sort((a, b) => a - b);
     const latestAbsMin = Math.floor(latestTime / ONE_MIN);
     
-    const currentGhostStats = STRAT_NAMES.map(() => ({ sa: 0, sm: 0, history2h: [] as { t: number, won: boolean }[] }));
+    const currentGhostStats = STRAT_NAMES.map(() => ({ sa: 0, sm: 0, ghostHistory: [] as { t: number, won: boolean }[] }));
 
-    const isStratAllowedNow = (sIdx: number, evalAbsMin: number, useFilter: boolean) => {
+    const isStratAllowedNow = (sIdx: number, evalAbsMin: number, useSmartFilter: boolean, customFilterHours: number, customFilterMinWr: number, customFilterMinSignals: number) => {
         if (localDisabledStrats.has(sIdx)) return false;
-        if (!useFilter || [1, 2, 12].includes(sIdx)) return true;
+        if (!useSmartFilter && customFilterHours === 0) return true;
+
         const g = currentGhostStats[sIdx];
         const evalTime = evalAbsMin * ONE_MIN;
-        
-        while (g.history2h.length > 0 && evalTime - g.history2h[0].t > 2 * 3600000) g.history2h.shift();
-        
-        let validTotal = 0; let validWins = 0; let simSa = 0; let simMaxSa = 0;
         const latchTime = evalTime - 3 * ONE_MIN;
-        for (const h of g.history2h) {
-            if (h.t <= latchTime && h.t > latchTime - 2 * 3600000) { 
+
+        let validTotal = 0; let validWins = 0;
+        const lookbackMs = (customFilterHours > 0 ? customFilterHours : 2) * 3600000;
+
+        for (const h of g.ghostHistory) {
+            if (h.t <= latchTime && h.t > latchTime - lookbackMs) { 
                 validTotal++; 
                 if (h.won) validWins++; 
             }
-            if (h.won) simSa = 0; else { simSa++; if (simSa > simMaxSa) simMaxSa = simSa; }
         }
+
+        if (customFilterHours > 0) {
+            if (validTotal < customFilterMinSignals) return false; // bloqueia por falta de amostra
+            const wr = validTotal > 0 ? (validWins / validTotal) * 100 : 0;
+            return wr >= customFilterMinWr;
+        }
+
         const wr = validTotal >= 5 ? (validWins / validTotal) * 100 : 0;
+        const simSa = g.sa; const simMaxSa = g.sm;
         return wr >= 40 || (simMaxSa >= 4 && simSa >= Math.floor(simMaxSa * 0.8));
     };
 
@@ -322,7 +330,7 @@ export function calculateIA(globalData: RollData[], periodHours: number = 12, di
 
         const allowedStrats = new Set<number>();
         for (const sIdx of slot.strats) {
-            if (isStratAllowedNow(sIdx, absMin, smartFilter)) allowedStrats.add(sIdx);
+            if (isStratAllowedNow(sIdx, absMin, smartFilter, filterHours, filterMinWinrate, filterMinSignals)) allowedStrats.add(sIdx);
         }
         
         const confLevel = allowedStrats.size;
@@ -347,7 +355,9 @@ export function calculateIA(globalData: RollData[], periodHours: number = 12, di
 
         for (const sIdx of slot.strats) {
             const g = currentGhostStats[sIdx];
-            g.history2h.push({ t: evalTime, won });
+            g.ghostHistory.push({ t: evalTime, won });
+            // Clean up old memory (keep up to 6h)
+            while (g.ghostHistory.length > 0 && g.ghostHistory[0].t <= evalTime - 6 * 3600000) g.ghostHistory.shift();
             if (won) g.sa = 0; else { g.sa++; if (g.sa > g.sm) g.sm = g.sa; }
         }
     }
@@ -362,17 +372,17 @@ export function calculateIA(globalData: RollData[], periodHours: number = 12, di
 
         const row = Math.floor(m / 10); const col = m % 10;
         const hk = Math.floor((targetAbsMin * ONE_MIN) / 3600000);
-        if (isStratAllowedNow(0, targetAbsMin, smartFilter) && s3h.getRowPct(row, hk) >= 15 && s3h.getColPct(col, hk) >= 15) finalStratsResult[m].add(0);
-        if (isStratAllowedNow(1, targetAbsMin, smartFilter) && s6h.getMinutePct(m, hk) >= 50) finalStratsResult[m].add(1);
-        if (isStratAllowedNow(2, targetAbsMin, smartFilter) && s12h.getMinutePct(m, hk) >= 35) finalStratsResult[m].add(2);
-        if (isStratAllowedNow(3, targetAbsMin, smartFilter) && s22h.getMinutePct(m, hk) >= 22) finalStratsResult[m].add(3);
+        if (isStratAllowedNow(0, targetAbsMin, smartFilter, filterHours, filterMinWinrate, filterMinSignals) && s3h.getRowPct(row, hk) >= 15 && s3h.getColPct(col, hk) >= 15) finalStratsResult[m].add(0);
+        if (isStratAllowedNow(1, targetAbsMin, smartFilter, filterHours, filterMinWinrate, filterMinSignals) && s6h.getMinutePct(m, hk) >= 50) finalStratsResult[m].add(1);
+        if (isStratAllowedNow(2, targetAbsMin, smartFilter, filterHours, filterMinWinrate, filterMinSignals) && s12h.getMinutePct(m, hk) >= 35) finalStratsResult[m].add(2);
+        if (isStratAllowedNow(3, targetAbsMin, smartFilter, filterHours, filterMinWinrate, filterMinSignals) && s22h.getMinutePct(m, hk) >= 22) finalStratsResult[m].add(3);
         
         if (!localDisabledStrats.has(9)) {
             let hasData = false; let hasWhite = false;
             for (const [hk12, hadW] of s12h.minuteHours[m]) {
                 if (hk12 > hk - 12 && hk12 <= hk) { hasData = true; if (hadW) hasWhite = true; }
             }
-            if (hasData && !hasWhite && isStratAllowedNow(9, targetAbsMin, smartFilter)) finalStratsResult[m].add(9);
+            if (hasData && !hasWhite && isStratAllowedNow(9, targetAbsMin, smartFilter, filterHours, filterMinWinrate, filterMinSignals)) finalStratsResult[m].add(9);
         }
     }
 
@@ -380,7 +390,7 @@ export function calculateIA(globalData: RollData[], periodHours: number = 12, di
         if (aMin > latestAbsMin) {
             const m = aMin % 60;
             for (const sIdx of slot.strats) {
-                if (isStratAllowedNow(sIdx, aMin, smartFilter)) {
+                if (isStratAllowedNow(sIdx, aMin, smartFilter, filterHours, filterMinWinrate, filterMinSignals)) {
                     finalStratsResult[m].add(sIdx);
                 }
             }
