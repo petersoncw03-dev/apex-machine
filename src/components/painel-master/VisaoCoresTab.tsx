@@ -1745,15 +1745,36 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
                               </span>
                               
                               <div className="flex items-center gap-6">
-                                  <div className="relative flex flex-col items-center justify-center shrink-0">
-                                      <div className={`min-w-[40px] h-[40px] px-2 flex items-center justify-center rounded-lg text-lg font-black font-mono shadow-lg border-2 ${
-                                          selectedZoneCycles.currentMetaState.type === 'W' 
-                                            ? 'bg-[#00c83a]/20 text-[#00c83a] border-[#00c83a]/50 shadow-[0_0_15px_rgba(0,200,58,0.2)]' 
-                                            : 'bg-[#e51e3e]/15 text-[#e51e3e] border-[#e51e3e]/50 shadow-[0_0_15px_rgba(229,30,62,0.2)]'
-                                      }`}>
-                                          {selectedZoneCycles.currentMetaState.count}
-                                      </div>
-                                      <div className="absolute -bottom-3 w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_white]"></div>
+                                  <div className="flex items-center gap-2">
+                                      {selectedZoneCycles.metaCycles.slice(-7).map((cy: any, idx: number, arr: any[]) => {
+                                          const isNewest = idx === arr.length - 1;
+                                          if (isNewest) {
+                                              return (
+                                                  <div key={idx} className="relative flex flex-col items-center justify-center shrink-0 ml-1">
+                                                      <div className={`min-w-[40px] h-[40px] px-2 flex items-center justify-center rounded-lg text-lg font-black font-mono shadow-lg border-2 ${
+                                                          cy.type === 'W' 
+                                                            ? 'bg-[#00c83a]/20 text-[#00c83a] border-[#00c83a]/50 shadow-[0_0_15px_rgba(0,200,58,0.2)]' 
+                                                            : 'bg-[#e51e3e]/15 text-[#e51e3e] border-[#e51e3e]/50 shadow-[0_0_15px_rgba(229,30,62,0.2)]'
+                                                      }`}>
+                                                          {cy.count}
+                                                      </div>
+                                                      <div className="absolute -bottom-3 w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_white]"></div>
+                                                  </div>
+                                              );
+                                          } else {
+                                              return (
+                                                  <div key={idx} className="relative flex flex-col items-center justify-center shrink-0">
+                                                      <div className={`min-w-[28px] h-[28px] px-1.5 flex items-center justify-center rounded-md text-xs font-black font-mono opacity-60 border transition-all ${
+                                                          cy.type === 'W' 
+                                                            ? 'bg-[#00c83a]/10 text-[#00c83a] border-[#00c83a]/30' 
+                                                            : 'bg-[#e51e3e]/10 text-[#e51e3e] border-[#e51e3e]/30'
+                                                      }`}>
+                                                          {cy.count}
+                                                      </div>
+                                                  </div>
+                                              );
+                                          }
+                                      })}
                                   </div>
                                   
                                   <div className="flex flex-col">
