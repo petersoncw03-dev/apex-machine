@@ -499,18 +499,12 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     const safeCandles = built.map(b => b.candle).filter(c => !isNaN(Number(c.time)) && !isNaN(c.open) && !isNaN(c.high) && !isNaN(c.low) && !isNaN(c.close));
     
     const lastTime = safeCandles.length > 0 ? Number(safeCandles[safeCandles.length - 1].time) : 0;
-    const padding = [];
-    if (lastTime > 0) {
-      for (let i = 1; i <= 150; i++) {
-        padding.push({ time: lastTime + (i * 60) });
-      }
-    }
 
     try {
       const timeScale = chart.current?.timeScale();
       const oldRange = timeScale?.getVisibleLogicalRange();
 
-      candle.current.setData([...safeCandles, ...padding] as any);
+      candle.current.setData(safeCandles as any);
       
       const accs = built.map(b => b.acc); const times = built.map(b => b.time);
       setProfit(accs[accs.length - 1] ?? 0);
@@ -534,7 +528,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
       grid: { vertLines: { color: "rgba(255,255,255,0.03)" }, horzLines: { color: "rgba(255,255,255,0.03)" } },
       crosshair: { mode: CrosshairMode.Normal, vertLine: { labelBackgroundColor: "#1f2937" }, horzLine: { labelBackgroundColor: "#e51e3e" } },
       rightPriceScale: { borderColor: "rgba(255,255,255,0.05)", scaleMargins: { top: 0.1, bottom: 0.1 } },
-      timeScale: { borderColor: "rgba(255,255,255,0.05)", timeVisible: true, secondsVisible: false },
+      timeScale: { borderColor: "rgba(255,255,255,0.05)", timeVisible: true, secondsVisible: false, rightOffset: 20 },
       handleScroll: true, handleScale: true
     });
     chart.current = c;
