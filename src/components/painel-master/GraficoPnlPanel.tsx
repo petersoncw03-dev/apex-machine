@@ -33,15 +33,17 @@ const LIMITS = [200, 500, 1000, 1500, 2000, 3000, 5000, 10000];
 
 function buildTick(data: Roll[]) {
   let acc = 0; const times: number[] = [];
+  let lastT = 0;
   return data.map(r => {
     const key = r.id || (r.timestamp + r.color + r.roll);
     let t = globalTimeCache.get(key);
     if (t === undefined) {
       const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
       const rawT = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
-      t = Math.max(rawT, globalLastT + 1);
+      t = Math.max(rawT, lastT + 1);
       globalTimeCache.set(key, t);
     }
+    lastT = t;
     globalLastT = t;
     times.push(t);
     const prev = acc;
@@ -328,7 +330,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     if (startUnix === null && globalData.length > 0) {
       const idx = Math.max(0, globalData.length - limitLabel);
       if (globalData[idx]) {
-        setStartUnix(Math.floor(new Date(globalData[idx].timestamp).getTime() / 1000));
+        const offsetSeconds = new Date(globalData[idx].timestamp).getTimezoneOffset() * 60;
+        setStartUnix(Math.floor(new Date(globalData[idx].timestamp).getTime() / 1000) - offsetSeconds);
       }
     }
   }, [globalData.length, startUnix, limitLabel]);
@@ -337,7 +340,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     setLimitLabel(l);
     const idx = Math.max(0, globalData.length - l);
     if (globalData[idx]) {
-      setStartUnix(Math.floor(new Date(globalData[idx].timestamp).getTime() / 1000));
+      const offsetSeconds = new Date(globalData[idx].timestamp).getTimezoneOffset() * 60;
+      setStartUnix(Math.floor(new Date(globalData[idx].timestamp).getTime() / 1000) - offsetSeconds);
     } else {
       setStartUnix(0);
     }
@@ -491,10 +495,23 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     });
   }, []);
 
+  const getActiveData = useCallback(() => {
+    if (!globalData || globalData.length === 0) return [];
+    if (startUnix) {
+      const filtered = globalData.filter(r => {
+        const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
+        const t = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
+        return t >= startUnix;
+      });
+      if (filtered.length > 0) return filtered;
+    }
+    return limitLabel ? globalData.slice(-limitLabel) : globalData;
+  }, [globalData, startUnix, limitLabel]);
+
   const renderAll = useCallback((fit = false) => {
     if (!isMounted.current || !candle.current || !globalData.length) return;
-    const builtAll = getBuilt(globalData);
-    const built = startUnix ? builtAll.filter(b => Number(b.time) >= startUnix) : builtAll;
+    const activeData = getActiveData();
+    const built = getBuilt(activeData);
     
     const safeCandles = built.map(b => b.candle).filter(c => !isNaN(Number(c.time)) && !isNaN(c.open) && !isNaN(c.high) && !isNaN(c.low) && !isNaN(c.close));
     
@@ -518,7 +535,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     } catch (e) {
       console.warn("RenderAll Error Suppressed:", e);
     }
-  }, [getBuilt, globalData, startUnix, updateInds]);
+  }, [getBuilt, getActiveData, globalData.length, updateInds]);
 
   // Init chart
   useEffect(() => {
@@ -559,8 +576,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
       sMap.current.set(key + "_middle", sm);
       sMap.current.set(key + "_lower", sl);
       
-      const builtAll = getBuilt(globalData);
-      const built = startUnix ? builtAll.filter(b => Number(b.time) >= startUnix) : builtAll;
+      const activeData = getActiveData();
+      const built = getBuilt(activeData);
       const accs = built.map(b => b.acc); const times = built.map(b => b.time);
       const vals = calcBB(accs, p, 2);
       su.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).upper } : null).filter(Boolean) as any);
@@ -569,8 +586,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     } else {
       const s = chart.current.addSeries(LineSeries, { color, lineWidth: indThick, lineStyle: indType === "ema" ? 1 : 0, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
       sMap.current.set(key, s);
-      const builtAll = getBuilt(globalData);
-      const built = startUnix ? builtAll.filter(b => Number(b.time) >= startUnix) : builtAll;
+      const activeData = getActiveData();
+      const built = getBuilt(activeData);
       const accs = built.map(b => b.acc); const times = built.map(b => b.time);
       const vals = indType === "sma" ? calcSMA(accs, p) : calcEMA(accs, p);
       s.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: vals[i] } : null).filter(Boolean) as any);

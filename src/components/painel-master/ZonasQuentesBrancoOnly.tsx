@@ -22,7 +22,7 @@ const COLORS = {
   Branco: '#ffffff',
 };
 
-export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { globalData?: any[], onlyZonasQuentes?: boolean, zonaLen?: number }) {
+export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
   const { subscribe } = useSSE();
   const [localHistory, setLocalHistory] = useState<RollData[]>([]);
   const [loading, setLoading] = useState(!globalData);
@@ -48,9 +48,7 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
 
 
   const [iaPeriodFilter, setIaPeriodFilter] = useState<number>(3);
-  const [zonesPeriod, setZonesPeriod] = useState<number>(3); // Winrate Geral: 3h
-  const [ciclosPeriod, setCiclosPeriod] = useState<number>(48); // Ciclos: 48h (2 dias)
-  const [metaPeriodDays, setMetaPeriodDays] = useState<number>(7); // Meta-Ciclo: 7 dias
+  const [zonesPeriod, setZonesPeriod] = useState<number>(3);
   const [selectedZoneCycles, setSelectedZoneCycles] = useState<any>(null);
   const [loadingDeep, setLoadingDeep] = useState(false);
   const parsedHistory = useMemo(() => deferredHistory.map(r => ({ ...r, roll: parseInt(r.roll as string) })), [deferredHistory]);
@@ -471,17 +469,9 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
   const zonesStats = useMemo(() => {
      if (deferredHistory.length === 0) return { blocks: [], currentGap: 0 };
      
-     // Rolls para Winrate Geral (filtrado por zonesPeriod, ex: 3h)
+     // Rolls for general Winrate display (filtered by zonesPeriod)
      const sliceAmount = -(zonesPeriod * 120); // ~120 pedras por hora
-     const rollsPeriod = deferredHistory.slice(sliceAmount);
-
-     // Rolls para Ciclos Macro (filtrado por ciclosPeriod, ex: 48h = 2 dias)
-     const ciclosSliceAmount = -(ciclosPeriod * 120);
-     const rollsCiclos = deferredHistory.slice(ciclosSliceAmount);
-
-     // Rolls para Meta-Ciclo / Ciclo do Ciclo (filtrado por metaPeriodDays, ex: 7 dias)
-     const metaSliceAmount = -(metaPeriodDays * 2880);
-     const rollsMeta = deferredHistory.slice(metaSliceAmount);
+     const rolls = deferredHistory.slice(sliceAmount);
      
      const extractGaps = (arr: any[]) => {
          const whiteIndices = arr.reduce((acc: number[], r: any, i: number) => {
@@ -500,24 +490,25 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
          return { gaps, currentGap };
      };
      
-     const { gaps: periodGaps, currentGap: periodCurrentGap } = extractGaps(rollsPeriod);
-     const { gaps: ciclosGaps, currentGap: ciclosCurrentGap } = extractGaps(rollsCiclos);
-     const { gaps: metaGaps } = extractGaps(rollsMeta);
+     const { gaps: periodGaps, currentGap: periodCurrentGap } = extractGaps(rolls);
+     const { gaps: allGaps, currentGap: allCurrentGap } = extractGaps(deferredHistory);
      
      const nextEnt = periodCurrentGap + 1;
      
-     const len = zonaLen || 5;
-     const zones = Array.from({ length: 6 }, (_, z) => {
-        const s = 1 + z * len;
-        const e = (z + 1) * len;
-        return { label: `${s} a ${e}`, s, e };
-     });
+     const zones = [
+        { label: '1 a 5', s: 1, e: 5 },
+        { label: '6 a 10', s: 6, e: 10 },
+        { label: '11 a 15', s: 11, e: 15 },
+        { label: '16 a 20', s: 16, e: 20 },
+        { label: '21 a 25', s: 21, e: 25 },
+        { label: '26 a 30', s: 26, e: 30 }
+     ];
      
      const blocks = zones.map(z => {
         let wins = 0;
         let losses = 0;
         
-        // Outcomes para UI (Winrate Geral)
+        // Outcomes for UI (short term)
         const outcomesPeriod: ('W'|'L')[] = [];
         for (const g of periodGaps) {
            if (g >= z.s && g <= z.e) { wins++; outcomesPeriod.push('W'); }
@@ -528,24 +519,17 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
            outcomesPeriod.push('L');
         }
         
-        // Outcomes para Ciclos (Ciclo Macro)
-        const outcomesCiclos: ('W'|'L')[] = [];
-        for (const g of ciclosGaps) {
-           if (g >= z.s && g <= z.e) { outcomesCiclos.push('W'); }
-           else if (g > z.e) { outcomesCiclos.push('L'); }
+        // Outcomes for Cycles (long term)
+        const outcomesAll: ('W'|'L')[] = [];
+        for (const g of allGaps) {
+           if (g >= z.s && g <= z.e) { outcomesAll.push('W'); }
+           else if (g > z.e) { outcomesAll.push('L'); }
         }
-        if (ciclosCurrentGap >= z.e) {
-           outcomesCiclos.push('L');
-        }
-
-        // Outcomes para Meta-Ciclo (Ciclo do Ciclo)
-        const outcomesMeta: ('W'|'L')[] = [];
-        for (const g of metaGaps) {
-           if (g >= z.s && g <= z.e) { outcomesMeta.push('W'); }
-           else if (g > z.e) { outcomesMeta.push('L'); }
+        if (allCurrentGap >= z.e) {
+           outcomesAll.push('L');
         }
         
-        // Calcular Ciclos UI curtos
+        // Calcular Ciclos UI antigos (usa period)
         const cycles: { type: 'W'|'L', count: number }[] = [];
         for (const out of outcomesPeriod) {
            if (cycles.length === 0) {
@@ -561,7 +545,7 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
         }
         
         const fullCycles: { type: 'W'|'L', count: number }[] = [];
-        for (const out of outcomesCiclos) {
+        for (const out of outcomesAll) {
            if (fullCycles.length === 0) {
               fullCycles.push({ type: out, count: 1 });
            } else {
@@ -574,13 +558,13 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
            }
         }
         
-        // Cálculo Estatístico dos Ciclos (usa outcomesCiclos)
+        // NOVO: Cálculo Estatístico dos Ciclos (usa ALL)
         const cycleStats: { W: Record<number, {win: number, loss: number}>, L: Record<number, {win: number, loss: number}> } = { W: {}, L: {} };
         let runningType: 'W'|'L'|null = null;
         let runningCount = 0;
         
-        for (let i = 0; i < outcomesCiclos.length; i++) {
-            const out = outcomesCiclos[i];
+        for (let i = 0; i < outcomesAll.length; i++) {
+            const out = outcomesAll[i];
             if (runningType && runningCount > 0) {
                 if (!cycleStats[runningType][runningCount]) {
                     cycleStats[runningType][runningCount] = { win: 0, loss: 0 };
@@ -623,24 +607,23 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
             currentCycleWinrate = currentCycleTotal > 0 ? (st.win / currentCycleTotal) * 100 : 0;
         }
 
-        // Meta-Ciclos (Ciclo do Ciclo - usa outcomesMeta)
-        const metaOutcomesList: ('W'|'L')[] = [];
+        const metaOutcomes: ('W'|'L')[] = [];
         if (currentCycleState.type && currentCycleState.count > 0) {
             let tType = null;
             let tCount = 0;
-            for (let i = 0; i < outcomesMeta.length; i++) {
-                const out = outcomesMeta[i];
+            for (let i = 0; i < outcomesAll.length; i++) {
+                const out = outcomesAll[i];
                 if (tType === out) tCount++;
                 else { tType = out; tCount = 1; }
                 if (tType === currentCycleState.type && tCount === currentCycleState.count) {
-                    if (i + 1 < outcomesMeta.length) {
-                        metaOutcomesList.push(outcomesMeta[i+1]);
+                    if (i + 1 < outcomesAll.length) {
+                        metaOutcomes.push(outcomesAll[i+1]);
                     }
                 }
             }
         }
         const metaCycles: { type: 'W'|'L', count: number }[] = [];
-        for (const out of metaOutcomesList) {
+        for (const out of metaOutcomes) {
            if (metaCycles.length === 0) metaCycles.push({ type: out, count: 1 });
            else {
               const last = metaCycles[metaCycles.length - 1];
@@ -653,14 +636,14 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
         if (currentMetaState.type) {
             let mType = null;
             let mCount = 0;
-            for (let i = 0; i < metaOutcomesList.length; i++) {
-                const out = metaOutcomesList[i];
+            for (let i = 0; i < metaOutcomes.length; i++) {
+                const out = metaOutcomes[i];
                 if (mType === out) mCount++;
                 else { mType = out; mCount = 1; }
                 if (mType === currentMetaState.type && mCount === currentMetaState.count) {
-                    if (i + 1 < metaOutcomesList.length) {
+                    if (i + 1 < metaOutcomes.length) {
                         metaTotal++;
-                        if (metaOutcomesList[i+1] === 'W') metaWins++;
+                        if (metaOutcomes[i+1] === 'W') metaWins++;
                     }
                 }
             }
@@ -673,14 +656,12 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
         let status = 'aguardando';
         if (nextEnt >= z.s && nextEnt <= z.e) status = 'ativo';
         else if (nextEnt > z.e) status = 'passou';
-
-        const isFireZone = winrate > 35 && currentCycleWinrate > 40;
         
-        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-7), fullCycles, topLossCycles, topWinCycles, currentCycleState, currentCycleWinrate, currentCycleTotal, currentCycleWins, metaCycles, currentMetaState, metaWinrate, metaTotal, metaWins, isFireZone };
+        return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-7), fullCycles, topLossCycles, topWinCycles, currentCycleState, currentCycleWinrate, currentCycleTotal, currentCycleWins, metaCycles, currentMetaState, metaWinrate, metaTotal, metaWins };
      });
      
      return { blocks, currentGap: periodCurrentGap };
-   }, [deferredHistory, zonesPeriod, ciclosPeriod, metaPeriodDays, zonaLen]);
+  }, [deferredHistory, zonesPeriod]);
 
 
   const handleFetchDeep = async () => {
@@ -837,345 +818,8 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
     );
   }
 
-  if (onlyZonasQuentes) {
-    return (
-      <div className="flex flex-col gap-4">
-        {/* Zonas Quentes do Branco */}
-        <div className="flex-1 bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col">
-          <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a]">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes após o branco</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5 whitespace-nowrap hidden sm:inline">
-                Atraso: <strong className="text-white text-[11px] ml-1">{zonesStats.currentGap}</strong>
-              </span>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-bold text-gray-400 uppercase">Geral:</span>
-                <select className="bg-[#0b0e14] border border-white/10 text-white text-[10px] md:text-[9px] px-2 py-1 rounded outline-none cursor-pointer font-bold" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
-                  <option value={1}>1h</option>
-                  <option value={2}>2h</option>
-                  <option value={3}>3h</option>
-                  <option value={4}>4h</option>
-                  <option value={6}>6h</option>
-                  <option value={12}>12h</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-bold text-gray-400 uppercase">Ciclo:</span>
-                <select className="bg-[#0b0e14] border border-white/10 text-white text-[10px] md:text-[9px] px-2 py-1 rounded outline-none cursor-pointer font-bold" value={ciclosPeriod} onChange={(e) => setCiclosPeriod(+e.target.value)}>
-                  <option value={12}>12h</option>
-                  <option value={24}>24h</option>
-                  <option value={48}>48h (2d)</option>
-                  <option value={72}>72h (3d)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-3 flex-1 content-start">
-            {zonesStats.blocks.map((z, i) => (
-              <div key={i} className={`rounded-xl border px-3 pt-3 pb-5 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
-                z.status === 'ativo' ? 'bg-[#00c83a]/10 border-[#00c83a]/40 shadow-[0_0_15px_rgba(0,200,58,0.2)]' :
-                z.status === 'passou' ? 'bg-red-500/5 border-red-500/20 opacity-60' :
-                'bg-[#0b0c10] border-white/5 hover:border-white/10'
-              }`}>
-                {z.status === 'ativo' && (
-                  <div className="absolute -top-10 -right-10 w-20 h-20 bg-[#00c83a]/20 blur-2xl rounded-full"></div>
-                )}
-                
-                <div className="flex justify-between items-center z-10 relative">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[9px] font-black uppercase tracking-wider ${z.status === 'ativo' ? 'text-emerald-400' : 'text-gray-400'}`}>
-                      Casa {z.label}
-                    </span>
-                    {z.isFireZone && (
-                      <span className="flex items-center gap-0.5 text-[9px] font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-orange-400 border border-orange-500/40 px-1.5 py-0.5 rounded shadow-[0_0_10px_rgba(249,115,22,0.4)] animate-pulse" title="Zona Quente Filtrada (Winrate > 35% e Ciclo > 40%)">
-                        🔥
-                      </span>
-                    )}
-                  </div>
-                  {z.status === 'ativo' && (
-                    <span className="text-[7px] font-bold bg-emerald-400 text-black px-1.5 py-0.5 rounded animate-pulse">ATIVO</span>
-                  )}
-                </div>
-                
-                <div className="flex items-end gap-1 mt-1 z-10 relative">
-                  <span className={`text-lg font-black ${z.winrate >= 50 ? 'text-emerald-400' : z.winrate > 0 ? 'text-white' : 'text-gray-600'}`}>
-                    {z.winrate.toFixed(1)}%
-                  </span>
-                  <span className="text-[8px] text-gray-500 mb-1 font-bold">Win</span>
-                </div>
-                
-                <div className="flex justify-between mt-1 text-[8px] font-bold z-10 relative">
-                  <span className="text-emerald-400/80">{z.wins} Win</span>
-                  <span className="text-red-400/80">{z.losses} Loss</span>
-                </div>
-              
-                <div className="mt-2 pt-2 border-t border-white/5 flex gap-1.5 justify-end items-center z-10 relative h-[28px]">
-                  {z.cycles.map((cy, ci) => {
-                     const isNewest = ci === z.cycles.length - 1;
-                     return (
-                       <div key={ci} className="relative flex flex-col items-center justify-center">
-                         <div className={`min-w-[22px] h-[22px] px-1 flex items-center justify-center rounded-[5px] text-[11px] font-black font-mono shadow-sm transition-all ${
-                            cy.type === 'W' 
-                              ? 'bg-[#00c83a]/20 text-[#00c83a] border-[#00c83a]/40' 
-                              : 'bg-[#e51e3e]/15 text-[#e51e3e] border-[#e51e3e]/40'
-                         } ${isNewest ? 'border scale-110 shadow-[0_0_8px_rgba(255,255,255,0.15)] ring-1 ring-white/20 z-10 opacity-100' : 'border opacity-70'}`}>
-                           {cy.count}
-                         </div>
-                         {isNewest && (
-                           <div className="absolute -bottom-2.5 w-1 h-1 rounded-full bg-white animate-pulse shadow-[0_0_5px_white]"></div>
-                         )}
-                       </div>
-                     );
-                  })}
-                </div>
-
-                <div className="mt-3 flex justify-between items-center z-10 relative">
-                    <div className="flex flex-col">
-                        <span className="text-[8px] text-gray-500 uppercase font-bold tracking-widest">Estado Atual</span>
-                        {z.currentCycleState.type ? (
-                            <span className={`text-[10px] font-black ${z.currentCycleState.type === 'W' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                Ciclo {z.currentCycleState.count} {z.currentCycleState.type === 'W' ? 'Win' : 'Loss'} 
-                                <span className="text-gray-400 ml-1">({z.currentCycleWinrate.toFixed(0)}%)</span>
-                            </span>
-                        ) : (
-                            <span className="text-[10px] font-black text-gray-500">Aguardando</span>
-                        )}
-                    </div>
-                    <button 
-                        onClick={() => setSelectedZoneCycles(z)}
-                        className="text-[9px] font-bold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition-colors"
-                    >
-                        Análise de Ciclos
-                    </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* MODAL DE CICLOS DE ZONA (MODAL COMPLETO) */}
-        {selectedZoneCycles && (
-            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                <div className="bg-[#0b0e14] border border-[#00c83a]/30 rounded-xl shadow-[0_0_40px_rgba(0,200,58,0.15)] w-full max-w-2xl overflow-hidden flex flex-col">
-                    {/* Header */}
-                    <div className="px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-white/10 flex justify-between items-center">
-                        <div className="flex flex-col">
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-[#00c83a] animate-pulse"></div>
-                                Análise de Ciclos: Zona {selectedZoneCycles.label}
-                            </h3>
-                            <span className="text-[11px] text-gray-400 font-medium mt-1">Estatísticas de conversão baseadas em sequências de resultados.</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button 
-                                onClick={handleFetchDeep} 
-                                disabled={loadingDeep}
-                                className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-2 ${loadingDeep ? 'bg-white/5 text-gray-500 border-white/5 cursor-not-allowed' : 'bg-[#00c83a]/10 text-[#00c83a] border-[#00c83a]/30 hover:bg-[#00c83a]/20'}`}
-                            >
-                                {loadingDeep ? (
-                                    <>
-                                        <div className="w-3 h-3 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
-                                        Carregando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                        Puxar 30 Dias
-                                    </>
-                                )}
-                            </button>
-                            <button onClick={() => setSelectedZoneCycles(null)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-5 flex flex-col gap-6 overflow-y-auto max-h-[80vh]">
-                        
-                        {/* Estado Atual */}
-                        <div className="bg-[#1a1d24]/50 border border-white/5 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Estado Atual da Zona</span>
-                                {selectedZoneCycles.currentCycleState.type ? (
-                                    <div className="flex items-center gap-3">
-                                        <span className={`text-lg font-black uppercase ${selectedZoneCycles.currentCycleState.type === 'W' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                            Após {selectedZoneCycles.currentCycleState.count} {selectedZoneCycles.currentCycleState.type === 'W' ? 'WIN' : 'LOSS'}
-                                        </span>
-                                        <div className="h-4 w-px bg-white/20"></div>
-                                        <span className="text-sm text-white font-bold">
-                                            Winrate: <span className={selectedZoneCycles.currentCycleWinrate >= 50 ? 'text-emerald-400' : 'text-red-400'}>{selectedZoneCycles.currentCycleWinrate.toFixed(1)}%</span>
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <span className="text-sm font-black text-gray-500">Sem histórico suficiente no período</span>
-                                )}
-                            </div>
-                            {selectedZoneCycles.currentCycleTotal > 0 && (
-                                <div className="bg-black/40 px-3 py-2 rounded border border-white/5 flex gap-4 text-[10px] font-bold text-gray-400">
-                                    <div className="flex flex-col items-center">
-                                        <span>Ocorrências</span>
-                                        <span className="text-white text-xs">{selectedZoneCycles.currentCycleTotal}x</span>
-                                    </div>
-                                    <div className="flex flex-col items-center">
-                                        <span>Wins</span>
-                                        <span className="text-emerald-400 text-xs">{selectedZoneCycles.currentCycleWins}x</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        
-                        {/* Histórico de Ciclos em Linha */}
-                        <div className="flex flex-col gap-2 w-full border-b border-white/5 pb-4 mb-2">
-                            <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest pl-1">Histórico de Ciclos (Cronológico)</span>
-                            <div className="flex gap-1.5 overflow-x-auto pb-3 pt-1 px-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent w-full">
-                                {selectedZoneCycles.fullCycles && selectedZoneCycles.fullCycles.slice().reverse().map((cy: any, ci: number) => {
-                                   const isNewest = ci === 0;
-                                   return (
-                                     <div key={ci} className="relative flex flex-col items-center justify-center shrink-0">
-                                       <div className={`min-w-[22px] h-[22px] px-1 flex items-center justify-center rounded-[5px] text-[11px] font-black font-mono shadow-sm transition-all ${
-                                          cy.type === 'W' 
-                                            ? 'bg-[#00c83a]/20 text-[#00c83a] border-[#00c83a]/40' 
-                                            : 'bg-[#e51e3e]/15 text-[#e51e3e] border-[#e51e3e]/40'
-                                       } ${isNewest ? 'border scale-110 shadow-[0_0_8px_rgba(255,255,255,0.15)] ring-1 ring-white/20 z-10 opacity-100' : 'border opacity-70 hover:opacity-100'}`}>
-                                         {cy.count}
-                                       </div>
-                                       {isNewest && (
-                                         <div className="absolute -bottom-2.5 w-1 h-1 rounded-full bg-white animate-pulse shadow-[0_0_5px_white]"></div>
-                                       )}
-                                     </div>
-                                   );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Ciclo do Ciclo do Estado Atual */}
-                        {selectedZoneCycles.currentCycleState.type && selectedZoneCycles.currentMetaState && selectedZoneCycles.currentMetaState.type && (
-                            <div className="flex flex-col gap-3 w-full mt-1 mb-4 p-4 bg-gradient-to-r from-black/60 to-black/30 border border-[#00c83a]/20 rounded-xl shadow-[inset_0_0_20px_rgba(0,200,58,0.03)]">
-                                <span className="text-[11px] text-[#00c83a] uppercase font-black tracking-widest">
-                                    Ciclo do Ciclo
-                                </span>
-                                
-                                <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-2">
-                                        {selectedZoneCycles.metaCycles.slice(-7).map((cy: any, idx: number, arr: any[]) => {
-                                            const isNewest = idx === arr.length - 1;
-                                            if (isNewest) {
-                                                return (
-                                                    <div key={idx} className="relative flex flex-col items-center justify-center shrink-0 ml-1">
-                                                        <div className={`min-w-[40px] h-[40px] px-2 flex items-center justify-center rounded-lg text-lg font-black font-mono shadow-lg border-2 ${
-                                                            cy.type === 'W' 
-                                                              ? 'bg-[#00c83a]/20 text-[#00c83a] border-[#00c83a]/50 shadow-[0_0_15px_rgba(0,200,58,0.2)]' 
-                                                              : 'bg-[#e51e3e]/15 text-[#e51e3e] border-[#e51e3e]/50 shadow-[0_0_15px_rgba(229,30,62,0.2)]'
-                                                        }`}>
-                                                            {cy.count}
-                                                            <div className="absolute -bottom-3 w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_white]"></div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            } else {
-                                                return (
-                                                    <div key={idx} className="relative flex flex-col items-center justify-center shrink-0">
-                                                        <div className={`min-w-[28px] h-[28px] px-1.5 flex items-center justify-center rounded-md text-xs font-black font-mono opacity-60 border transition-all ${
-                                                            cy.type === 'W' 
-                                                              ? 'bg-[#00c83a]/10 text-[#00c83a] border-[#00c83a]/30' 
-                                                              : 'bg-[#e51e3e]/10 text-[#e51e3e] border-[#e51e3e]/30'
-                                                        }`}>
-                                                            {cy.count}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-                                        })}
-                                    </div>
-                                    <div className="flex flex-col">
-                                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">WINRATE DO CICLO DO CICLO</span>
-                                       <div className="flex items-baseline gap-1">
-                                           <span className={`text-2xl font-black ${selectedZoneCycles.metaWinrate >= 50 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]' : 'text-gray-300'}`}>
-                                               {selectedZoneCycles.metaWinrate.toFixed(1)}%
-                                           </span>
-                                       </div>
-                                   </div>
-                               </div>
-                                 
-                                 <div className="text-[10px] text-gray-400 font-medium leading-relaxed mt-1 bg-black/30 p-2.5 rounded border border-white/5">
-                                     Esta estatística indica a porcentagem real de vitórias (Winrate) quando o jogo atinge este estado exato no Ciclo do Ciclo. Se o valor estiver alto (ex: 80% - 100%), historicamente a oportunidade seguinte resultou em <strong>vitória (WIN)</strong>.
-                                 </div>                             
-                            </div>
-                        )}
-
-                        {/* Top 5 Lists */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            
-                            {/* Top Loss */}
-                            <div className="flex flex-col gap-2">
-                                <h4 className="text-[11px] font-black text-red-400 uppercase tracking-widest flex items-center gap-2 border-b border-red-500/20 pb-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                                    Top 5 Ciclos de LOSS
-                                </h4>
-                                <div className="flex flex-col gap-2">
-                                    {selectedZoneCycles.topLossCycles.map((c: any, idx: number) => (
-                                        <div key={idx} className="flex justify-between items-center bg-[#1a1d24]/40 border border-white/5 p-2 rounded hover:bg-white/[0.02] transition-colors">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-5 h-5 rounded bg-red-500/10 border border-red-500/30 text-red-500 flex items-center justify-center text-[10px] font-black">
-                                                    L{c.count}
-                                                </div>
-                                                <span className="text-[10px] font-bold text-gray-300">Após {c.count} Loss</span>
-                                            </div>
-                                            <div className="flex items-center gap-3 text-[10px] font-bold">
-                                                <span className="text-gray-500">({c.total}x)</span>
-                                                <span className={c.winrate >= 50 ? 'text-emerald-400' : 'text-gray-300'}>{c.winrate.toFixed(1)}%</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {selectedZoneCycles.topLossCycles.length === 0 && (
-                                        <div className="text-[10px] text-gray-500 text-center py-2">Sem dados.</div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Top Win */}
-                            <div className="flex flex-col gap-2">
-                                <h4 className="text-[11px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 border-b border-emerald-500/20 pb-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                                    Top 5 Ciclos de WIN
-                                </h4>
-                                <div className="flex flex-col gap-2">
-                                    {selectedZoneCycles.topWinCycles.map((c: any, idx: number) => (
-                                        <div key={idx} className="flex justify-between items-center bg-[#1a1d24]/40 border border-white/5 p-2 rounded hover:bg-white/[0.02] transition-colors">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-5 h-5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 flex items-center justify-center text-[10px] font-black">
-                                                    W{c.count}
-                                                </div>
-                                                <span className="text-[10px] font-bold text-gray-300">Após {c.count} Win</span>
-                                            </div>
-                                            <div className="flex items-center gap-3 text-[10px] font-bold">
-                                                <span className="text-gray-500">({c.total}x)</span>
-                                                <span className={c.winrate >= 50 ? 'text-emerald-400' : 'text-gray-300'}>{c.winrate.toFixed(1)}%</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {selectedZoneCycles.topWinCycles.length === 0 && (
-                                        <div className="text-[10px] text-gray-500 text-center py-2">Sem dados.</div>
-                                    )}
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
@@ -1578,26 +1222,15 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
               <span className="text-[9px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5 whitespace-nowrap hidden sm:inline">
                 Atraso: <strong className="text-white text-[11px] ml-1">{zonesStats.currentGap}</strong>
               </span>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-bold text-gray-400 uppercase">Geral:</span>
-                <select className="bg-[#0b0e14] border border-white/10 text-white text-[10px] md:text-[9px] px-2 py-1 rounded outline-none cursor-pointer font-bold" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
-                  <option value={1}>1h</option>
-                  <option value={2}>2h</option>
-                  <option value={3}>3h</option>
-                  <option value={4}>4h</option>
-                  <option value={6}>6h</option>
-                  <option value={12}>12h</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-bold text-gray-400 uppercase">Ciclo:</span>
-                <select className="bg-[#0b0e14] border border-white/10 text-white text-[10px] md:text-[9px] px-2 py-1 rounded outline-none cursor-pointer font-bold" value={ciclosPeriod} onChange={(e) => setCiclosPeriod(+e.target.value)}>
-                  <option value={12}>12h</option>
-                  <option value={24}>24h</option>
-                  <option value={48}>48h (2d)</option>
-                  <option value={72}>72h (3d)</option>
-                </select>
-              </div>
+              <select className="bg-[#0b0e14] border border-white/10 text-white text-[11px] md:text-[9px] px-3 py-1.5 md:px-2 md:py-1 rounded outline-none cursor-pointer" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
+                <option value={1}>1h</option>
+                <option value={2}>2h</option>
+                <option value={3}>3h</option>
+                <option value={4}>4h</option>
+                <option value={6}>6h</option>
+                <option value={9}>9h</option>
+                <option value={12}>12h</option>
+              </select>
             </div>
           </div>
           
@@ -1613,16 +1246,9 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
                 )}
                 
                 <div className="flex justify-between items-center z-10 relative">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[9px] font-black uppercase tracking-wider ${z.status === 'ativo' ? 'text-emerald-400' : 'text-gray-400'}`}>
-                      Casa {z.label}
-                    </span>
-                    {z.isFireZone && (
-                      <span className="flex items-center gap-0.5 text-[9px] font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-orange-400 border border-orange-500/40 px-1.5 py-0.5 rounded shadow-[0_0_10px_rgba(249,115,22,0.4)] animate-pulse" title="Zona Quente Filtrada (Winrate > 35% e Ciclo > 40%)">
-                        🔥
-                      </span>
-                    )}
-                  </div>
+                  <span className={`text-[9px] font-black uppercase tracking-wider ${z.status === 'ativo' ? 'text-emerald-400' : 'text-gray-400'}`}>
+                    Casa {z.label}
+                  </span>
                   {z.status === 'ativo' && (
                     <span className="text-[7px] font-bold bg-emerald-400 text-black px-1.5 py-0.5 rounded animate-pulse">ATIVO</span>
                   )}
@@ -2152,19 +1778,19 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
                                   </div>
                                   
                                   <div className="flex flex-col">
-                                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">WINRATE DO CICLO DO CICLO</span>
-                                       <div className="flex items-baseline gap-1">
-                                           <span className={`text-2xl font-black ${selectedZoneCycles.metaWinrate >= 50 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]' : 'text-gray-300'}`}>
-                                               {selectedZoneCycles.metaWinrate.toFixed(1)}%
-                                           </span>
-                                       </div>
-                                   </div>
-                               </div>
-                               
-                               <div className="text-[10px] text-gray-400 font-medium leading-relaxed mt-1 bg-black/30 p-2.5 rounded border border-white/5">
-                                   Esta estatística indica a porcentagem real de vitórias (Winrate) quando o jogo atinge este estado exato no Ciclo do Ciclo. Se o valor estiver alto (ex: 80% - 100%), historicamente a oportunidade seguinte resultou em <strong>vitória (WIN)</strong>.
-                               </div>
-                           </div>
+                                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Winrate do Ciclo do Ciclo</span>
+                                      <div className="flex items-baseline gap-1">
+                                          <span className={`text-2xl font-black ${selectedZoneCycles.metaWinrate >= 50 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]' : 'text-gray-300'}`}>
+                                              {selectedZoneCycles.metaWinrate.toFixed(1)}%
+                                          </span>
+                                      </div>
+                                  </div>
+                              </div>
+                              
+                              <div className="text-[10px] text-gray-400 font-medium leading-relaxed mt-1 bg-black/30 p-2.5 rounded border border-white/5">
+                                  Esta estatística indica a porcentagem real de vitórias (Winrate) quando o jogo atinge este estado exato no Ciclo do Ciclo. Se o valor estiver alto (ex: 80% - 100%), historicamente a oportunidade seguinte resultou em <strong>vitória (WIN)</strong>.
+                              </div>
+                          </div>
                       )}
 
                       {/* Top 5 Lists */}

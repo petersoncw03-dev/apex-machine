@@ -5,18 +5,56 @@ export interface RollData {
     roll: number;
 }
 
-export function calculateRadar(history: RollData[]) {
-    const zonesStats = calculateZones(history);
-    const radarStats = calculatePatternsAndCasas(history);
+export interface RadarConfig {
+    enableZonas?: boolean;
+    zonaGeralHours?: number;
+    zonaGeralMinWr?: number;
+    zonaCicloHours?: number;
+    zonaCicloMinWr?: number;
 
-    const hasZonasQuentes1h = zonesStats.blocks1h.some((b: any) => b.status === 'ativo' && b.winrate >= 35 && b.total >= 3);
-    const hasZonasQuentes2h = !hasZonasQuentes1h && zonesStats.blocks2h.some((b: any) => b.status === 'ativo' && b.winrate >= 35 && b.total >= 5);
-    const hasZonasQuentes = hasZonasQuentes1h || hasZonasQuentes2h;
+    enableCasas?: boolean;
+    casaGeralHours?: number;
+    casaGeralMinWr?: number;
+    casaCicloHours?: number;
+    casaCicloMinWr?: number;
+
+    enablePadroes?: boolean;
+    padraoGeralHours?: number;
+    padraoGeralMinWr?: number;
+}
+
+export function calculateRadar(history: RollData[], config?: RadarConfig) {
+    const zonesStats = calculateZones(history, config?.zonaGeralHours, config?.zonaCicloHours);
+    const radarStats = calculatePatternsAndCasas(history, config?.casaGeralHours, config?.casaCicloHours, config?.padraoGeralHours);
+
+    const zonaGWR = config?.zonaGeralMinWr ?? 35;
+    const zonaCWR = config?.zonaCicloMinWr ?? 35;
+    let hasZonasQuentes = false;
     
-    // Regra Casa Exata: 1 ponto se winrate > 45%
-    const hasCasas = radarStats.topCasas?.some((c: any) => c.isLive && c.target === 'B' && c.winrate > 45);
+    for (let i = 0; i < 6; i++) {
+        const bMicro = zonesStats.blocksMicro[i];
+        const bMacro = zonesStats.blocksMacro[i];
+        if (bMicro.status === 'ativo' && bMicro.winrate >= zonaGWR && bMacro.winrate >= zonaCWR) {
+            hasZonasQuentes = true;
+            break;
+        }
+    }
+    
+    const casaGWR = config?.casaGeralMinWr ?? 45;
+    const casaCWR = config?.casaCicloMinWr ?? 45;
+    let hasCasas = false;
+    
+    for (const cMicro of radarStats.casasMicro) {
+        if (cMicro.isLive && cMicro.winrate >= casaGWR) {
+            const cMacro = radarStats.casasMacro.find((m: any) => m.num === cMicro.num && m.casa === cMicro.casa);
+            if (cMacro && cMacro.winrate >= casaCWR) {
+                hasCasas = true;
+                break;
+            }
+        }
+    }
 
-    // Regras Padr�es de Cores
+    const padraoWR = config?.padraoGeralMinWr ?? 50;
     let padroesAllAcima50 = true;
     let sumAvgs = 0;
     let count = 0;
@@ -27,7 +65,7 @@ export function calculateRadar(history: RollData[]) {
             padroesAllAcima50 = false;
             break;
         }
-        if (pat.winrate <= 50) {
+        if (pat.winrate <= padraoWR) {
             padroesAllAcima50 = false;
         }
         let wrL = pat.wrL !== null ? pat.wrL : pat.winrate;
@@ -44,15 +82,17 @@ export function calculateRadar(history: RollData[]) {
         let totalAvg = sumAvgs / 3;
         if (totalAvg > 80) {
             hasPatterns2Pts = true;
-            hasPatterns1Pt = false; // Substitui o ponto 1 pelo 2
+            hasPatterns1Pt = false;
         }
     }
 
     let radarPoints = 0;
-    if (hasZonasQuentes) radarPoints += 1;
-    if (hasCasas) radarPoints += 1;
-    if (hasPatterns2Pts) radarPoints += 2;
-    else if (hasPatterns1Pt) radarPoints += 1;
+    if (config?.enableZonas !== false && hasZonasQuentes) radarPoints += 1;
+    if (config?.enableCasas !== false && hasCasas) radarPoints += 1;
+    if (config?.enablePadroes !== false) {
+        if (hasPatterns2Pts) radarPoints += 2;
+        else if (hasPatterns1Pt) radarPoints += 1;
+    }
 
     return {
         radarPoints,
@@ -82,12 +122,12 @@ function calcZoneBlocks(rolls: RollData[]) {
     const nextEnt = currentGap + 1;
 
     const zones = [
-        { label: '1 a 5', s: 1, e: 5 },
-        { label: '6 a 10', s: 6, e: 10 },
-        { label: '11 a 15', s: 11, e: 15 },
-        { label: '16 a 20', s: 16, e: 20 },
-        { label: '21 a 25', s: 21, e: 25 },
-        { label: '26 a 30', s: 26, e: 30 }
+        { label: '1 a 6', s: 1, e: 6 },
+        { label: '7 a 12', s: 7, e: 12 },
+        { label: '13 a 18', s: 13, e: 18 },
+        { label: '19 a 24', s: 19, e: 24 },
+        { label: '25 a 30', s: 25, e: 30 },
+        { label: '31 a 36', s: 31, e: 36 }
     ];
 
     const blocks = zones.map(z => {
@@ -124,20 +164,20 @@ function calcZoneBlocks(rolls: RollData[]) {
     return { blocks, currentGap };
 }
 
-function calculateZones(history: RollData[]) {
-    const rolls1h = history.slice(-120);
-    const rolls2h = history.slice(-240);
-    const r1h = calcZoneBlocks(rolls1h);
-    const r2h = calcZoneBlocks(rolls2h);
-    return {
-        blocks: r2h.blocks,
-        blocks1h: r1h.blocks,
-        blocks2h: r2h.blocks,
-        currentGap: r2h.currentGap
-    };
+function calculateZones(history: RollData[], microHours?: number, macroHours?: number) {
+    const limitMicro = (microHours && microHours > 0) ? microHours * 120 : 3 * 120;
+    const limitMacro = (macroHours && macroHours > 0) ? macroHours * 120 : 72 * 120;
+
+    const rollsMicro = history.slice(-limitMicro);
+    const rollsMacro = history.slice(-limitMacro);
+
+    const rMicro = calcZoneBlocks(rollsMicro);
+    const rMacro = calcZoneBlocks(rollsMacro);
+
+    return { blocksMicro: rMicro.blocks, blocksMacro: rMacro.blocks, currentGap: rMicro.currentGap };
 }
 
-function calculatePatternsAndCasas(history: RollData[]) {
+function calculatePatternsAndCasas(history: RollData[], casaMicroHours?: number, casaMacroHours?: number, padraoGeralHours?: number) {
     const getC = (r: RollData) => {
         const n = r.roll;
         const col = r.color?.toLowerCase() || '';
@@ -147,7 +187,7 @@ function calculatePatternsAndCasas(history: RollData[]) {
     };
 
     const hFull = history;
-    if (hFull.length === 0) return { livePatterns: {} as any, topCasas: [] as any[] };
+    if (hFull.length === 0) return { livePatterns: {} as any, casasMicro: [], casasMacro: [] };
 
     const lastRoll = hFull[hFull.length - 1];
     const lastRollNumber = lastRoll.roll;
@@ -155,43 +195,39 @@ function calculatePatternsAndCasas(history: RollData[]) {
     const livePatterns: Record<number, any> = {};
     const targetMargin = 6;
 
-    const sizesConfig = [
-        { size: 4, limit: 480 },
-        { size: 5, limit: 720 },
-        { size: 6, limit: 1200 }
-    ];
+    const sizesConfig = padraoGeralHours && padraoGeralHours > 0 
+        ? [
+            { size: 4, limit: padraoGeralHours * 120 },
+            { size: 5, limit: padraoGeralHours * 120 },
+            { size: 6, limit: padraoGeralHours * 120 }
+          ]
+        : [
+            { size: 4, limit: 720 },
+            { size: 5, limit: 720 },
+            { size: 6, limit: 1200 }
+        ];
 
     for (const conf of sizesConfig) {
         const size = conf.size;
         const sliceAmount = conf.limit;
-        
         const hSlice = history.slice(-sliceAmount);
         if (hSlice.length < size) continue;
-
         const rolls = hSlice.map(r => ({ color: getC(r), num: r.roll }));
         const patMap = new Map<string, any>();
-        
         const liveSlice = rolls.slice(-size);
         const livePatStr = liveSlice.map(r => r.color).join('');
 
         for (let i = 0; i <= rolls.length - size - targetMargin; i++) {
             const patStr = rolls.slice(i, i + size).map(r => r.color).join('');
             const patLastNum = rolls[i + size - 1].num;
-
-            if (!patMap.has(patStr)) {
-                patMap.set(patStr, { win: 0, loss: 0, winL: 0, lossL: 0 });
-            }
+            if (!patMap.has(patStr)) patMap.set(patStr, { win: 0, loss: 0, winL: 0, lossL: 0 });
             const data = patMap.get(patStr)!;
 
             let hitB = false;
-            for (let m = 0; m < targetMargin; m++) {
-                if (rolls[i + size + m].color === 'B') hitB = true;
-            }
+            for (let m = 0; m < targetMargin; m++) if (rolls[i + size + m].color === 'B') hitB = true;
 
             if (hitB) data.win++; else data.loss++;
-            if (patLastNum === lastRollNumber) {
-                if (hitB) data.winL++; else data.lossL++;
-            }
+            if (patLastNum === lastRollNumber) { if (hitB) data.winL++; else data.lossL++; }
         }
 
         for (const [patStr, data] of patMap.entries()) {
@@ -204,90 +240,68 @@ function calculatePatternsAndCasas(history: RollData[]) {
         }
     }
 
-    // Casas Exatas usa o hist�rico base (ex: 480 ou 720) para n�o demorar tanto, vamos usar 720 (6 horas)
-    const hCasas = history.slice(-720);
-    const casasLimit = 10;
-    const numEntradas = 6;
-    const topCasasExatas: any[] = [];
-    
-    const ce_stats = Array.from({ length: 15 }, () => ({
-        totals: Array(casasLimit).fill(0),
-        winB: Array(casasLimit).fill(0),
-        saB: Array(casasLimit).fill(0),
-        smB: Array(casasLimit).fill(0)
-    }));
+    function calcCasasExatas(limitHours: number) {
+        const limit = limitHours > 0 ? limitHours * 120 : 720;
+        const hCasas = history.slice(-limit);
+        const numEntradas = 6;
+        const ce_stats = Array.from({ length: 15 }, () => ({
+            totals: Array(10).fill(0), winB: Array(10).fill(0), saB: Array(10).fill(0), smB: Array(10).fill(0)
+        }));
 
-    for (let i = 0; i < hCasas.length; i++) {
-        const pastRollNum = hCasas[i].roll;
-        if (isNaN(pastRollNum)) continue;
-
-        for (let c = 1; c <= casasLimit; c++) {
-            const targetStartIdx = i + c;
-            if (targetStartIdx < hCasas.length) {
-                let hasB = false;
-                let maxE = Math.min(numEntradas, hCasas.length - targetStartIdx);
-                if (maxE < 1) continue;
-                
-                for (let e = 0; e < maxE; e++) {
-                    const trC = getC(hCasas[targetStartIdx + e]);
-                    if (trC === 'B') hasB = true;
-                }
-
-                const windowClosed = maxE === numEntradas;
-                if (hasB || windowClosed) {
-                    ce_stats[pastRollNum].totals[c-1]++;
-                    if (hasB) {
-                        ce_stats[pastRollNum].saB[c-1] = 0;
-                        ce_stats[pastRollNum].winB[c-1]++;
-                    } else {
-                        ce_stats[pastRollNum].saB[c-1]++;
-                        if (ce_stats[pastRollNum].saB[c-1] > ce_stats[pastRollNum].smB[c-1]) {
-                            ce_stats[pastRollNum].smB[c-1] = ce_stats[pastRollNum].saB[c-1];
+        for (let i = 0; i < hCasas.length; i++) {
+            const pastRollNum = hCasas[i].roll;
+            if (isNaN(pastRollNum)) continue;
+            for (let c = 1; c <= 10; c++) {
+                const targetStartIdx = i + c;
+                if (targetStartIdx < hCasas.length) {
+                    let hasB = false;
+                    let maxE = Math.min(numEntradas, hCasas.length - targetStartIdx);
+                    if (maxE < 1) continue;
+                    for (let e = 0; e < maxE; e++) {
+                        const trC = getC(hCasas[targetStartIdx + e]);
+                        if (trC === 'B') hasB = true;
+                    }
+                    const windowClosed = maxE === numEntradas;
+                    if (hasB || windowClosed) {
+                        ce_stats[pastRollNum].totals[c-1]++;
+                        if (hasB) {
+                            ce_stats[pastRollNum].saB[c-1] = 0;
+                            ce_stats[pastRollNum].winB[c-1]++;
+                        } else {
+                            ce_stats[pastRollNum].saB[c-1]++;
+                            if (ce_stats[pastRollNum].saB[c-1] > ce_stats[pastRollNum].smB[c-1]) {
+                                ce_stats[pastRollNum].smB[c-1] = ce_stats[pastRollNum].saB[c-1];
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    for (let num = 0; num < 15; num++) {
-        for (let c = 1; c <= casasLimit; c++) {
-            let isLive = false;
-            for (let e = 0; e < numEntradas; e++) {
-                const gatilhoIdx = hCasas.length - c - e;
-                if (gatilhoIdx >= 0 && gatilhoIdx < hCasas.length) {
-                    if (hCasas[gatilhoIdx].roll === num) {
-                        isLive = true;
-                        break;
+        const casasData: any[] = [];
+        for (let num = 0; num < 15; num++) {
+            for (let c = 1; c <= 10; c++) {
+                let isLive = false;
+                for (let e = 0; e < numEntradas; e++) {
+                    const gatilhoIdx = hCasas.length - c - e;
+                    if (gatilhoIdx >= 0 && gatilhoIdx < hCasas.length) {
+                        if (hCasas[gatilhoIdx].roll === num) {
+                            isLive = true;
+                            break;
+                        }
                     }
                 }
-            }
-            
-            const total = ce_stats[num].totals[c-1];
-            if (total >= 5) {
+                const total = ce_stats[num].totals[c-1];
                 const win = ce_stats[num].winB[c-1];
-                const sa = ce_stats[num].saB[c-1];
-                const winrate = (win / total) * 100;
-                topCasasExatas.push({ num, casa: c, target: 'B', winrate, win, loss: total - win, sa, isLive });
+                const winrate = total > 0 ? (win / total) * 100 : 0;
+                casasData.push({ num, casa: c, winrate, total, isLive });
             }
         }
+        return casasData;
     }
 
-    const bestPerNum = new Map();
-    for (const c of topCasasExatas) {
-        if (!bestPerNum.has(c.num)) {
-            bestPerNum.set(c.num, c);
-        } else {
-            const existing = bestPerNum.get(c.num);
-            if (c.winrate > existing.winrate || (c.winrate === existing.winrate && c.sa < existing.sa)) {
-                bestPerNum.set(c.num, c);
-            }
-        }
-    }
-    
-    const diversifiedTop = Array.from(bestPerNum.values());
-    diversifiedTop.sort((a, b) => b.winrate - a.winrate || a.sa - b.sa || b.win - a.win);
-    const topCasas = diversifiedTop.slice(0, 5);
+    const casasMicro = calcCasasExatas(casaMicroHours ?? 3);
+    const casasMacro = calcCasasExatas(casaMacroHours ?? 72);
 
-    return { livePatterns, topCasas };
+    return { livePatterns, casasMicro, casasMacro };
 }

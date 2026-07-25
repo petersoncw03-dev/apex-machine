@@ -33,9 +33,16 @@ export function useMestreConfluencia(globalData: RollData[]) {
         
         // Em vez de recalcular tudo a cada render, o useMemo memoiza baseado na array de pedras.
         // Simulando o getPoints do motor.ts:
-        const radarData = calculateRadar(globalData.slice(-1500) as any);
-        const iaData3h = calculateIA(globalData.slice(-1500) as any, 3);
-        const iaData1h = calculateIA(globalData.slice(-1500) as any, 1);
+        const DEFAULT_DISABLED_IA = new Set([0, 2, 4, 5, 10, 12]);
+        const radarConfig = {
+            enableZonas: true, zonaGeralHours: 3, zonaGeralMinWr: 35, zonaCicloHours: 72, zonaCicloMinWr: 35,
+            enableCasas: true, casaGeralHours: 3, casaGeralMinWr: 45, casaCicloHours: 72, casaCicloMinWr: 45,
+            enablePadroes: true, padraoGeralHours: 6, padraoGeralMinWr: 50
+        };
+        const radarData = calculateRadar(globalData.slice(-1500) as any, radarConfig);
+        const iaConfig = { geralHours: 3, geralMinWr: 40, cicloHours: 72, cicloMinWr: 40, minSignals: 0 };
+        const iaData3h = calculateIA(globalData.slice(-1500) as any, 3, DEFAULT_DISABLED_IA, true, iaConfig);
+        const iaData1h = calculateIA(globalData.slice(-1500) as any, 1, DEFAULT_DISABLED_IA, true, iaConfig);
 
         const currentConfluences = iaData3h.currentIaScore;
         let iaPoints = 0;
