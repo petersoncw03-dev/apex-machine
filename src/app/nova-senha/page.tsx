@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Cpu, Eye, EyeOff } from 'lucide-react';
+import { Lock, Cpu, Eye, EyeOff, AlertTriangle, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
 export default function NovaSenhaPage() {
@@ -10,23 +11,50 @@ export default function NovaSenhaPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [hasValidSession, setHasValidSession] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    // Verifica se há uma sessão válida logo na montagem
+    // 1. Verifica parâmetro de erro da URL
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('error') === 'token_invalid') {
+        setMessage({
+          type: 'error',
+          text: 'O link de recuperação expirou ou é inválido. Por favor, solicite um novo link.',
+        });
+        setChecking(false);
+        return;
+      }
+    }
+
+    // 2. Verifica a sessão Supabase
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // Quando o usuário clica no link do e-mail, o Supabase loga ele através da hash na URL e redireciona para cá.
-        // Se após ler os parâmetros ainda não houver sessão (link expirado, inválido, etc).
-        
-        // Supabase lida automaticamente com os `#access_token=...` da URL quando usamos createClient()
-        // Mas se a sessão não existir após alguns instantes, o link é inválido.
+      if (session) {
+        setHasValidSession(true);
       }
+      setChecking(false);
     };
+
     checkSession();
+
+    // 3. Ouve por mudanças no estado de autenticação (ex: evento PASSWORD_RECOVERY)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) {
+        setHasValidSession(true);
+        setMessage({ type: '', text: '' });
+      }
+      setChecking(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,9 +81,9 @@ export default function NovaSenhaPage() {
       setMessage({ type: 'error', text: error.message });
       setLoading(false);
     } else {
-      setMessage({ type: 'success', text: 'Senha atualizada com sucesso! Redirecionando...' });
+      setMessage({ type: 'success', text: 'Senha atualizada com sucesso! Redirecionando para o login...' });
       setTimeout(() => {
-        router.push('/painel-master');
+        router.push('/login');
       }, 2000);
     }
   };
@@ -95,75 +123,103 @@ export default function NovaSenhaPage() {
         </div>
 
         {/* Subtítulo */}
-        <div className="flex items-center gap-2 text-white/40 text-xs font-mono tracking-widest mb-8 text-center px-4">
+        <div className="flex items-center gap-2 text-white/40 text-xs font-mono tracking-widest mb-6 text-center px-4">
           <Cpu size={14} className="text-[#00ff41] shrink-0" />
           <span>CRIE SUA NOVA SENHA DE ACESSO</span>
         </div>
 
-        {message.text && (
-           <div className={`w-full border text-xs text-center py-2.5 px-4 rounded-xl mb-5 font-mono shadow-sm
-              ${message.type === 'success' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-red-500/10 border-red-500/50 text-red-400'}
-           `}>
-              {message.text}
-           </div>
+        {checking ? (
+          <div className="flex flex-col items-center justify-center py-8 gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00ff41]"></div>
+            <span className="text-xs font-mono text-white/50">Verificando autorização...</span>
+          </div>
+        ) : (
+          <>
+            {message.text && (
+               <div className={`w-full border text-xs text-center py-2.5 px-4 rounded-xl mb-5 font-mono shadow-sm flex items-center justify-center gap-2
+                  ${message.type === 'success' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-red-500/10 border-red-500/50 text-red-400'}
+               `}>
+                  {message.type === 'error' && <AlertTriangle size={14} className="shrink-0" />}
+                  <span>{message.text}</span>
+               </div>
+            )}
+
+            {!hasValidSession && message.type === 'error' ? (
+              <div className="w-full flex flex-col gap-4">
+                <Link 
+                  href="/recuperar-senha" 
+                  className="w-full bg-[#00ff41]/10 border border-[#00ff41]/50 hover:bg-[#00ff41]/20 text-[#00ff41] font-mono tracking-widest font-bold text-xs py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 uppercase text-center"
+                >
+                  Solicitar Novo Link de Recuperação
+                </Link>
+                <Link 
+                  href="/login" 
+                  className="w-full bg-black/30 hover:bg-white/5 border border-white/5 text-white/70 font-mono tracking-widest font-bold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-2 uppercase text-center"
+                >
+                  <ArrowLeft size={14} />
+                  Voltar para o Login
+                </Link>
+              </div>
+            ) : (
+              /* Formulário */
+              <form onSubmit={handleSubmit} className="w-full flex flex-col gap-5">
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Nova Senha</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#00ff41] transition-colors">
+                      <Lock size={16} />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      className="w-full bg-black/50 border border-white/10 hover:border-white/20 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#00ff41]/50 focus:bg-[#00ff41]/[0.02] transition-all duration-300 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-white/30 hover:text-white transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Confirmar Nova Senha</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#00ff41] transition-colors">
+                      <Lock size={16} />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repita sua nova senha"
+                      className="w-full bg-black/50 border border-white/10 hover:border-white/20 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#00ff41]/50 focus:bg-[#00ff41]/[0.02] transition-all duration-300 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || message.type === 'success'}
+                  className="relative w-full bg-[#00ff41]/10 border border-[#00ff41]/50 hover:bg-[#00ff41]/20 hover:border-[#00ff41] text-[#00ff41] font-mono tracking-widest font-bold text-xs py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,65,0.1)] hover:shadow-[0_0_25px_rgba(0,255,65,0.25)] disabled:opacity-70 flex justify-center items-center mt-2 overflow-hidden group uppercase"
+                >
+                  <div className="absolute inset-0 bg-[#00ff41]/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                  <span className="relative z-10 drop-shadow-[0_0_8px_rgba(0,255,65,0.5)]">
+                    {loading ? 'Salvando...' : 'Salvar Nova Senha'}
+                  </span>
+                </button>
+
+              </form>
+            )}
+          </>
         )}
-
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-5">
-          
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Nova Senha</label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#00ff41] transition-colors">
-                <Lock size={16} />
-              </div>
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-                className="w-full bg-black/50 border border-white/10 hover:border-white/20 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#00ff41]/50 focus:bg-[#00ff41]/[0.02] transition-all duration-300 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]"
-              />
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-white/30 hover:text-white transition-colors"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-mono tracking-widest text-white/60 uppercase">Confirmar Nova Senha</label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#00ff41] transition-colors">
-                <Lock size={16} />
-              </div>
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repita sua nova senha"
-                className="w-full bg-black/50 border border-white/10 hover:border-white/20 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#00ff41]/50 focus:bg-[#00ff41]/[0.02] transition-all duration-300 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || message.type === 'success'}
-            className="relative w-full bg-[#00ff41]/10 border border-[#00ff41]/50 hover:bg-[#00ff41]/20 hover:border-[#00ff41] text-[#00ff41] font-mono tracking-widest font-bold text-xs py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,65,0.1)] hover:shadow-[0_0_25px_rgba(0,255,65,0.25)] disabled:opacity-70 flex justify-center items-center mt-2 overflow-hidden group uppercase"
-          >
-            <div className="absolute inset-0 bg-[#00ff41]/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-            <span className="relative z-10 drop-shadow-[0_0_8px_rgba(0,255,65,0.5)]">
-              {loading ? 'Salvando...' : 'Salvar Nova Senha'}
-            </span>
-          </button>
-
-        </form>
       </div>
 
     </main>

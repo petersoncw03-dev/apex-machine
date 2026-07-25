@@ -27,13 +27,30 @@ export interface IaSignalStats {
   wins: number;
 }
 
+export interface CycleStreak {
+  type: 'W' | 'L';
+  count: number;
+}
+
 export interface StratStat {
   name: string;
   winRate: number;
+  winRateMicro: number;
+  winRateCiclo: number;
   wins: number;
   total: number;
+  winsMicro: number;
+  totalMicro: number;
+  winsCiclo: number;
+  totalCiclo: number;
   sa: number;
   sm: number;
+  currentCycleState: { type: 'W' | 'L' | null; count: number };
+  currentCycleWinrate: number;
+  currentCycleOccurrences: number;
+  currentCycleWins: number;
+  groupedCycles: CycleStreak[];
+  recentCycles: { won: boolean; t: number }[];
 }
 
 // ─── Tracker de Estatísticas POR HORA ────────────────────────────────
@@ -150,7 +167,22 @@ const STRAT_NAMES = [
   'Soma Sanduíche (Cores Iguais)'     // 12
 ];
 
-export function useMinutosIa(globalData: RollData[], periodHours: number, disabledStrats: Set<number> = new Set(), withMargin: boolean = true, smartFilter: boolean = false) {
+export interface WinrateFilterConfig {
+  enabled: boolean;
+  minWr: number;
+  maxWr: number;
+  hours: number;
+}
+
+export function useMinutosIa(
+  globalData: RollData[], 
+  periodHours: number, 
+  disabledStrats: Set<number> = new Set(), 
+  withMargin: boolean = true, 
+  smartFilter: boolean = false,
+  microFilter?: WinrateFilterConfig,
+  macroFilter?: WinrateFilterConfig
+) {
   const latchedAllowedFiltered = useRef(new Set<string>());
   const latchedAllowedUnfiltered = useRef(new Set<string>());
   const latchedGridFiltered = useRef(new Map<number, { score: number, strats: Set<number> }>());
@@ -158,13 +190,6 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
 
   return useMemo(() => {
     const localDisabledStrats = new Set(disabledStrats);
-    localDisabledStrats.add(4); // Minutagem 10/20m
-    localDisabledStrats.add(5); // Horário Cheio
-    localDisabledStrats.add(6); // Soma Anterior
-    localDisabledStrats.add(7); // Soma Posterior
-    localDisabledStrats.add(8); // Fibonacci Espaçado
-    localDisabledStrats.add(11); // Fibo Filtrado
-    localDisabledStrats.add(12); // Soma Sanduíche
     const scores = Array(60).fill(0);
     const activeStratsByMin = Array(60).fill(null).map(() => [] as number[]);
 
@@ -175,7 +200,11 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
         stats: Array.from({ length: 8 }, (_, i) => ({
           conf: i + 1, winRate: 0, sa: 0, sm: 0, total: 0, wins: 0,
         })),
-        stratStats: STRAT_NAMES.map(s => ({ name: s, winRate: 0, wins: 0, total: 0, sa: 0, sm: 0 })),
+        stratStats: STRAT_NAMES.map(s => ({
+          name: s, winRate: 0, winRateMicro: 0, winRateCiclo: 0, wins: 0, total: 0, winsMicro: 0, totalMicro: 0, winsCiclo: 0, totalCiclo: 0, sa: 0, sm: 0,
+          currentCycleState: { type: null, count: 0 }, currentCycleWinrate: 0, currentCycleOccurrences: 0, currentCycleWins: 0,
+          groupedCycles: [], recentCycles: []
+        })),
         disabledStrats
       };
     }
@@ -191,7 +220,9 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
       const d = new Date(globalData[i].timestamp);
       times[i] = d.getTime();
       minutes[i] = d.getMinutes();
-      isWhite[i] = globalData[i].roll === 0;
+      const rVal = Number(globalData[i]?.roll);
+      const cStr = String(globalData[i]?.color || '').toUpperCase();
+      isWhite[i] = (!isNaN(rVal) && rVal === 0) || cStr === 'BRANCO' || cStr === 'WHITE' || cStr === 'B' || cStr === 'W' || cStr === '0';
     }
 
     const latestTime = times[times.length - 1];
@@ -247,7 +278,7 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
       // Se havia um branco esperando pela próxima pedra, agora temos ela.
       if (pendingSomaPost.length > 0 && !w) {
         // A pedra atual NÃO é branca — é a "próxima pedra" do branco anterior
-        const rollValue = globalData[i].roll;
+        const rollValue = Number(globalData[i]?.roll || 0);
         if (rollValue >= 2) { // Evita alvo no mesmo minuto (0) ou próximo minuto (1)
           for (const pending of pendingSomaPost) {
             const targetTime = pending.whiteMinuteTime + rollValue * ONE_MIN;
@@ -265,24 +296,25 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
       }
 
       // ── Verificar alvos dinâmicos que atingiram este minuto ────
-      // Um alvo é "atingido" se o timestamp atual está dentro de ±60s do targetTime
       const newPending: PendingTarget[] = [];
       for (const pt of pendingTargets) {
-        // Sinal expirado (mais de 3min de atraso)? Descarta.
-        if (t - pt.targetTime > 3 * ONE_MIN) continue;
+        const diff = t - pt.targetTime;
 
-        // Ainda não chegou na hora do alvo? Mantém pendente.
-        if (pt.targetTime - t > ONE_MIN) {
+        // Se ainda não chegou no momento do alvo (> 2 min antes)
+        if (pt.targetTime - t > 2 * ONE_MIN) {
           newPending.push(pt);
           continue;
         }
 
-        // ── Alvo atingido! Registrar no roll atual ───────────────
-        // Verificar anti-sombreamento: se o grupo já foi abatido, ignora
-        if (false) continue;
+        // Se está dentro da janela do alvo (entre -2min e +2min)
+        if (Math.abs(diff) <= 2 * ONE_MIN) {
+          signalsAtRoll[i].add(pt.stratIdx);
+          creatorAtRoll[i].set(pt.stratIdx, pt.creatorTime);
+          newPending.push(pt); // Mantém ativo durante toda a janela!
+          continue;
+        }
 
-        signalsAtRoll[i].add(pt.stratIdx);
-        creatorAtRoll[i].set(pt.stratIdx, pt.creatorTime);
+        // Se passou do tempo (+2min em diante), expira e sai do newPending
       }
       pendingTargets = newPending;
 
@@ -359,7 +391,7 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
 
         // E7: Soma Anterior — soma o valor da pedra ANTES deste branco
         if (!localDisabledStrats.has(6) && i > 0 && !isWhite[i - 1]) {
-          const prevRoll = globalData[i - 1].roll;
+          const prevRoll = Number(globalData[i - 1]?.roll || 0);
           if (prevRoll >= 2) { // Evita criar sinal para o exato momento atual (se fosse 0) ou proximo minuto (se fosse 1)
             pendingTargets.push({
               targetTime: t + prevRoll * ONE_MIN,
@@ -416,8 +448,8 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
         // E12: Soma Sanduíche (Cores Iguais)
         if (!localDisabledStrats.has(12) && i >= 2) {
           if (isWhite[i - 1] && !isWhite[i - 2]) {
-            const prevRoll = globalData[i - 2].roll;
-            const postRoll = globalData[i].roll;
+            const prevRoll = Number(globalData[i - 2]?.roll || 0);
+            const postRoll = Number(globalData[i]?.roll || 0);
             const isPrevRed = prevRoll >= 1 && prevRoll <= 7;
             const isPrevBlack = prevRoll >= 8 && prevRoll <= 14;
             const isPostRed = postRoll >= 1 && postRoll <= 7;
@@ -489,45 +521,57 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
       const history2h: { t: number, won: boolean }[] = [];
       let lastEvalEnd = -1;
 
+      const microWindowMs = (microFilter?.hours || 3) * 3600000;
+      const macroWindowMs = (macroFilter?.hours || 24) * 3600000;
+
       for (let i = 0; i < globalData.length; i++) {
         if (!signalsAtRoll[i].has(sIdx)) continue;
         if (i <= lastEvalEnd) continue;
 
-
         const t = times[i];
-        while (history2h.length > 0 && t - history2h[0].t > 2 * 3600000) {
+        while (history2h.length > 0 && t - history2h[0].t > Math.max(microWindowMs, macroWindowMs, 24 * 3600000)) {
           history2h.shift();
         }
 
         const cTime = creatorAtRoll[i].get(sIdx) || 0;
-        const latchTime = Math.max(t - 3 * 60000, cTime);
         
-        let validTotal = 0;
-        let validWins = 0;
-        let simSa = 0;
-        let simMaxSa = 0;
-        
-        for (const h of history2h) {
-          if (h.t <= latchTime) {
-            if (h.t > latchTime - 2 * 3600000) {
-              validTotal++;
-              if (h.won) validWins++;
-            }
+        // Calcular Winrate Micro no momento T (últimas microHours)
+        const microItems = history2h.filter(h => t - h.t <= microWindowMs);
+        const microTotal = microItems.length;
+        const microWins = microItems.filter(h => h.won).length;
+        const microWr = microTotal >= 3 ? (microWins / microTotal) * 100 : 100;
+
+        // Calcular Winrate Macro no momento T (últimas macroHours)
+        const macroItems = history2h.filter(h => t - h.t <= macroWindowMs);
+        const macroTotal = macroItems.length;
+        const macroWins = macroItems.filter(h => h.won).length;
+        const macroWr = macroTotal >= 3 ? (macroWins / macroTotal) * 100 : 100;
+
+        let passMicro = true;
+        if (microFilter?.enabled) {
+          passMicro = microWr >= microFilter.minWr && microWr <= microFilter.maxWr;
+        }
+
+        let passMacro = true;
+        if (macroFilter?.enabled) {
+          passMacro = macroWr >= macroFilter.minWr && macroWr <= macroFilter.maxWr;
+        }
+
+        let allowed = passMicro && passMacro;
+        if (smartFilter && ![1, 2, 12].includes(sIdx)) {
+          let simSa = 0;
+          let simMaxSa = 0;
+          for (const h of history2h) {
             if (h.won) simSa = 0;
             else {
               simSa++;
               if (simSa > simMaxSa) simMaxSa = simSa;
             }
           }
-        }
-        
-        const wr = validTotal >= 5 ? (validWins / validTotal) * 100 : 0;
-
-        let allowed = true;
-        if (smartFilter && ![1, 2, 12].includes(sIdx)) {
-          allowed = false;
-          if (wr >= 40) allowed = true;
-          if (simMaxSa >= 4 && simSa >= Math.floor(simMaxSa * 0.8)) allowed = true;
+          const wr2h = history2h.length >= 5 ? (history2h.filter(h => h.won).length / history2h.length) * 100 : 0;
+          if (wr2h < 40 && !(simMaxSa >= 4 && simSa >= Math.floor(simMaxSa * 0.8))) {
+            allowed = false;
+          }
         }
 
         if (allowed) signalAllowed.add(`${i}_${sIdx}`);
@@ -737,36 +781,77 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
     }
 
     const stratStats: StratStat[] = STRAT_NAMES.map(name => ({
-      name, winRate: 0, wins: 0, total: 0, sa: 0, sm: 0,
+      name, winRate: 0, winRateMicro: 0, winRateCiclo: 0, wins: 0, total: 0, winsMicro: 0, totalMicro: 0, winsCiclo: 0, totalCiclo: 0, sa: 0, sm: 0,
+      currentCycleState: { type: null, count: 0 }, currentCycleWinrate: 0, currentCycleOccurrences: 0, currentCycleWins: 0,
+      groupedCycles: [], recentCycles: []
     }));
 
+    const microHours = microFilter?.hours || 3;
+    const macroHours = macroFilter?.hours || 24;
+    const microCutoff = latestTime - microHours * 3600000;
+    const cicloCutoff = latestTime - macroHours * 3600000;
     for (let sIdx = 0; sIdx < STRAT_NAMES.length; sIdx++) {
       let currentSa = 0;
       let maxSa = 0;
       let wins = 0;
       let total = 0;
+      let winsMicro = 0;
+      let totalMicro = 0;
+      let winsCiclo = 0;
+      let totalCiclo = 0;
       let lastEvalEnd = -1; // Evitar avaliar o mesmo ciclo duas vezes
+
+      const groupedCycles: CycleStreak[] = [];
+      let activeGroup: CycleStreak | null = null;
+
+      const stateOccurrences: Record<string, number> = {};
+      const stateWins: Record<string, number> = {};
+      let prevStateKey: string | null = null;
+
+      const recentCycles: { won: boolean; t: number }[] = [];
 
       for (let i = 0; i < globalData.length; i++) {
         if (times[i] < backtestCutoff) continue;
         if (i <= lastEvalEnd) continue;
- // Já foi avaliado dentro de um ciclo anterior
 
         if (!filteredSignalsAtRoll[i].has(sIdx)) continue;
 
-        // Encontrar o creatorTime para esta estratégia neste roll
         const creator = creatorAtRoll[i].get(sIdx) || 0;
-
         // Verificar vitória na janela ±2min
         const won = checkCycleWin(i, creator);
 
         total++;
+        if (times[i] >= microCutoff) totalMicro++;
+        if (times[i] >= cicloCutoff) totalCiclo++;
+        if (prevStateKey) {
+          stateOccurrences[prevStateKey] = (stateOccurrences[prevStateKey] || 0) + 1;
+          if (won) stateWins[prevStateKey] = (stateWins[prevStateKey] || 0) + 1;
+        }
+
         if (won) {
           wins++;
+          if (times[i] >= microCutoff) winsMicro++;
+          if (times[i] >= cicloCutoff) winsCiclo++;
           currentSa = 0;
+          if (activeGroup && activeGroup.type === 'W') {
+            activeGroup.count++;
+          } else {
+            if (activeGroup) groupedCycles.push({ ...activeGroup });
+            activeGroup = { type: 'W', count: 1 };
+          }
         } else {
           currentSa++;
           if (currentSa > maxSa) maxSa = currentSa;
+          if (activeGroup && activeGroup.type === 'L') {
+            activeGroup.count++;
+          } else {
+            if (activeGroup) groupedCycles.push({ ...activeGroup });
+            activeGroup = { type: 'L', count: 1 };
+          }
+        }
+
+        if (activeGroup) {
+          prevStateKey = `${activeGroup.type}_${activeGroup.count}`;
         }
 
         // Pular pedras seguintes que estão dentro da mesma janela
@@ -780,12 +865,36 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
         }
       }
 
+      if (activeGroup) {
+        groupedCycles.push({ ...activeGroup });
+      }
+
+      const currentState = activeGroup || { type: null, count: 0 };
+      const curKey = currentState.type ? `${currentState.type}_${currentState.count}` : '';
+      const curOcc = curKey ? (stateOccurrences[curKey] || 0) : 0;
+      const curW = curKey ? (stateWins[curKey] || 0) : 0;
+      const curWr = curOcc > 0 ? (curW / curOcc) * 100 : (total > 0 ? (wins / total) * 100 : 0);
+
       stratStats[sIdx].wins = wins;
       stratStats[sIdx].total = total;
       stratStats[sIdx].winRate = total > 0 ? (wins / total) * 100 : 0;
+      stratStats[sIdx].winsMicro = winsMicro;
+      stratStats[sIdx].totalMicro = totalMicro;
+      stratStats[sIdx].winRateMicro = totalMicro > 0 ? (winsMicro / totalMicro) * 100 : (total > 0 ? (wins / total) * 100 : 0);
+      stratStats[sIdx].winsCiclo = winsCiclo;
+      stratStats[sIdx].totalCiclo = totalCiclo;
+      stratStats[sIdx].winRateCiclo = totalCiclo > 0 ? (winsCiclo / totalCiclo) * 100 : (total > 0 ? (wins / total) * 100 : 0);
       stratStats[sIdx].sa = currentSa;
       stratStats[sIdx].sm = maxSa;
+      stratStats[sIdx].currentCycleState = currentState;
+      stratStats[sIdx].currentCycleWinrate = curWr;
+      stratStats[sIdx].currentCycleOccurrences = curOcc;
+      stratStats[sIdx].currentCycleWins = curW;
+      stratStats[sIdx].groupedCycles = groupedCycles;
+      stratStats[sIdx].recentCycles = recentCycles.slice(-15);
     }
+
+    // (A filtragem por Winrate Micro/Macro já é feita dinamicamente pedra por pedra na FASE 2.5)
 
     // ── Backtest por Confluência (Score >= N) ─────────────────────
     const stats: IaSignalStats[] = [];
@@ -802,7 +911,8 @@ export function useMinutosIa(globalData: RollData[], periodHours: number, disabl
         if (i <= lastEvalEnd) continue;
 
 
-        const score = filteredSignalsAtRoll[i].size;
+        const validStrats = Array.from(filteredSignalsAtRoll[i]).filter(sIdx => !localDisabledStrats.has(sIdx));
+        const score = validStrats.length;
         if (score < confLvl) continue;
 
         // Para confluência, o creatorTime é o MAIOR creatorTime entre todas as estratégias

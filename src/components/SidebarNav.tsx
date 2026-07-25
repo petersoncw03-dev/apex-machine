@@ -43,8 +43,10 @@ const sections: NavSection[] = [
     ]
   },
   {
-    title: 'Análise',
+    title: 'Ferramentas & Simuladores',
     items: [
+      { href: '/zonasquentes', label: 'Zonas Quentes', icon: <Activity size={18} />, badge: 'Novo' },
+      { href: '/simulador-minutos-ia', label: 'Simulador Minutos IA', icon: <Clock size={18} />, badge: 'Novo' },
       { href: '/laboratorio', label: 'Laboratório de Padrões', icon: <FlaskConical size={18} /> },
       { href: '/casa-exata', label: 'Casa Exata', icon: <TrendingUp size={18} /> },
       { href: '/dupla-exata', label: 'Dupla Exata', icon: <Target size={18} />, badge: 'Novo' },
