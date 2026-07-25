@@ -25,11 +25,14 @@ export default function ZonasQuentesStandalonePage() {
   const [enabledZones, setEnabledZones] = useState<number[]>([0, 1, 2, 3, 4, 5]); // Todas as 6 zonas ativas por padrão
   const [zonaLen, setZonaLen] = useState<number>(5); // 5 pedras por disparo
   const [geralHours, setGeralHours] = useState<number>(3); // 3h Micro
-  const [geralMinWr, setGeralMinWr] = useState<number>(35); // 35% Winrate Micro
+  const [geralMinWr, setGeralMinWr] = useState<number>(35); // 35% Winrate Micro Min
+  const [geralMaxWr, setGeralMaxWr] = useState<number>(100); // 100% Winrate Micro Max
   const [cicloHours, setCicloHours] = useState<number>(24); // 24h Ciclo
-  const [cicloMinWr, setCicloMinWr] = useState<number>(40); // 40% Winrate Ciclo
+  const [cicloMinWr, setCicloMinWr] = useState<number>(40); // 40% Winrate Ciclo Min
+  const [cicloMaxWr, setCicloMaxWr] = useState<number>(100); // 100% Winrate Ciclo Max
   const [metaCicloDays, setMetaCicloDays] = useState<number>(3); // 3 dias Meta-Ciclo
-  const [metaCicloMinWr, setMetaCicloMinWr] = useState<number>(50); // 50% Winrate Meta-Ciclo
+  const [metaCicloMinWr, setMetaCicloMinWr] = useState<number>(50); // 50% Winrate Meta-Ciclo Min
+  const [metaCicloMaxWr, setMetaCicloMaxWr] = useState<number>(100); // 100% Winrate Meta-Ciclo Max
   const [initialBet, setInitialBet] = useState<number>(1.0); // R$ 1.00
   const [galeMultiplier, setGaleMultiplier] = useState<number>(1.078); // Multiplicador 1.078x
   const [maxGales, setMaxGales] = useState<number>(39); // 39 gales (40 entradas no total)
@@ -73,12 +76,15 @@ export default function ZonasQuentesStandalonePage() {
     enableGeral: true,
     geralHours: 3,
     geralMinWr: 35,
+    geralMaxWr: 100,
     enableCiclo: true,
     cicloHours: 24,
     cicloMinWr: 40,
+    cicloMaxWr: 100,
     enableMetaCiclo: true,
     metaCicloDays: 3,
     metaCicloMinWr: 50,
+    metaCicloMaxWr: 100,
     initialBet: 1.0,
     galeMultiplier: 1.078,
     maxGales: 39
@@ -93,12 +99,15 @@ export default function ZonasQuentesStandalonePage() {
         enableGeral,
         geralHours,
         geralMinWr,
+        geralMaxWr,
         enableCiclo,
         cicloHours,
         cicloMinWr,
+        cicloMaxWr,
         enableMetaCiclo,
         metaCicloDays,
         metaCicloMinWr,
+        metaCicloMaxWr,
         initialBet,
         galeMultiplier,
         maxGales
@@ -111,12 +120,15 @@ export default function ZonasQuentesStandalonePage() {
     enableGeral,
     geralHours,
     geralMinWr,
+    geralMaxWr,
     enableCiclo,
     cicloHours,
     cicloMinWr,
+    cicloMaxWr,
     enableMetaCiclo,
     metaCicloDays,
     metaCicloMinWr,
+    metaCicloMaxWr,
     initialBet,
     galeMultiplier,
     maxGales
@@ -130,16 +142,38 @@ export default function ZonasQuentesStandalonePage() {
       enableGeral,
       geralHours,
       geralMinWr,
+      geralMaxWr,
       enableCiclo,
       cicloHours,
       cicloMinWr,
+      cicloMaxWr,
       enableMetaCiclo,
       metaCicloDays,
       metaCicloMinWr,
+      metaCicloMaxWr,
       initialBet,
       galeMultiplier,
       maxGales
     });
+  };
+
+  const handleSetZonaLen = (val: number) => {
+    setZonaLen(val);
+    if (val === 10) {
+      setGeralHours(12);
+      setCicloHours(48);
+      setGeralMinWr(52);
+      setGeralMaxWr(60);
+      setCicloMinWr(52);
+      setCicloMaxWr(60);
+    } else if (val === 5) {
+      setGeralHours(3);
+      setCicloHours(48);
+      setGeralMinWr(35);
+      setGeralMaxWr(100);
+      setCicloMinWr(40);
+      setCicloMaxWr(100);
+    }
   };
 
   // Executa o simulador com array de dependências fixo [globalData, activeConfig]
@@ -394,7 +428,7 @@ export default function ZonasQuentesStandalonePage() {
                   </div>
 
                   {enableGeral && (
-                    <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="grid grid-cols-3 gap-2 mt-1">
                       <div className="flex flex-col gap-1">
                         <span className="text-[9px] text-gray-500 font-bold uppercase">Horas</span>
                         <select value={geralHours} onChange={e => setGeralHours(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none cursor-pointer">
@@ -406,8 +440,12 @@ export default function ZonasQuentesStandalonePage() {
                         </select>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[9px] text-gray-500 font-bold uppercase">Min Winrate %</span>
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">Min Wr %</span>
                         <input type="number" min={0} max={100} value={geralMinWr} onChange={e => setGeralMinWr(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none font-mono" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">Max Wr %</span>
+                        <input type="number" min={0} max={100} value={geralMaxWr} onChange={e => setGeralMaxWr(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none font-mono" />
                       </div>
                     </div>
                   )}
@@ -428,19 +466,23 @@ export default function ZonasQuentesStandalonePage() {
                   </div>
 
                   {enableCiclo && (
-                    <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="grid grid-cols-3 gap-2 mt-1">
                       <div className="flex flex-col gap-1">
                         <span className="text-[9px] text-gray-500 font-bold uppercase">Período</span>
                         <select value={cicloHours} onChange={e => setCicloHours(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none cursor-pointer">
                           <option value={12}>12h</option>
-                          <option value={24}>24h (1 dia)</option>
-                          <option value={48}>48h (2 dias)</option>
-                          <option value={72}>72h (3 dias)</option>
+                          <option value={24}>24h (1d)</option>
+                          <option value={48}>48h (2d)</option>
+                          <option value={72}>72h (3d)</option>
                         </select>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[9px] text-gray-500 font-bold uppercase">Min Winrate Quebra %</span>
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">Min Wr %</span>
                         <input type="number" min={0} max={100} value={cicloMinWr} onChange={e => setCicloMinWr(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none font-mono" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">Max Wr %</span>
+                        <input type="number" min={0} max={100} value={cicloMaxWr} onChange={e => setCicloMaxWr(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none font-mono" />
                       </div>
                     </div>
                   )}
@@ -461,7 +503,7 @@ export default function ZonasQuentesStandalonePage() {
                   </div>
 
                   {enableMetaCiclo && (
-                    <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="grid grid-cols-3 gap-2 mt-1">
                       <div className="flex flex-col gap-1">
                         <span className="text-[9px] text-gray-500 font-bold uppercase">Dias</span>
                         <select value={metaCicloDays} onChange={e => setMetaCicloDays(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none cursor-pointer">
@@ -472,8 +514,12 @@ export default function ZonasQuentesStandalonePage() {
                         </select>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[9px] text-gray-500 font-bold uppercase">Min Winrate Quebra %</span>
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">Min Wr %</span>
                         <input type="number" min={0} max={100} value={metaCicloMinWr} onChange={e => setMetaCicloMinWr(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none font-mono" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">Max Wr %</span>
+                        <input type="number" min={0} max={100} value={metaCicloMaxWr} onChange={e => setMetaCicloMaxWr(+e.target.value)} className="bg-[#0b0e14] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none font-mono" />
                       </div>
                     </div>
                   )}
@@ -502,7 +548,7 @@ export default function ZonasQuentesStandalonePage() {
                     <span>5. Quantidade da Zona</span>
                     <span className="text-emerald-400 font-mono">De {zonaLen} em {zonaLen}</span>
                   </label>
-                  <select value={zonaLen} onChange={e => setZonaLen(+e.target.value)} className="bg-[#0b0c10] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none cursor-pointer font-bold">
+                  <select value={zonaLen} onChange={e => handleSetZonaLen(+e.target.value)} className="bg-[#0b0c10] border border-white/10 text-white text-xs px-2 py-1.5 rounded outline-none cursor-pointer font-bold">
                     <option value={5}>De 5 em 5 (1-5, 6-10...)</option>
                     <option value={6}>De 6 em 6 (1-6, 7-12...)</option>
                     <option value={7}>De 7 em 7 (1-7, 8-14...)</option>

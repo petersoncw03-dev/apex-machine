@@ -28,6 +28,22 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
   const [loading, setLoading] = useState(!globalData);
   const [radarMode, setRadarMode] = useState<'branco' | 'cor' | 'branco_3' | 'cor_1'>('branco');
   const [radarExpanded, setRadarExpanded] = useState(false);
+  const [selectedZonaLen, setSelectedZonaLen] = useState<number>(zonaLen || 5);
+
+  const handleSelectZonaLen = (len: number) => {
+    setSelectedZonaLen(len);
+    if (len === 10) {
+      setZonesPeriod(12); // Geral 12h para 10 pedras
+      setCiclosPeriod(48); // Ciclo 48h (2d)
+    } else if (len === 5) {
+      setZonesPeriod(3);  // Geral 3h para 5 pedras
+      setCiclosPeriod(48); // Ciclo 48h (2d)
+    }
+  };
+
+  useEffect(() => {
+    if (zonaLen) handleSelectZonaLen(zonaLen);
+  }, [zonaLen]);
 
   const history = (globalData && globalData.length > 0) ? globalData : localHistory;
   const [deferredHistory, setDeferredHistory] = useState<any[]>(history);
@@ -506,14 +522,14 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
      
      const nextEnt = periodCurrentGap + 1;
      
-     const len = zonaLen || 5;
+     const len = selectedZonaLen || 5;
      const zones = Array.from({ length: 6 }, (_, z) => {
         const s = 1 + z * len;
         const e = (z + 1) * len;
         return { label: `${s} a ${e}`, s, e };
      });
      
-     const blocks = zones.map(z => {
+     const blocks = zones.map((z, zIdx) => {
         let wins = 0;
         let losses = 0;
         
@@ -674,13 +690,22 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
         if (nextEnt >= z.s && nextEnt <= z.e) status = 'ativo';
         else if (nextEnt > z.e) status = 'passou';
 
-        const isFireZone = winrate > 35 && currentCycleWinrate > 40;
+        let isFireZone = false;
+        if (selectedZonaLen === 10) {
+          if (zIdx <= 2) {
+            const geralOk = winrate >= 52 && winrate <= 60;
+            const cicloOk = currentCycleWinrate >= 52 && currentCycleWinrate <= 60;
+            isFireZone = geralOk && cicloOk;
+          }
+        } else {
+          isFireZone = winrate > 35 && currentCycleWinrate > 40;
+        }
         
         return { ...z, wins, losses, total, winrate, status, cycles: cycles.slice(-7), fullCycles, topLossCycles, topWinCycles, currentCycleState, currentCycleWinrate, currentCycleTotal, currentCycleWins, metaCycles, currentMetaState, metaWinrate, metaTotal, metaWins, isFireZone };
      });
      
      return { blocks, currentGap: periodCurrentGap };
-   }, [deferredHistory, zonesPeriod, ciclosPeriod, metaPeriodDays, zonaLen]);
+   }, [deferredHistory, zonesPeriod, ciclosPeriod, metaPeriodDays, selectedZonaLen]);
 
 
   const handleFetchDeep = async () => {
@@ -845,15 +870,49 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
           <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes após o branco</span>
+              <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5 whitespace-nowrap hidden sm:inline">
                 Atraso: <strong className="text-white text-[11px] ml-1">{zonesStats.currentGap}</strong>
               </span>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-bold text-gray-400 uppercase">Geral:</span>
-                <select className="bg-[#0b0e14] border border-white/10 text-white text-[10px] md:text-[9px] px-2 py-1 rounded outline-none cursor-pointer font-bold" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
+              <div className="flex items-center bg-[#0b0e14] border border-white/10 p-0.5 rounded-lg">
+                <button
+                  onClick={() => handleSelectZonaLen(5)}
+                  className={`px-2.5 py-0.5 text-[9px] font-black rounded transition-all ${
+                    selectedZonaLen === 5 
+                      ? 'bg-emerald-500 text-black shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="Zonas de 5 pedras"
+                >
+                  5
+                </button>
+                <button
+                  onClick={() => handleSelectZonaLen(10)}
+                  className={`px-2.5 py-0.5 text-[9px] font-black rounded transition-all ${
+                    selectedZonaLen === 10 
+                      ? 'bg-emerald-500 text-black shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="Zonas de 10 pedras"
+                >
+                  10
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Sub-Barra Fininha de Períodos */}
+          <div className="px-4 py-2 flex justify-between items-center bg-[#0b0c10]/40 border-b border-white/5">
+            <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-emerald-400"></span>
+              Período de Análise
+            </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold text-gray-400 uppercase">Geral:</span>
+                <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-0.5 rounded outline-none cursor-pointer font-bold hover:border-emerald-500/40 transition-colors" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
                   <option value={1}>1h</option>
                   <option value={2}>2h</option>
                   <option value={3}>3h</option>
@@ -862,9 +921,9 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
                   <option value={12}>12h</option>
                 </select>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-bold text-gray-400 uppercase">Ciclo:</span>
-                <select className="bg-[#0b0e14] border border-white/10 text-white text-[10px] md:text-[9px] px-2 py-1 rounded outline-none cursor-pointer font-bold" value={ciclosPeriod} onChange={(e) => setCiclosPeriod(+e.target.value)}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold text-gray-400 uppercase">Ciclo:</span>
+                <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-0.5 rounded outline-none cursor-pointer font-bold hover:border-emerald-500/40 transition-colors" value={ciclosPeriod} onChange={(e) => setCiclosPeriod(+e.target.value)}>
                   <option value={12}>12h</option>
                   <option value={24}>24h</option>
                   <option value={48}>48h (2d)</option>
@@ -874,9 +933,9 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
             </div>
           </div>
           
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-3 flex-1 content-start">
+          <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 content-start">
             {zonesStats.blocks.map((z, i) => (
-              <div key={i} className={`rounded-xl border px-3 pt-3 pb-5 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
+              <div key={i} className={`rounded-xl border px-3 pt-2.5 pb-3.5 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
                 z.status === 'ativo' ? 'bg-[#00c83a]/10 border-[#00c83a]/40 shadow-[0_0_15px_rgba(0,200,58,0.2)]' :
                 z.status === 'passou' ? 'bg-red-500/5 border-red-500/20 opacity-60' :
                 'bg-[#0b0c10] border-white/5 hover:border-white/10'
@@ -1572,15 +1631,49 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
           <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes após o branco</span>
+              <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5 whitespace-nowrap hidden sm:inline">
                 Atraso: <strong className="text-white text-[11px] ml-1">{zonesStats.currentGap}</strong>
               </span>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-bold text-gray-400 uppercase">Geral:</span>
-                <select className="bg-[#0b0e14] border border-white/10 text-white text-[10px] md:text-[9px] px-2 py-1 rounded outline-none cursor-pointer font-bold" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
+              <div className="flex items-center bg-[#0b0e14] border border-white/10 p-0.5 rounded-lg">
+                <button
+                  onClick={() => handleSelectZonaLen(5)}
+                  className={`px-2.5 py-0.5 text-[9px] font-black rounded transition-all ${
+                    selectedZonaLen === 5 
+                      ? 'bg-emerald-500 text-black shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="Zonas de 5 pedras"
+                >
+                  5
+                </button>
+                <button
+                  onClick={() => handleSelectZonaLen(10)}
+                  className={`px-2.5 py-0.5 text-[9px] font-black rounded transition-all ${
+                    selectedZonaLen === 10 
+                      ? 'bg-emerald-500 text-black shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="Zonas de 10 pedras"
+                >
+                  10
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Sub-Barra Fininha de Períodos */}
+          <div className="px-4 py-2 flex justify-between items-center bg-[#0b0c10]/40 border-b border-white/5">
+            <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-emerald-400"></span>
+              Período de Análise
+            </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold text-gray-400 uppercase">Geral:</span>
+                <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-0.5 rounded outline-none cursor-pointer font-bold hover:border-emerald-500/40 transition-colors" value={zonesPeriod} onChange={(e) => setZonesPeriod(+e.target.value)}>
                   <option value={1}>1h</option>
                   <option value={2}>2h</option>
                   <option value={3}>3h</option>
@@ -1589,9 +1682,9 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
                   <option value={12}>12h</option>
                 </select>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[8px] font-bold text-gray-400 uppercase">Ciclo:</span>
-                <select className="bg-[#0b0e14] border border-white/10 text-white text-[10px] md:text-[9px] px-2 py-1 rounded outline-none cursor-pointer font-bold" value={ciclosPeriod} onChange={(e) => setCiclosPeriod(+e.target.value)}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold text-gray-400 uppercase">Ciclo:</span>
+                <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-0.5 rounded outline-none cursor-pointer font-bold hover:border-emerald-500/40 transition-colors" value={ciclosPeriod} onChange={(e) => setCiclosPeriod(+e.target.value)}>
                   <option value={12}>12h</option>
                   <option value={24}>24h</option>
                   <option value={48}>48h (2d)</option>
@@ -1601,9 +1694,9 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
             </div>
           </div>
           
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-3 flex-1 content-start">
+          <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 content-start">
             {zonesStats.blocks.map((z, i) => (
-              <div key={i} className={`rounded-xl border px-3 pt-3 pb-5 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
+              <div key={i} className={`rounded-xl border px-3 pt-2.5 pb-3.5 flex flex-col gap-1.5 transition-all relative overflow-hidden ${
                 z.status === 'ativo' ? 'bg-[#00c83a]/10 border-[#00c83a]/40 shadow-[0_0_15px_rgba(0,200,58,0.2)]' :
                 z.status === 'passou' ? 'bg-red-500/5 border-red-500/20 opacity-60' :
                 'bg-[#0b0c10] border-white/5 hover:border-white/10'

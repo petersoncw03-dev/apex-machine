@@ -1216,7 +1216,7 @@ export function VisaoCoresTab({ globalData }: { globalData?: any[] }) {
           <div className="px-4 py-3 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[2px] border-t-[#00c83a]">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes após o branco</span>
+              <span className="text-[11px] font-black uppercase tracking-widest text-white">Zonas Quentes</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-full border border-white/5 whitespace-nowrap hidden sm:inline">

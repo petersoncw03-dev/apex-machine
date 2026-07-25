@@ -11,12 +11,15 @@ export interface ZonasSimConfig {
   enableGeral: boolean; // Ativa/Desativa Filtro 1 (Winrate Micro)
   geralHours: number; // Horas para Winrate Micro
   geralMinWr: number; // % Winrate Micro mínimo
+  geralMaxWr?: number; // % Winrate Micro máximo
   enableCiclo: boolean; // Ativa/Desativa Filtro 2 (Winrate Ciclo)
   cicloHours: number; // Horas/Dias para Winrate do Ciclo Macro
   cicloMinWr: number; // % Winrate Ciclo mínimo
+  cicloMaxWr?: number; // % Winrate Ciclo máximo
   enableMetaCiclo: boolean; // Ativa/Desativa Filtro 3 (Ciclo do Ciclo)
   metaCicloDays: number; // Dias para Winrate do Ciclo do Ciclo
   metaCicloMinWr: number; // % Winrate Ciclo do Ciclo mínimo
+  metaCicloMaxWr?: number; // % Winrate Ciclo do Ciclo máximo
   initialBet: number; // Valor da 1ª Aposta (ex: R$ 1.00)
   galeMultiplier: number; // Multiplicador de Gale (ex: 1.078 ou 2.0)
   maxGales: number; // Qtd máxima de Gales acumulados antes de considerar Loss Definitivo (ex: 39)
@@ -263,9 +266,9 @@ export function runZonasQuentesSimulation(
         const subHist = rolls.slice(0, i + 1);
         const { microWinrate, cicloWinrate, metaCicloWinrate } = getZoneStatsAtPoint(subHist, zIdx);
 
-        const passGeral = !config.enableGeral || microWinrate >= config.geralMinWr;
-        const passCiclo = !config.enableCiclo || cicloWinrate >= config.cicloMinWr;
-        const passMeta = !config.enableMetaCiclo || metaCicloWinrate >= config.metaCicloMinWr;
+        const passGeral = !config.enableGeral || (microWinrate >= config.geralMinWr && microWinrate <= (config.geralMaxWr ?? 100));
+        const passCiclo = !config.enableCiclo || (cicloWinrate >= config.cicloMinWr && cicloWinrate <= (config.cicloMaxWr ?? 100));
+        const passMeta = !config.enableMetaCiclo || (metaCicloWinrate >= config.metaCicloMinWr && metaCicloWinrate <= (config.metaCicloMaxWr ?? 100));
 
         if (passGeral && passCiclo && passMeta) {
           // DISPARO DE ENTRADA NA ZONA!
@@ -312,7 +315,7 @@ export function runZonasQuentesSimulation(
                 zoneLabel: zLabel,
                 zoneIndex: zIdx,
                 type: 'WIN',
-                pnl: netProfit,
+                pnl: payout - betForThisStep,
                 startGaleLevel: startGaleForThisZone,
                 galeLevel: currentGaleCount,
                 betAmount: betForThisStep,
