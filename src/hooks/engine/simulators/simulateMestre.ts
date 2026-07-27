@@ -93,10 +93,10 @@ export function runMestreSimulation(
         // ==========================================
         // MESTRE DOS BRANCOS SIMULATION
         // ==========================================
-        // Calculamos a IA passando Set vazio para avaliar TODAS as estratégias individualmente
+        const disabledIA = new Set([4, 5, 6, 8, 9, 10, 11, 12]);
         const radarData = calculateRadar(currentSlice as any, radarConfig);
-        const iaData3h = calculateIA(currentSlice as any, 3, new Set(), true, iaConfig);
-        const iaData1h = calculateIA(currentSlice as any, 1, new Set(), true, iaConfig);
+        const iaData3h = calculateIA(currentSlice as any, 3, disabledIA, true, iaConfig);
+        const iaData1h = calculateIA(currentSlice as any, 1, disabledIA, true, iaConfig);
 
         // 1. Simulação INDIVIDUAL das 13 estratégias
         for (let sIdx = 0; sIdx < 13; sIdx++) {

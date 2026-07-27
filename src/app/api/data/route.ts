@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import path from 'path';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 15;
 
 export async function GET() {
   try {
@@ -31,8 +30,6 @@ export async function GET() {
     }
 
     // Otimização: Retornar apenas as últimas 10.000 linhas
-    // Isso é suficiente para cobrir os períodos de 60h (~7.200 linhas)
-    // e reduz drasticamente o tamanho do JSON enviado para o navegador
     const limitedRows = rows.slice(-10000);
 
     const data = limitedRows.map((row) => ({
@@ -42,10 +39,18 @@ export async function GET() {
       timestamp: row[3] || '',
     }));
 
-    return NextResponse.json({ data });
+    return NextResponse.json(
+      { data },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
+        },
+      }
+    );
 
   } catch (error: any) {
     console.error('Google Sheets API Error:', error);
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
   }
 }
+

@@ -14,7 +14,7 @@ const HEAD_GREEN = 'px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent 
 export default function MinutosIAPage() {
   const [globalData, setGlobalData] = useState<Roll[]>([]);
   const [iaPeriodFilter, setIaPeriodFilter] = useState(24);
-  const [disabledStrats, setDisabledStrats] = useState<Set<number>>(new Set());
+  const [disabledStrats, setDisabledStrats] = useState<Set<number>>(new Set([4, 5, 6, 8, 9, 10, 11, 12]));
   const [smartFilter, setSmartFilter] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   

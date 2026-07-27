@@ -159,15 +159,24 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     let reconnectCount = 0;
 
+    const vpsRaw = process.env.NEXT_PUBLIC_VPS_URL;
+    if (!vpsRaw) {
+      console.log('⚡ [SSE Global] Conexão em Tempo Real ativa 100% no cliente via WebSocket direto (Blaze). NEXT_PUBLIC_VPS_URL não configurada.');
+      return;
+    }
+
+    const vpsUrl = vpsRaw.replace(/\/$/, '');
+    const sseEndpoint = `${vpsUrl}/api/events`;
+
     const connect = () => {
       if (!mounted) return;
       try {
-        es = new EventSource('/api/events');
+        es = new EventSource(sseEndpoint);
 
         es.onopen = async () => {
           retryDelay = 2000; // reseta o backoff ao conectar com sucesso
+          console.log(`[SSE Global] Conectado à VPS em ${sseEndpoint}`);
           if (reconnectCount > 0) {
-            console.log('[SSE Global] Reconectado! Buscando pedras perdidas...');
             try {
               const res = await fetch('/api/results?limit=20');
               if (res.ok) {
@@ -197,7 +206,7 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
           try {
             const raw = JSON.parse(event.data);
             const rollId = String(raw.id);
-            // FALLBACK: Se o WebSocket direto com a Blaze já pegou, ignoramos o sinal atrasado do nosso DB
+            // FALLBACK: Se o WebSocket direto com a Blaze já pegou, ignoramos o sinal atrasado
             if (seenIdsRef.current.has(rollId)) return;
             seenIdsRef.current.add(rollId);
 
@@ -218,7 +227,7 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
 
         es.onerror = () => {
           if (!mounted) return;
-          console.log(`🔄 [SSE Global] Reconectando em ${retryDelay / 1000}s...`);
+          console.log(`🔄 [SSE VPS] Reconectando em ${retryDelay / 1000}s...`);
           es?.close();
           es = null;
           retryTimer = setTimeout(() => {
@@ -227,7 +236,6 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
           }, retryDelay);
         };
       } catch (err) {
-        // Fallback caso EventSource lance síncronamente
         retryTimer = setTimeout(connect, retryDelay);
         retryDelay = Math.min(retryDelay * 1.5, MAX_DELAY);
       }

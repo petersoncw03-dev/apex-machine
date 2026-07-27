@@ -73,7 +73,9 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
   const { mestreState: signalState, placarDiario: placarBrancos, levelPoints } = useMestreConfluencia(parsedHistory as any);
   const { mestreState: coresState, placarDiario: placarCores } = useMestreCores(parsedHistory as any);
 
-  const iaSignals = useMinutosIa(parsedHistory as any, iaPeriodFilter, new Set<number>(), true, false);
+  const microFilterInternal = useMemo(() => ({ enabled: true, minWr: 20, maxWr: 100, hours: 1 }), []);
+  const macroFilterInternal = useMemo(() => ({ enabled: true, minWr: 30, maxWr: 100, hours: 72 }), []);
+  const iaSignals = useMinutosIa(parsedHistory as any, iaPeriodFilter, new Set<number>(), true, false, microFilterInternal, macroFilterInternal);
   const { scores: iaScores, stats: iaStats } = iaSignals;
 
   const StoneIcon = ({ n, size = "md", hideNumber = false }: { n: number, size?: "sm" | "md" | "lg" | "ticker", hideNumber?: boolean }) => {
@@ -1788,6 +1790,9 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
             </div>
             
             <div className="flex items-center gap-3">
+              <span className="text-[9px] font-bold text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/30 uppercase tracking-widest hidden sm:inline">
+                Filtro Interno: 1h ≥ 20% | 72h ≥ 30%
+              </span>
               <select className="bg-[#0b0e14] border border-white/10 text-white text-[9px] px-2 py-1 rounded outline-none cursor-pointer" value={iaPeriodFilter} onChange={(e) => setIaPeriodFilter(+e.target.value)}>
                 <option value={1}>1h</option>
                 <option value={2}>2h</option>

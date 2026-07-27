@@ -1,8 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getResultsFromDB, getResultsFromSheets } from '@/lib/data-service';
+import { getResultsFromDB } from '@/lib/data-service';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 3;
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -14,9 +13,16 @@ export async function GET(request: NextRequest) {
 
   // Se falhar ou estiver vazio
   if (!data || data.length === 0) {
-    console.log('Postgres retornou vazio ou falhou...');
     data = [];
   }
 
-  return NextResponse.json({ data, total: data.length, source });
+  return NextResponse.json(
+    { data, total: data.length, source },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=10',
+      },
+    }
+  );
 }
+

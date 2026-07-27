@@ -127,7 +127,10 @@ export interface IaConfig {
 }
 
 export function calculateIA(globalData: RollData[], periodHours: number = 12, disabledStrats: Set<number> = new Set(), withMargin: boolean = true, iaConfig?: IaConfig) {
-    const localDisabledStrats = new Set(disabledStrats);
+    const defaultDisabled = new Set([4, 5, 6, 8, 9, 10, 11, 12]);
+    const localDisabledStrats = disabledStrats && disabledStrats.size > 0 
+        ? new Set(disabledStrats)
+        : defaultDisabled;
     const scores = Array(60).fill(0);
     const activeStratsByMin = Array(60).fill(null).map(() => [] as number[]);
 

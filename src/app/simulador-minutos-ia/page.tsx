@@ -14,8 +14,10 @@ export default function SimuladorMinutosIAPage() {
   const [globalData, setGlobalData] = useState<Roll[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Estratégias desativadas manualmente pelo usuário
-  const [disabledStrats, setDisabledStrats] = useState<Set<number>>(new Set());
+  // Estratégias desativadas por padrão (Desativando as 8 piores / poluidoras: 4, 5, 6, 8, 9, 10, 11, 12)
+  const [disabledStrats, setDisabledStrats] = useState<Set<number>>(
+    new Set([4, 5, 6, 8, 9, 10, 11, 12])
+  );
   const [smartFilter, setSmartFilter] = useState(false);
   const [selectedStratCycles, setSelectedStratCycles] = useState<any>(null);
 
@@ -34,14 +36,20 @@ export default function SimuladorMinutosIAPage() {
   const [macroMaxWr, setMacroMaxWr] = useState(100);
   const [macroHours, setMacroHours] = useState(24);
 
-  // ═══ 3. CONFLUÊNCIA MÍNIMA (para o Placar Geral) ═══
-  const [selectedConf, setSelectedConf] = useState(5);
+  // ═══ 3. WINRATE DO MINUTO ALVO (:MM) ═══
+  const [minutoEnabled, setMinutoEnabled] = useState(false);
+  const [minutoMinWr, setMinutoMinWr] = useState(35);
+  const [minutoMaxWr, setMinutoMaxWr] = useState(100);
+  const [minutoHours, setMinutoHours] = useState(6);
 
-  // ═══ 4. HISTÓRICO DE DIAS (DB fetch — quantos dados buscar) ═══
+  // ═══ 4. CONFLUÊNCIA MÍNIMA (para o Placar Geral) ═══
+  const [selectedConf, setSelectedConf] = useState(2);
+
+  // ═══ 5. HISTÓRICO DE DIAS (DB fetch — quantos dados buscar) ═══
   const [historyDays, setHistoryDays] = useState(24);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // ═══ 5. GESTÃO DE GALES ═══
+  // ═══ 6. GESTÃO DE GALES ═══
   const [initialBet, setInitialBet] = useState(1.0);
   const [galeMultiplier, setGaleMultiplier] = useState(1.078);
   const [maxGales, setMaxGales] = useState(5); // 5 gales = 6 entradas
@@ -60,7 +68,11 @@ export default function SimuladorMinutosIAPage() {
     macroMinWr: 40,
     macroMaxWr: 100,
     macroHours: 24,
-    selectedConf: 5,
+    minutoEnabled: false,
+    minutoMinWr: 35,
+    minutoMaxWr: 100,
+    minutoHours: 6,
+    selectedConf: 2,
     initialBet: 1.0,
     galeMultiplier: 1.078,
     maxGales: 5
@@ -73,11 +85,12 @@ export default function SimuladorMinutosIAPage() {
         iaPeriodFilter,
         microEnabled, microMinWr, microMaxWr, microHours,
         macroEnabled, macroMinWr, macroMaxWr, macroHours,
+        minutoEnabled, minutoMinWr, minutoMaxWr, minutoHours,
         selectedConf,
         initialBet, galeMultiplier, maxGales
       });
     }
-  }, [autoRun, iaPeriodFilter, microEnabled, microMinWr, microMaxWr, microHours, macroEnabled, macroMinWr, macroMaxWr, macroHours, selectedConf, initialBet, galeMultiplier, maxGales]);
+  }, [autoRun, iaPeriodFilter, microEnabled, microMinWr, microMaxWr, microHours, macroEnabled, macroMinWr, macroMaxWr, macroHours, minutoEnabled, minutoMinWr, minutoMaxWr, minutoHours, selectedConf, initialBet, galeMultiplier, maxGales]);
 
   // Handler do botão manual "Rodar Simulação"
   const handleRunManualSimulation = () => {
@@ -85,6 +98,7 @@ export default function SimuladorMinutosIAPage() {
       iaPeriodFilter: historyDays,
       microEnabled, microMinWr, microMaxWr, microHours,
       macroEnabled, macroMinWr, macroMaxWr, macroHours,
+      minutoEnabled, minutoMinWr, minutoMaxWr, minutoHours,
       selectedConf,
       initialBet, galeMultiplier, maxGales
     };
@@ -113,7 +127,7 @@ export default function SimuladorMinutosIAPage() {
   // as estatísticas deslizantes dos filtros Micro e Macro já tenham dados completos!
   const fetchRollData = (testHours: number, microH: number = microHours, macroH: number = macroHours) => {
     setLoadingHistory(true);
-    const warmupHours = Math.max(microH, macroH, 24);
+    const warmupHours = Math.max(microH, macroH, minutoHours, 24);
     const totalFetchHours = testHours + warmupHours;
     fetch(`/api/results/period?hours=${totalFetchHours}`)
       .then(res => res.json())
@@ -130,7 +144,7 @@ export default function SimuladorMinutosIAPage() {
 
   useEffect(() => {
     setIsMounted(true);
-    fetchRollData(24, 3, 24);
+    fetchRollData(activeConfig.iaPeriodFilter, activeConfig.microHours, activeConfig.macroHours);
   }, []);
 
   useEffect(() => {
@@ -141,7 +155,7 @@ export default function SimuladorMinutosIAPage() {
         const hasTsMatch = !mappedRoll.id && prevData.some(r => r.timestamp === mappedRoll.timestamp && r.roll === mappedRoll.roll);
         if (hasIdMatch || hasTsMatch) return prevData;
         const merged = [...prevData, mappedRoll];
-        if (merged.length > 150000) merged.shift();
+        if (merged.length > 100000) merged.shift();
         return merged;
       });
     });
@@ -163,7 +177,8 @@ export default function SimuladorMinutosIAPage() {
     true,
     smartFilter,
     { enabled: activeConfig.microEnabled, minWr: activeConfig.microMinWr, maxWr: activeConfig.microMaxWr, hours: activeConfig.microHours },
-    { enabled: activeConfig.macroEnabled, minWr: activeConfig.macroMinWr, maxWr: activeConfig.macroMaxWr, hours: activeConfig.macroHours }
+    { enabled: activeConfig.macroEnabled, minWr: activeConfig.macroMinWr, maxWr: activeConfig.macroMaxWr, hours: activeConfig.macroHours },
+    { enabled: activeConfig.minutoEnabled, minWr: activeConfig.minutoMinWr, maxWr: activeConfig.minutoMaxWr, hours: activeConfig.minutoHours }
   );
 
   const toggleStrat = (idx: number) => {
@@ -480,10 +495,44 @@ export default function SimuladorMinutosIAPage() {
                 )}
               </div>
 
-              {/* FILTRO 3: Confluência Mínima (afeta apenas o Placar Geral) */}
+              {/* FILTRO 3: Winrate do Minuto Alvo (:MM) */}
+              <div className={`p-3.5 rounded-xl border flex flex-col gap-3 transition-all ${minutoEnabled ? 'bg-[#050b07] border-[#00c83a]/30' : 'bg-[#050b07]/40 border-white/5 opacity-60'}`}>
+                <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                  <span className="text-[11px] font-black text-white uppercase tracking-wider">3. Winrate do Minuto (:MM)</span>
+                  <button onClick={() => setMinutoEnabled(p => !p)} className={`px-2.5 py-0.5 text-[9px] font-black rounded-md uppercase tracking-widest transition-colors ${minutoEnabled ? 'bg-[#00c83a]/20 text-[#00c83a] border border-[#00c83a]/40' : 'bg-slate-800 text-slate-400 border border-white/10'}`}>
+                    {minutoEnabled ? 'ATIVADO' : 'DESATIVADO'}
+                  </button>
+                </div>
+                {minutoEnabled && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">HORAS</label>
+                      <select value={minutoHours} onChange={e => setMinutoHours(Number(e.target.value))} className="w-full bg-[#09120c] border border-white/10 rounded-lg px-1.5 py-1.5 text-xs text-white font-mono font-bold focus:border-[#00c83a] outline-none text-center cursor-pointer">
+                        <option value={1}>1h</option>
+                        <option value={2}>2h</option>
+                        <option value={3}>3h</option>
+                        <option value={6}>6h</option>
+                        <option value={12}>12h</option>
+                        <option value={24}>24h (1d)</option>
+                        <option value={72}>72h (3d)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">MIN WR %</label>
+                      <input type="number" value={minutoMinWr} onChange={e => setMinutoMinWr(Number(e.target.value))} className="w-full bg-[#09120c] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white font-mono font-bold focus:border-[#00c83a] outline-none text-center" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">MAX WR %</label>
+                      <input type="number" value={minutoMaxWr} onChange={e => setMinutoMaxWr(Number(e.target.value))} className="w-full bg-[#09120c] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white font-mono font-bold focus:border-[#00c83a] outline-none text-center" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* FILTRO 4: Confluência Mínima (afeta apenas o Placar Geral) */}
               <div className="p-3.5 bg-[#050b07] rounded-xl border border-[#00c83a]/30 flex flex-col gap-3">
                 <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                  <span className="text-[11px] font-black text-white uppercase tracking-wider">3. Confluência Mínima</span>
+                  <span className="text-[11px] font-black text-white uppercase tracking-wider">4. Confluência Mínima</span>
                   <span className="text-[10px] font-bold text-[#00c83a]">Mínimo {selectedConf}+</span>
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
@@ -495,10 +544,10 @@ export default function SimuladorMinutosIAPage() {
                 </div>
               </div>
 
-              {/* FILTRO 4: Histórico de Dias (DB Fetch) */}
+              {/* FILTRO 5: Histórico de Dias (DB Fetch) */}
               <div className="p-3.5 bg-[#050b07] rounded-xl border border-[#00c83a]/30 flex flex-col gap-2">
                 <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                  <span className="text-[11px] font-black text-white uppercase tracking-wider">4. Histórico de Dias</span>
+                  <span className="text-[11px] font-black text-white uppercase tracking-wider">5. Histórico de Dias</span>
                   <span className="text-[10px] font-bold text-cyan-400 font-mono">
                     {loadingHistory ? 'Carregando...' : `${globalData.length} rodadas`}
                   </span>
@@ -518,10 +567,10 @@ export default function SimuladorMinutosIAPage() {
                 </div>
               </div>
 
-              {/* FILTRO 5: Gestão de Gales */}
+              {/* FILTRO 6: Gestão de Gales */}
               <div className="p-3.5 bg-[#050b07] rounded-xl border border-[#00c83a]/30 flex flex-col gap-3">
                 <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                  <span className="text-[11px] font-black text-white uppercase tracking-wider">5. Gestão de Gales</span>
+                  <span className="text-[11px] font-black text-white uppercase tracking-wider">6. Gestão de Gales</span>
                   <span className="text-[10px] font-bold text-amber-400 font-mono">{maxGales + 1} entradas/sinal</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">

@@ -89,9 +89,10 @@ class HourlyStatTracker {
     this.colHours[col].set(hourKey, prevCol || isW);
   }
 
-  // Retorna { total: horas com dados, w: horas com branco } para um minuto
-  getMinutePct(m: number, currentHourKey: number): number {
-    const cutoff = currentHourKey - this.maxAgeHours;
+  // Retorna { total: horas com dados, w: horas com branco } para um minuto (aceita horas customizadas)
+  getMinutePct(m: number, currentHourKey: number, customHours?: number): number {
+    const hoursToUse = customHours && customHours > 0 ? customHours : this.maxAgeHours;
+    const cutoff = currentHourKey - hoursToUse;
     let total = 0, w = 0;
     for (const [hk, hadW] of this.minuteHours[m]) {
       if (hk > cutoff && hk <= currentHourKey) {
@@ -164,7 +165,9 @@ const STRAT_NAMES = [
   'Zero Absoluto (12h - 0%)',         // 9
   'Frequência Dinâmica (6h/12h)',     // 10
   'Fibo Filtrado (Alta Freq)',        // 11
-  'Soma Sanduíche (Cores Iguais)'     // 12
+  'Soma Sanduíche (Cores Iguais)',    // 12
+  'Momentum Gaps (Chuva de Brancos)',// 13
+  'Matriz de Markov (3ª Ordem)'       // 14
 ];
 
 export interface WinrateFilterConfig {
@@ -181,7 +184,8 @@ export function useMinutosIa(
   withMargin: boolean = true, 
   smartFilter: boolean = false,
   microFilter?: WinrateFilterConfig,
-  macroFilter?: WinrateFilterConfig
+  macroFilter?: WinrateFilterConfig,
+  minutoFilter?: WinrateFilterConfig
 ) {
   const latchedAllowedFiltered = useRef(new Set<string>());
   const latchedAllowedUnfiltered = useRef(new Set<string>());
@@ -189,7 +193,10 @@ export function useMinutosIa(
   const latchedGridUnfiltered = useRef(new Map<number, { score: number, strats: Set<number> }>());
 
   return useMemo(() => {
-    const localDisabledStrats = new Set(disabledStrats);
+    const defaultDisabled = new Set([4, 5, 6, 8, 9, 10, 11, 12]);
+    const localDisabledStrats = disabledStrats && disabledStrats.size > 0 
+      ? new Set(disabledStrats)
+      : defaultDisabled;
     const scores = Array(60).fill(0);
     const activeStratsByMin = Array(60).fill(null).map(() => [] as number[]);
 
@@ -326,11 +333,11 @@ export function useMinutosIa(
         const col = m % 10;
         const currentHourKey = Math.floor(t / 3600000);
 
-        // E1: Cruzamento Linha x Coluna (3h) — Linha ≥15% E Coluna ≥15%
+        // E1: Cruzamento Linha x Coluna (3h) — Linha ≥66% E Coluna ≥66% (pelo menos 2h com branco nas últimas 3h)
         if (!localDisabledStrats.has(0)) {
           const rowPct = s3h.getRowPct(row, currentHourKey);
           const colPct = s3h.getColPct(col, currentHourKey);
-          if (rowPct >= 15 && colPct >= 15) {
+          if (rowPct >= 66 && colPct >= 66) {
             signalsAtRoll[i].add(0);
           }
         }
@@ -440,6 +447,61 @@ export function useMinutosIa(
           }
         }
 
+        // E13: Momentum Gaps (Chuva de Brancos)
+        if (!localDisabledStrats.has(13)) {
+          // Track gaps between recent whites
+          let whites: number[] = [];
+          for (let j = i; j >= 0 && whites.length < 4; j--) {
+            if (isWhite[j]) whites.push(times[j]);
+          }
+          if (whites.length >= 4) {
+            const g1 = Math.round((whites[2] - whites[3]) / ONE_MIN);
+            const g2 = Math.round((whites[1] - whites[2]) / ONE_MIN);
+            const g3 = Math.round((whites[0] - whites[1]) / ONE_MIN);
+            if (g3 < g2 && g2 < g1 && g3 <= 15) {
+              const proj = Math.max(2, g3 + Math.round((g3 - g1) / 2));
+              pendingTargets.push({
+                targetTime: t + proj * ONE_MIN,
+                creatorTime: t, creatorIdx: i,
+                stratIdx: 13,
+                groupId: `mom_${t}`,
+                priority: 1
+              });
+            }
+          }
+        }
+
+        // E14: Matriz de Markov 3ª Ordem
+        if (!localDisabledStrats.has(14) && i >= 3) {
+          const c3 = isWhite[i-3] ? 'W' : (Number(globalData[i-3]?.roll) >= 1 && Number(globalData[i-3]?.roll) <= 7 ? 'R' : 'B');
+          const c2 = isWhite[i-2] ? 'W' : (Number(globalData[i-2]?.roll) >= 1 && Number(globalData[i-2]?.roll) <= 7 ? 'R' : 'B');
+          const c1 = isWhite[i-1] ? 'W' : (Number(globalData[i-1]?.roll) >= 1 && Number(globalData[i-1]?.roll) <= 7 ? 'R' : 'B');
+          const stateKey = `${c3}_${c2}_${c1}`;
+          
+          let stateCount = 0;
+          let whiteHits = 0;
+          for (let j = i - 1; j >= Math.max(0, i - 1500); j--) {
+            if (j >= 3) {
+              const p3 = isWhite[j-3] ? 'W' : (Number(globalData[j-3]?.roll) >= 1 && Number(globalData[j-3]?.roll) <= 7 ? 'R' : 'B');
+              const p2 = isWhite[j-2] ? 'W' : (Number(globalData[j-2]?.roll) >= 1 && Number(globalData[j-2]?.roll) <= 7 ? 'R' : 'B');
+              const p1 = isWhite[j-1] ? 'W' : (Number(globalData[j-1]?.roll) >= 1 && Number(globalData[j-1]?.roll) <= 7 ? 'R' : 'B');
+              if (`${p3}_${p2}_${p1}` === stateKey) {
+                stateCount++;
+                if (isWhite[j]) whiteHits++;
+              }
+            }
+          }
+          if (stateCount >= 5 && (whiteHits / stateCount) >= 0.10) {
+            pendingTargets.push({
+              targetTime: t + 3 * ONE_MIN,
+              creatorTime: t, creatorIdx: i,
+              stratIdx: 14,
+              groupId: `markov_${t}`,
+              priority: 1
+            });
+          }
+        }
+
         // E8: Soma Posterior — precisamos esperar a PRÓXIMA pedra (não-branca)
         if (!localDisabledStrats.has(7)) {
           pendingSomaPost.push({ creatorTime: t, creatorIdx: i, whiteMinuteTime: t });
@@ -521,8 +583,13 @@ export function useMinutosIa(
       const history2h: { t: number, won: boolean }[] = [];
       let lastEvalEnd = -1;
 
-      const microWindowMs = (microFilter?.hours || 3) * 3600000;
-      const macroWindowMs = (macroFilter?.hours || 24) * 3600000;
+      const defaultMicro: WinrateFilterConfig = { enabled: true, minWr: 20, maxWr: 100, hours: 1 };
+      const defaultMacro: WinrateFilterConfig = { enabled: true, minWr: 30, maxWr: 100, hours: 72 };
+      const activeMicroFilter = microFilter || defaultMicro;
+      const activeMacroFilter = macroFilter || defaultMacro;
+
+      const microWindowMs = activeMicroFilter.hours * 3600000;
+      const macroWindowMs = activeMacroFilter.hours * 3600000;
 
       for (let i = 0; i < globalData.length; i++) {
         if (!signalsAtRoll[i].has(sIdx)) continue;
@@ -548,16 +615,24 @@ export function useMinutosIa(
         const macroWr = macroTotal >= 3 ? (macroWins / macroTotal) * 100 : 100;
 
         let passMicro = true;
-        if (microFilter?.enabled) {
-          passMicro = microWr >= microFilter.minWr && microWr <= microFilter.maxWr;
+        if (activeMicroFilter.enabled) {
+          passMicro = microWr >= activeMicroFilter.minWr && microWr <= activeMicroFilter.maxWr;
         }
 
         let passMacro = true;
-        if (macroFilter?.enabled) {
-          passMacro = macroWr >= macroFilter.minWr && macroWr <= macroFilter.maxWr;
+        if (activeMacroFilter.enabled) {
+          passMacro = macroWr >= activeMacroFilter.minWr && macroWr <= activeMacroFilter.maxWr;
         }
 
-        let allowed = passMicro && passMacro;
+        let passMinuto = true;
+        if (minutoFilter?.enabled) {
+          const m = minutes[i];
+          const hk = Math.floor(t / 3600000);
+          const minutoWr = s12h.getMinutePct(m, hk, minutoFilter.hours);
+          passMinuto = minutoWr >= minutoFilter.minWr && minutoWr <= minutoFilter.maxWr;
+        }
+
+        let allowed = passMicro && passMacro && passMinuto;
         if (smartFilter && ![1, 2, 12].includes(sIdx)) {
           let simSa = 0;
           let simMaxSa = 0;
@@ -648,7 +723,7 @@ export function useMinutosIa(
           if (isStratAllowedNow(0, useFilter)) {
             const rPct = s3h.getRowPct(row, latestHourKey);
             const cPct = s3h.getColPct(col, latestHourKey);
-            if (rPct >= 15 && cPct >= 15) { rawScores[m]++; rawStrats[m].add(0); }
+            if (rPct >= 66 && cPct >= 66) { rawScores[m]++; rawStrats[m].add(0); }
           }
 
           if (isStratAllowedNow(1, useFilter) && s6h.getMinutePct(m, latestHourKey) >= 50) { rawScores[m]++; rawStrats[m].add(1); }
