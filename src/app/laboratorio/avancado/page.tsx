@@ -47,7 +47,7 @@ const CP: { [k: number]: string[][] } = {
 };
 const NP: { [k: number]: number[][] } = { 1: genNum(1), 2: genNum(2), 3: genNum(3) };
 
-type SortCol = 'TX_ESTADO' | 'TX_CICLO' | 'TX_ENTRADA' | 'SA' | 'SM' | 'WIN_CICLO' | 'LOSS_CICLO';
+type SortCol = 'TX_CICLO' | 'TX_GERAL' | 'TX_ENTRADA' | 'SA' | 'SM' | 'WIN_CICLO' | 'LOSS_CICLO';
 
 // Interfaces de estatísticas de padrão
 interface PatternStats {
@@ -72,7 +72,7 @@ interface PatternStats {
   currentCycleWins: number;
 }
 
-// Modal do Estado da Zona & Histórico de Ciclos
+// Modal do Ciclo Atual & Histórico de Ciclos
 function CycleDetailModal({ stat, onClose }: { stat: PatternStats; onClose: () => void }) {
   const isColor = typeof stat.pat[0] === 'string';
 
@@ -125,11 +125,11 @@ function CycleDetailModal({ stat, onClose }: { stat: PatternStats; onClose: () =
           </button>
         </div>
 
-        {/* Card Estado Atual da Zona (Estilo Print) */}
+        {/* Card Ciclo Atual (Estilo Print) */}
         <div className="bg-[#141724] border border-white/10 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
           <div className="flex flex-col gap-1.5 text-center sm:text-left">
             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-widest">
-              ESTADO ATUAL DA ZONA
+              CICLO ATUAL
             </span>
             {stat.currentCycleState.type ? (
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
@@ -210,7 +210,7 @@ function CycleDetailModal({ stat, onClose }: { stat: PatternStats; onClose: () =
   );
 }
 
-// Componente para Tabela Avançada de Cores (Por Ciclo + Entradas + Estado da Zona)
+// Componente para Tabela Avançada de Cores (Por Ciclo + Entradas + Ciclo Atual)
 function AdvancedColorTable({
   pats,
   data,
@@ -223,7 +223,7 @@ function AdvancedColorTable({
   const [casas, setCasas] = useState(6);
   const [ph, setPh] = useState(10);
   const [mw, setMw] = useState(0);
-  const [sc, setSc] = useState<SortCol>('TX_ESTADO');
+  const [sc, setSc] = useState<SortCol>('TX_CICLO');
   const [sd, setSd] = useState<'desc' | 'asc'>('desc');
   const [snapshot, setSnapshot] = useState<TickerData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -354,7 +354,7 @@ function AdvancedColorTable({
         const wrCiclo = winCiclo / (winCiclo + lossCiclo || 1);
         const wrEntrada = winEnt / (winEnt + lossEnt || 1);
 
-        // --- 3. HISTÓRICO DE CICLOS & ESTADO ATUAL DA ZONA ---
+        // --- 3. HISTÓRICO DE CICLOS & CICLO ATUAL ---
         const fullCycles: { type: 'W' | 'L'; count: number }[] = [];
         for (const out of outcomesCiclos) {
           if (fullCycles.length === 0) {
@@ -428,13 +428,14 @@ function AdvancedColorTable({
       })
       .filter(s => s.winCiclo >= mw)
       .sort((a, b) => {
-        if (sc === 'TX_ESTADO') return sd === 'desc' ? b.currentCycleWinrate - a.currentCycleWinrate : a.currentCycleWinrate - b.currentCycleWinrate;
+        if (sc === 'TX_CICLO') return sd === 'desc' ? b.currentCycleWinrate - a.currentCycleWinrate : a.currentCycleWinrate - b.currentCycleWinrate;
+        if (sc === 'TX_GERAL') return sd === 'desc' ? b.wrCiclo - a.wrCiclo : a.wrCiclo - b.wrCiclo;
         if (sc === 'SA') return sd === 'desc' ? b.sa - a.sa : a.sa - b.sa;
         if (sc === 'SM') return sd === 'desc' ? b.sm - a.sm : a.sm - b.sm;
         if (sc === 'WIN_CICLO') return sd === 'desc' ? b.winCiclo - a.winCiclo : a.winCiclo - b.winCiclo;
         if (sc === 'LOSS_CICLO') return sd === 'desc' ? b.lossCiclo - a.lossCiclo : a.lossCiclo - b.lossCiclo;
         if (sc === 'TX_ENTRADA') return sd === 'desc' ? b.wrEntrada - a.wrEntrada : a.wrEntrada - b.wrEntrada;
-        return sd === 'desc' ? b.wrCiclo - a.wrCiclo : a.wrCiclo - b.wrCiclo;
+        return sd === 'desc' ? b.currentCycleWinrate - a.currentCycleWinrate : a.currentCycleWinrate - b.currentCycleWinrate;
       })
       .slice(0, 60);
   }, [snapshot, proc, casas, ph, pats, mw, sc, sd]);
@@ -516,7 +517,7 @@ function AdvancedColorTable({
         <div className="py-24 text-center opacity-40 flex flex-col items-center gap-3">
           <FlaskConical size={52} className="text-purple-500" />
           <div className="text-xs font-black uppercase tracking-widest text-white">
-            Clique em "Analisar Ciclos" para calcular estatísticas de ciclos e estado da zona
+            Clique em "Analisar Ciclos" para calcular estatísticas de ciclo atual e winrate
           </div>
         </div>
       ) : (
@@ -527,22 +528,22 @@ function AdvancedColorTable({
                 <th className="p-3 text-center w-12"></th>
                 <th className="p-3 text-center text-xs font-bold uppercase tracking-wider">Padrão</th>
                 <th className="p-3 text-center text-xs font-bold uppercase tracking-wider text-cyan-300">
-                  Estado Atual
-                </th>
-                <th
-                  onClick={() => hs('TX_ESTADO')}
-                  className="p-3 text-center text-xs font-black uppercase tracking-wider text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors"
-                >
-                  <span className="flex items-center justify-center gap-1">
-                    TX Estado % {sc === 'TX_ESTADO' && <ArrowUpDown size={11} />}
-                  </span>
+                  Ciclo Atual
                 </th>
                 <th
                   onClick={() => hs('TX_CICLO')}
+                  className="p-3 text-center text-xs font-black uppercase tracking-wider text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors"
+                >
+                  <span className="flex items-center justify-center gap-1">
+                    TX CICLO % {sc === 'TX_CICLO' && <ArrowUpDown size={11} />}
+                  </span>
+                </th>
+                <th
+                  onClick={() => hs('TX_GERAL')}
                   className="p-3 text-center text-xs font-black uppercase tracking-wider text-purple-300 cursor-pointer hover:bg-white/5 transition-colors"
                 >
                   <span className="flex items-center justify-center gap-1">
-                    TX Ciclo % {sc === 'TX_CICLO' && <ArrowUpDown size={11} />}
+                    TX GERAL % {sc === 'TX_GERAL' && <ArrowUpDown size={11} />}
                   </span>
                 </th>
                 <th
@@ -633,7 +634,7 @@ function AdvancedColorTable({
                       </div>
                     </td>
 
-                    {/* Estado Atual Badge */}
+                    {/* Ciclo Atual Badge */}
                     <td className="p-3 text-center">
                       {s.currentCycleState.type ? (
                         <span
@@ -650,7 +651,7 @@ function AdvancedColorTable({
                       )}
                     </td>
 
-                    {/* Winrate do Estado Atual */}
+                    {/* Winrate do Ciclo Atual (TX CICLO %) */}
                     <td className="p-3 text-center font-black text-sm text-cyan-300">
                       {s.currentCycleTotal > 0 ? (
                         <span className="bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 px-2.5 py-1 rounded-md shadow-sm">
@@ -661,7 +662,7 @@ function AdvancedColorTable({
                       )}
                     </td>
 
-                    {/* TX Ciclo % */}
+                    {/* Winrate Geral dos Ciclos (TX GERAL %) */}
                     <td className="p-3 text-center font-black text-sm text-purple-300">
                       <span className="bg-purple-950/60 border border-purple-500/30 px-2.5 py-1 rounded-md shadow-sm">
                         {wrC}%
@@ -703,7 +704,7 @@ function AdvancedColorTable({
   );
 }
 
-// Componente para Tabela Avançada de Números (Por Ciclo + Entradas + Estado da Zona)
+// Componente para Tabela Avançada de Números (Por Ciclo + Entradas + Ciclo Atual)
 function AdvancedNumberTable({
   pats,
   data,
@@ -716,7 +717,7 @@ function AdvancedNumberTable({
   const [casas, setCasas] = useState(6);
   const [ph, setPh] = useState(12);
   const [mw, setMw] = useState(0);
-  const [sc, setSc] = useState<SortCol>('TX_ESTADO');
+  const [sc, setSc] = useState<SortCol>('TX_CICLO');
   const [sd, setSd] = useState<'desc' | 'asc'>('desc');
   const [snapshot, setSnapshot] = useState<TickerData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -838,7 +839,7 @@ function AdvancedNumberTable({
         const wrCiclo = winCiclo / (winCiclo + lossCiclo || 1);
         const wrEntrada = winEnt / (winEnt + lossEnt || 1);
 
-        // --- 3. HISTÓRICO DE CICLOS & ESTADO ATUAL DA ZONA ---
+        // --- 3. HISTÓRICO DE CICLOS & CICLO ATUAL ---
         const fullCycles: { type: 'W' | 'L'; count: number }[] = [];
         for (const out of outcomesCiclos) {
           if (fullCycles.length === 0) {
@@ -912,13 +913,14 @@ function AdvancedNumberTable({
       })
       .filter(s => s.winCiclo >= mw)
       .sort((a, b) => {
-        if (sc === 'TX_ESTADO') return sd === 'desc' ? b.currentCycleWinrate - a.currentCycleWinrate : a.currentCycleWinrate - b.currentCycleWinrate;
+        if (sc === 'TX_CICLO') return sd === 'desc' ? b.currentCycleWinrate - a.currentCycleWinrate : a.currentCycleWinrate - b.currentCycleWinrate;
+        if (sc === 'TX_GERAL') return sd === 'desc' ? b.wrCiclo - a.wrCiclo : a.wrCiclo - b.wrCiclo;
         if (sc === 'SA') return sd === 'desc' ? b.sa - a.sa : a.sa - b.sa;
         if (sc === 'SM') return sd === 'desc' ? b.sm - a.sm : a.sm - b.sm;
         if (sc === 'WIN_CICLO') return sd === 'desc' ? b.winCiclo - a.winCiclo : a.winCiclo - b.winCiclo;
         if (sc === 'LOSS_CICLO') return sd === 'desc' ? b.lossCiclo - a.lossCiclo : a.lossCiclo - b.lossCiclo;
         if (sc === 'TX_ENTRADA') return sd === 'desc' ? b.wrEntrada - a.wrEntrada : a.wrEntrada - b.wrEntrada;
-        return sd === 'desc' ? b.wrCiclo - a.wrCiclo : a.wrCiclo - b.wrCiclo;
+        return sd === 'desc' ? b.currentCycleWinrate - a.currentCycleWinrate : a.currentCycleWinrate - b.currentCycleWinrate;
       })
       .slice(0, 60);
   }, [snapshot, casas, ph, pats, mw, sc, sd]);
@@ -1003,7 +1005,7 @@ function AdvancedNumberTable({
         <div className="py-24 text-center opacity-40 flex flex-col items-center gap-3">
           <FlaskConical size={52} className="text-purple-500" />
           <div className="text-xs font-black uppercase tracking-widest text-white">
-            Clique em "Analisar Ciclos" para calcular estatísticas de ciclos e estado da zona
+            Clique em "Analisar Ciclos" para calcular estatísticas de ciclo atual e winrate
           </div>
         </div>
       ) : (
@@ -1014,22 +1016,22 @@ function AdvancedNumberTable({
                 <th className="p-3 text-center w-12"></th>
                 <th className="p-3 text-center text-xs font-bold uppercase tracking-wider">Padrão</th>
                 <th className="p-3 text-center text-xs font-bold uppercase tracking-wider text-cyan-300">
-                  Estado Atual
-                </th>
-                <th
-                  onClick={() => hs('TX_ESTADO')}
-                  className="p-3 text-center text-xs font-black uppercase tracking-wider text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors"
-                >
-                  <span className="flex items-center justify-center gap-1">
-                    TX Estado % {sc === 'TX_ESTADO' && <ArrowUpDown size={11} />}
-                  </span>
+                  Ciclo Atual
                 </th>
                 <th
                   onClick={() => hs('TX_CICLO')}
+                  className="p-3 text-center text-xs font-black uppercase tracking-wider text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors"
+                >
+                  <span className="flex items-center justify-center gap-1">
+                    TX CICLO % {sc === 'TX_CICLO' && <ArrowUpDown size={11} />}
+                  </span>
+                </th>
+                <th
+                  onClick={() => hs('TX_GERAL')}
                   className="p-3 text-center text-xs font-black uppercase tracking-wider text-purple-300 cursor-pointer hover:bg-white/5 transition-colors"
                 >
                   <span className="flex items-center justify-center gap-1">
-                    TX Ciclo % {sc === 'TX_CICLO' && <ArrowUpDown size={11} />}
+                    TX GERAL % {sc === 'TX_GERAL' && <ArrowUpDown size={11} />}
                   </span>
                 </th>
                 <th
@@ -1120,7 +1122,7 @@ function AdvancedNumberTable({
                       </div>
                     </td>
 
-                    {/* Estado Atual Badge */}
+                    {/* Ciclo Atual Badge */}
                     <td className="p-3 text-center">
                       {s.currentCycleState.type ? (
                         <span
@@ -1137,7 +1139,7 @@ function AdvancedNumberTable({
                       )}
                     </td>
 
-                    {/* Winrate do Estado Atual */}
+                    {/* Winrate do Ciclo Atual (TX CICLO %) */}
                     <td className="p-3 text-center font-black text-sm text-cyan-300">
                       {s.currentCycleTotal > 0 ? (
                         <span className="bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 px-2.5 py-1 rounded-md shadow-sm">
@@ -1148,7 +1150,7 @@ function AdvancedNumberTable({
                       )}
                     </td>
 
-                    {/* TX Ciclo % */}
+                    {/* Winrate Geral dos Ciclos (TX GERAL %) */}
                     <td className="p-3 text-center font-black text-sm text-purple-300">
                       <span className="bg-purple-950/60 border border-purple-500/30 px-2.5 py-1 rounded-md shadow-sm">
                         {wrC}%
