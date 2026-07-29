@@ -1,0 +1,139 @@
+================================================================================
+ MANUAL ABSOLUTO E CÓDIGO FONTE COMPLETO: SIMULADOR — MINUTOS DA IA
+================================================================================
+ Este documento foi criado para explicar em MÁXIMO DETALHAMENTO, sem resumir nada,
+ exatamente como funciona a ferramenta "Minutos da IA" localizada na página
+ /simulador-minutos-ia do sistema RoboBlaze (Apex Machine).
+
+ O texto está dividido em 3 partes principais:
+ PARTE 1: Explicação Super Didática (como se fosse para uma criança de 10 anos)
+ PARTE 2: Detalhamento Técnico Completo (Motores, Fases, Filtros, Estratégias e Regras)
+ PARTE 3: Código Fonte Íntegro e Completo dos Arquivos (page.tsx e useMinutosIa.ts)
+
+================================================================================
+ PARTE 1: EXPLICAÇÃO SUPER DIDÁTICA (EXPLICANDO PARA UMA CRIANÇA DE 10 ANOS)
+================================================================================
+
+Imagine que você está jogando um jogo onde cai uma roleta com 15 números (do 0 ao 14).
+- O número 0 é a pedra BRANCA (que paga muito dinheiro quando acerta, 14 vezes o valor!).
+- Os números de 1 a 7 são Vermelhos.
+- Os números de 8 a 14 são Pretos.
+
+O nosso objetivo principal é descobrir EM QUAIS MINUTOS do relógio o número 0 (o Branco) tem a MAIOR CHANCE de cair!
+
+Para conseguir essa "super visão do futuro", nós construímos um robô com 15 DETETIVES MENTAIS (chamados de Estratégias da IA).
+
+--------------------------------------------------------------------------------
+1. QUEM SÃO OS 15 DETETIVES (AS 15 ESTRATÉGIAS)?
+--------------------------------------------------------------------------------
+Cada detetive olha para a roleta de um jeito diferente para tentar adivinhar a hora do Branco:
+
+--- OS 7 DETETIVES ELITE (Os mais inteligentes que ficam ligados por padrão) ---
+
+1. Detetive "Linha x Coluna" (Índice 0):
+   Ele desenha uma tabela na parede com 6 colunas e 10 linhas. Ele olha o histórico das últimas 3 horas e diz: "Se a linha X e a coluna Y tiveram muitos Brancos ultimamente (mais de 66%), então os minutos daquela interseção estão quentes!".
+
+2. Detetive "Quentes 6h" (Índice 1):
+   Ele olha para as últimas 6 horas de jogo. Se um minuto específico (exemplo: o minuto :14) teve Brancos em pelo menos 50% das horas passadas, ele levanta a mão e diz: "O minuto :14 está pegando fogo nas últimas 6 horas!".
+
+3. Detetive "Quentes 12h" (Índice 2):
+   Faz a mesma coisa, mas olha um mapa um pouco mais longo: as últimas 12 horas. Se o minuto teve brancos em pelo menos 35% dessas horas, ele marca como quente!
+
+4. Detetive "Quentes 22h" (Índice 3):
+   É o detetive de visão longa da estatística diária. Ele olha quase 1 dia inteiro (22 horas). Se o minuto teve brancos em pelo menos 22% das horas, ele aprova o sinal.
+
+5. Detetive "Soma Posterior" (Índice 7):
+   Assim que cai um Branco, ele não pisca o olho e espera a próxima pedra cair. Se a próxima pedra for um 5 Vermelho, ele faz uma conta mágica: "Hora do branco + 5 minutos = Novo Alvo!".
+
+6. Detetive "Momentum Gaps" (Índice 13):
+   Ele é o caçador de "Chuva de Brancos". Quando os Brancos começam a cair cada vez mais rápido (exemplo: um caiu há 15m, o outro há 10m, o outro há 5m), ele percebe que o intervalo está diminuindo e projeta a próxima tempestade de Brancos!
+
+7. Detetive "Matriz de Markov" (Índice 14):
+   Ele tem uma memória gigantesca de 1500 jogadas passadas. Ele analisa a sequência de 3 cores (exemplo: Vermelho -> Preto -> Vermelho). Se no passado essa sequência exata resultava em Branco em mais de 10% das vezes, ele prevê que vai cair Branco de novo agora!
+
+--- OS 8 DETETIVES COMPLEMENTARES (Que vêm desligados por padrão para não poluir) ---
+
+8. Detetive "Minutagem 10/20m" (Índice 4): Sempre que cai um Branco no minuto X, ele avisa que pode repetir aos X+10m e X+20m.
+9. Detetive "Horário Cheio 60/120m" (Índice 5): Sempre que cai um Branco no minuto X, ele avisa que pode repetir na hora seguinte (+60m) ou 2h depois (+120m).
+10. Detetive "Soma Anterior" (Índice 6): Quando cai um Branco, ele olha para a pedra que veio ANTES dele (exemplo: número 8) e projeta um alvo para +8 minutos.
+11. Detetive "Fibonacci Espaçado" (Índice 8): Usa a sequência matemática mágica de Fibonacci (3, 5, 8 minutos após um Branco).
+12. Detetive "Zero Absoluto" (Índice 9): Caçador de atrasos. Procura minutos que estão há 12 horas sem ver um único Branco e avisa: "Esse minuto está devendo um Branco há muito tempo!".
+13. Detetive "Frequência Dinâmica" (Índice 10): Calcula a velocidade média de queda dos Brancos e projeta a próxima volta.
+14. Detetive "Fibo Filtrado" (Índice 11): Só dispara a sequência de Fibonacci se a última hora tiver sido super movimentada (5 ou mais Brancos).
+15. Detetive "Soma Sanduíche" (Índice 12): Se um Branco cai entre duas pedras de cores iguais (exemplo: Vermelho -> Branco -> Vermelho), ele soma os dois Vermelhos e lança um alvo.
+
+--------------------------------------------------------------------------------
+2. COMO OS FILTROS FUNCIONAM (OS SEGURANÇAS DO JOGO)?
+--------------------------------------------------------------------------------
+Para não sair apostando em qualquer palpite maluco dos detetives, nós colocamos 4 SEGURANÇAS (Filtros rigorosos) para aprovar os sinais:
+
+1. Segurança 1: "Winrate Micro (Geral)"
+   Olha para o desempenho recente de cada detetive nas últimas horas (ex: 1h a 12h). Se o detetive esteve errando muito ultimamente e sua taxa ficou abaixo do limite (ex: < 20%), ele é calado e seu palpite é desconsiderado.
+
+2. Segurança 2: "Winrate Macro (Ciclo)"
+   Olha para o histórico de longo prazo do detetive (ex: 24h a 72h / 3 dias). Garante que a estratégia tem consistência em ciclos longos.
+
+3. Segurança 3: "Winrate do Minuto Alvo (:MM)"
+   Esse segurança olha para o minuto que o detetive quer apostar (exemplo: minuto :40).
+   Ele viaja no tempo para trás (olhando apenas rodadas do passado, sem saber o futuro!) e checa: "Nas últimas 6 horas, o minuto :40 (considerando a margem de 1 minuto para mais ou para menos, ou seja, :39, :40 e :41) teve pelo menos 35% de acertos?".
+   Se o minuto :40 esteve frio nas últimas 6 horas, ele CANCELA A ENTRADA! Nenhuma aposta é feita, e nem vitória nem derrota são registradas no placar.
+
+4. Segurança 4: "Confluência Mínima (Score 1+ a 8+)"
+   É a votação em equipe. Se você colocar Confluência Mínima 3+, a aposta SÓ É FEITA se pelo menos 3 detetives diferentes apontarem para o MESMO MINUTO ao mesmo tempo!
+
+--------------------------------------------------------------------------------
+3. COMO O SIMULADOR E O PLACAR FINANCEIRO CALCULAM OS RESULTADOS?
+--------------------------------------------------------------------------------
+- Janela de Proteção (±1 Minuto / 6 Entradas):
+  Como a roleta rola aproximadamente 2 vezes por minuto, quando a IA dá um sinal para o minuto :40, o jogador faz até 6 entradas cobrindo o minuto :39, o minuto :40 e o minuto :41.
+- Se o Branco cair em qualquer uma dessas 6 entradas:
+  VITÓRIA! (WIN). Ganha 14 vezes o valor da aposta. O lucro líquido é de +13 unidades.
+- Se o Branco NÃO cair nessas 6 entradas (após usar os Gales configurados, ex: 0 a 3 Gales):
+  DERROTA! (LOSS). Perde o valor total investido nas entradas daquele ciclo.
+
+- Trava de Ouro Antirretroativa (Sem Roubo ou Falso Resultado):
+  Uma regra sagrada do código: quando um Branco cai no minuto :58, aquele Branco NÃO PODE mudar a nota do próprio minuto :58 que acabou de acontecer! A decisão de entrar no minuto :58 tem que ser feita estritamente ANTES das :58. Isso impede que o placar "invente" sinais depois que o Branco já caiu.
+
+
+================================================================================
+ PARTE 2: DETALHAMENTO TÉCNICO COMPLETO DA ARQUITETURA
+================================================================================
+
+1. FLUXO DE EXECUÇÃO DO HOOK `useMinutosIa` (4 FASES):
+
+   FASE 1: Inicialização e Agrupadores Estáticos (HourlyStatTrackers)
+   - Instancia rastreadores de frequência horária em janela deslizante para 3h, 6h, 12h e 22h.
+   - Processa o dataset completo de rodadas registrando vitórias por minuto, linha e coluna.
+
+   FASE 2: Geração de Alvos Dinâmicos e Sinais Brutos
+   - Percorre as rodadas em ordem cronológica a partir do `backtestCutoff`.
+   - Avalia os disparos de estratégias dinâmicas (E4 a E8, E10 a E14) empurrando `PendingTarget` com `creatorTime` travado.
+   - Aplica a Trava de Proteção temporal (`pt.targetTime >= pt.creatorTime + 60000`).
+
+   FASE 2.5: Avaliação do Modo Fantasma e Filtros por Estratégia
+   - Calcula a assertividade recente (`wrMicro`) e de ciclo (`wrMacro`) de cada estratégia s.
+   - Preenche `stratStats[s]` para alimentar os cards individuais da interface.
+   - Filtra os sinais brutos permitidos apenas pelas estratégias cujos `wrMicro` e `wrMacro` satisfazem as faixas `microFilter` e `macroFilter`.
+
+   FASE 3: Matriz de Confluência do Horário Atual (Grid 60 Minutos)
+   - Gera a matriz de pontuação para o momento presente (T_now).
+   - Para o minuto atual `latestM`, utiliza snapshot pré-roll para evitar que a pedra atual altere a nota estática do seu próprio minuto.
+   - Filtra alvos dinâmicos onde `pt.creatorTime >= latestTime` ou `pt.targetTime <= latestTime + 30000`.
+   - Se `minutoFilter` estiver ativo e a taxa histórica do minuto `:MM` com margem {M-1, M, M+1} estiver fora da faixa, zera a nota daquele celular no grid.
+
+   FASE 4: Simulação de Backtest por Confluência e Placar Financeiro
+   - Executa a simulação histórica passo-a-passo para cada nível de confluência (Score 1+ até 8+).
+   - Aplica o `minutoFilter` como gatekeeper final: se o minuto da entrada não tiver assertividade prévia >= minWr, pula a entrada completamente sem alterar saldo.
+   - Calcula WinRate %, Sequência de Derrotas Atual (SA), Sequência Máxima de Derrotas (SM), Vitórias e Lucro/Prejuízo Líquido (PnL).
+
+2. ESTRUTURA DE DADOS PRINCIPAL:
+   - `globalData`: Array de rodadas contendo `{ roll, timestamp, id }`.
+   - `disabledStrats`: `Set<number>` indicando quais estratégias estão desativadas.
+   - `microFilter`: `{ enabled, minWr, maxWr, hours }`.
+   - `macroFilter`: `{ enabled, minWr, maxWr, hours }`.
+   - `minutoFilter`: `{ enabled, minWr, maxWr, hours }`.
+   - `iaSignals`: Objeto de retorno contendo `scores` (array de 60 ints), `activeStratsByMin` (array de 60 arrays), `stratStats` (detalhes das 15 estratégias), e `stats` (placar financeiro de 1+ a 8+ confluências).
+
+================================================================================
+ FIM DO ARQUIVO EXPLICACAO_COMPLETA_MINUTOS_IA.TXT
+================================================================================

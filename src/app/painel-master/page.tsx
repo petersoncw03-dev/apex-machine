@@ -1,14 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback, useDeferredValue } from 'react';
-import { useSSE } from '@/contexts/SSEContext';
+import dynamic from 'next/dynamic';
+import { useSSESubscribe } from '@/contexts/SSEContext';
 import { useMinutosIa } from '@/hooks/useMinutosIa';
 import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
-import ResumoDiarioPanel from '@/components/painel-master/ResumoDiarioPanel';
-import AnalisePnlTab from '@/components/painel-master/AnalisePnlTab';
-import GraficoPnlPanel from '@/components/painel-master/GraficoPnlPanel';
-import { VisaoCoresTab } from '@/components/painel-master/VisaoCoresTab';
 import { useVip } from '@/hooks/useVip';
+
+const ResumoDiarioPanel = dynamic(() => import('@/components/painel-master/ResumoDiarioPanel'), { ssr: false });
+const AnalisePnlTab = dynamic(() => import('@/components/painel-master/AnalisePnlTab'), { ssr: false });
+const GraficoPnlPanel = dynamic(() => import('@/components/painel-master/GraficoPnlPanel'), { ssr: false });
+const VisaoCoresTab = dynamic(() => import('@/components/painel-master/VisaoCoresTab').then(m => m.VisaoCoresTab), { ssr: false });
 
 interface Roll { color: string; roll: number; timestamp: string; id?: string; }
 
@@ -62,7 +64,7 @@ export default function RadarAvancado() {
     return () => clearTimeout(timer);
   }, [globalData, globalData24h.length]);
   const [loading, setLoading] = useState(true);
-  const [maxDataHours, setMaxDataHours] = useState(168);
+  const [maxDataHours, setMaxDataHours] = useState(96);
 
 
   // ── NOVAS ESTATÍSTICAS (BRANCOS, DUPLOS, TRIPLOS, HORAS) ──────────────
@@ -675,7 +677,9 @@ export default function RadarAvancado() {
 
   // SCANNER
   const [scanDays, setScanDays] = useState(3);
-  const [scanMin, setScanMin] = useState(30);
+  const [scanMinKey, setScanMinKey] = useState<string>("30");
+  const isSliding = scanMinKey.endsWith('*');
+  const scanMin = parseFloat(scanMinKey.replace('*', ''));
   const [scanSortCol, setScanSortCol] = useState<'SA' | 'SM' | null>(null);
   const [scanSortDir, setScanSortDir] = useState<SortDirection>(null);
   const [minSaScanner, setMinSaScanner] = useState<number>(20);
@@ -688,7 +692,7 @@ export default function RadarAvancado() {
   const [casasHours, setCasasHours] = useState(3);
 
   // MINUTOS
-  const [minHours, setMinHours] = useState(24);
+  const [minHours, setMinHours] = useState(96);
 
   // ENTRADAS BRANCO
   const [entradasBranco, setEntradasBranco] = useState(3);
@@ -838,17 +842,16 @@ export default function RadarAvancado() {
     } catch { } finally { setLoadingScanner(false); }
   }, []);
 
-  // Carrega UMA ÚNICA VEZ ao montar (Dual-Phase Loading)
+  // Carrega UMA ÚNICA VEZ ao montar (Carga Rápida 48h)
   useEffect(() => {
     let isMounted = true;
     
     const initialLoad = async () => {
       setLoading(true);
       
-      // Fase 1: Carga Rápida (48h Global, 3 dias Scanner) para renderizar a interface rápido
       try {
         const [r1, r2] = await Promise.all([
-          fetch(`/api/results/period?hours=48`),
+          fetch(`/api/results/period?hours=${maxDataHours}`),
           fetch(`/api/results/period?hours=72&onlyWhites=true`)
         ]);
         if (r1.ok) {
@@ -861,32 +864,8 @@ export default function RadarAvancado() {
           const arr = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
           if (isMounted) setScannerData(arr);
         }
-      } catch {}
-      
-      // Libera a tela imediatamente após os dados curtos chegarem
-      if (isMounted) setLoading(false);
-      
-      // Fase 2: Carga Silenciosa no fundo (7 Dias)
-      try {
-        if (isMounted) setLoadingScanner(true); // Animação discreta no botão do scanner
-        
-        const [r1Full, r2Full] = await Promise.all([
-          fetch(`/api/results/period?hours=${maxDataHours}`),
-          fetch(`/api/results/period?hours=${scanDays * 24}&onlyWhites=true`)
-        ]);
-        
-        if (r1Full.ok) {
-          const res = await r1Full.json();
-          const arr = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-          if (isMounted) { dataRef.current = arr; setGlobalData(arr); }
-        }
-        if (r2Full.ok) {
-          const res = await r2Full.json();
-          const arr = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-          if (isMounted) setScannerData(arr);
-        }
       } catch {} finally {
-        if (isMounted) setLoadingScanner(false);
+        if (isMounted) setLoading(false);
       }
     };
     
@@ -896,7 +875,7 @@ export default function RadarAvancado() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { subscribe } = useSSE();
+  const { subscribe } = useSSESubscribe();
 
   useEffect(() => {
     const unsub = subscribe((newRoll) => {
@@ -1114,58 +1093,126 @@ export default function RadarAvancado() {
 
     const dayKey = (d: Date) => `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
     const days = Array.from(new Set(data.map(d => dayKey(getBRTDate(d.timestamp)))));
-    const blocks = Math.floor(1440 / scanMin);
-    const hitsPerDay: Record<string, Set<number>> = {};
-    days.forEach(d => hitsPerDay[d] = new Set());
 
     const latestDate = new Date(Date.now() - 3 * 3600 * 1000);
     const latestDayKey = dayKey(latestDate);
-    const latestBlock = Math.floor((latestDate.getUTCHours() * 60 + latestDate.getUTCMinutes() + latestDate.getUTCSeconds() / 60) / scanMin);
 
-    data.forEach(r => {
-      if (!isBranco(r)) return;
-      const dt = getBRTDate(r.timestamp);
-      const min = dt.getUTCHours() * 60 + dt.getUTCMinutes() + dt.getUTCSeconds() / 60;
-      const blk = Math.floor(min / scanMin);
-      if (blk < blocks) hitsPerDay[dayKey(dt)].add(blk);
-    });
+    if (!isSliding) {
+      // --- MODO FIXO ---
+      const blocks = Math.floor(1440 / scanMin);
+      const hitsPerDay: Record<string, Set<number>> = {};
+      days.forEach(d => hitsPerDay[d] = new Set());
 
-    const result = Array.from({ length: blocks }, (_, b) => {
-      const totalMin = b * scanMin;
-      const h = Math.floor(totalMin / 60);
-      const m = Math.floor(totalMin % 60);
-      const s = Math.round((totalMin % 1) * 60);
-      let sa = 0, sma = 0, hits = 0;
-      for (const d of days) {
-        if (d === latestDayKey && b > latestBlock) continue;
-        if (hitsPerDay[d].has(b)) { 
-          hits++; 
-          sa = 0; 
-        } else { 
-          // Só aumenta o SA se o bloco já terminou (não estamos mais nele sem acerto)
-          if (d === latestDayKey && b === latestBlock) {
-             // Bloco atual em andamento, não soma SA ainda
+      const latestBlock = Math.floor((latestDate.getUTCHours() * 60 + latestDate.getUTCMinutes() + latestDate.getUTCSeconds() / 60) / scanMin);
+
+      data.forEach(r => {
+        if (!isBranco(r)) return;
+        const dt = getBRTDate(r.timestamp);
+        const min = dt.getUTCHours() * 60 + dt.getUTCMinutes() + dt.getUTCSeconds() / 60;
+        const blk = Math.floor(min / scanMin);
+        if (blk < blocks) hitsPerDay[dayKey(dt)].add(blk);
+      });
+
+      const result = Array.from({ length: blocks }, (_, b) => {
+        const totalMin = b * scanMin;
+        const h = Math.floor(totalMin / 60);
+        const m = Math.floor(totalMin % 60);
+        const s = Math.round((totalMin % 1) * 60);
+        let sa = 0, sma = 0, hits = 0;
+        for (const d of days) {
+          if (d === latestDayKey && b > latestBlock) continue;
+          if (hitsPerDay[d].has(b)) {
+            hits++;
+            sa = 0;
           } else {
-             sa++; 
-             if (sa > sma) sma = sa; 
+            if (d === latestDayKey && b === latestBlock) {
+              // Bloco atual em andamento, não soma SA ainda
+            } else {
+              sa++;
+              if (sa > sma) sma = sa;
+            }
           }
         }
-      }
-      const label = scanMin < 1 
+        const label = scanMin < 1
           ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
           : `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      return { id: b, label, sa, sma, hits };
-    });
-
-    if (scanSortCol && scanSortDir) {
-      result.sort((a, b) => {
-        const valA = scanSortCol === 'SA' ? a.sa : a.sma;
-        const valB = scanSortCol === 'SA' ? b.sa : b.sma;
-        return scanSortDir === 'desc' ? valB - valA : valA - valB;
+        return { id: b, label, sa, sma, hits };
       });
+
+      if (scanSortCol && scanSortDir) {
+        result.sort((a, b) => {
+          const valA = scanSortCol === 'SA' ? a.sa : a.sma;
+          const valB = scanSortCol === 'SA' ? b.sa : b.sma;
+          return scanSortDir === 'desc' ? valB - valA : valA - valB;
+        });
+      }
+      return result;
+    } else {
+      // --- MODO DESLIZANTE (PASSOS DE 1 MINUTO) ---
+      const minuteHitsPerDay: Record<string, Set<number>> = {};
+      days.forEach(d => minuteHitsPerDay[d] = new Set());
+
+      const latestMin = Math.floor(latestDate.getUTCHours() * 60 + latestDate.getUTCMinutes() + latestDate.getUTCSeconds() / 60);
+
+      data.forEach(r => {
+        if (!isBranco(r)) return;
+        const dt = getBRTDate(r.timestamp);
+        const minInt = Math.floor(dt.getUTCHours() * 60 + dt.getUTCMinutes() + dt.getUTCSeconds() / 60);
+        if (minInt < 1440) minuteHitsPerDay[dayKey(dt)].add(minInt);
+      });
+
+      const windowSize = Math.max(1, Math.round(scanMin));
+      const result = Array.from({ length: 1440 }, (_, b) => {
+        let sa = 0, sma = 0, hits = 0;
+
+        for (const d of days) {
+          if (d === latestDayKey && b > latestMin) continue;
+
+          let hasHit = false;
+          for (let offset = 0; offset < windowSize; offset++) {
+            const mIdx = (b + offset) % 1440;
+            if (minuteHitsPerDay[d].has(mIdx)) {
+              hasHit = true;
+              break;
+            }
+          }
+
+          const windowEnd = b + windowSize - 1;
+          const isInProgress = (d === latestDayKey) && (latestMin <= windowEnd);
+
+          if (hasHit) {
+            hits++;
+            sa = 0;
+          } else {
+            if (isInProgress) {
+              // Janela em andamento sem acerto ainda, não conta SA
+            } else {
+              sa++;
+              if (sa > sma) sma = sa;
+            }
+          }
+        }
+
+        const h1 = Math.floor(b / 60);
+        const m1 = b % 60;
+        const endMin = (b + windowSize - 1) % 1440;
+        const h2 = Math.floor(endMin / 60);
+        const m2 = endMin % 60;
+
+        const label = `${String(h1).padStart(2, '0')}:${String(m1).padStart(2, '0')} - ${String(h2).padStart(2, '0')}:${String(m2).padStart(2, '0')}`;
+        return { id: b, label, sa, sma, hits };
+      });
+
+      if (scanSortCol && scanSortDir) {
+        result.sort((a, b) => {
+          const valA = scanSortCol === 'SA' ? a.sa : a.sma;
+          const valB = scanSortCol === 'SA' ? b.sa : b.sma;
+          return scanSortDir === 'desc' ? valB - valA : valA - valB;
+        });
+      }
+      return result;
     }
-    return result;
-  }, [deferredScannerData, scanMin, scanSortCol, scanSortDir, globalDataDelayed.length]);
+  }, [deferredScannerData, scanMinKey, scanSortCol, scanSortDir, globalDataDelayed.length]);
 
   const handleScanSort = (col: 'SA' | 'SM') => {
     if (scanSortCol === col) {
@@ -1216,6 +1263,28 @@ export default function RadarAvancado() {
     }
     return st;
   }, [sliceCustomMin, activeTab]);
+
+  // ── Modalidade do Mercado (Surf vs Xadrez) ─────────────────────────────────
+  const marketMode = useMemo(() => {
+    if (!globalData || globalData.length < 20) return null;
+    const validColors: string[] = [];
+    for (let i = globalData.length - 1; i >= 0 && validColors.length < 20; i--) {
+       const r = globalData[i];
+       const n = typeof r.roll === 'string' ? parseInt(r.roll) : r.roll;
+       const colorStr = (r.color || '').toLowerCase();
+       if (n === 0 || colorStr.includes('branco') || colorStr.includes('white')) continue;
+       if ((n >= 1 && n <= 7) || colorStr.includes('vermelho') || colorStr.includes('red')) validColors.push('V');
+       else validColors.push('P');
+    }
+    if (validColors.length < 20) return null;
+    let changes = 0;
+    for (let i = 0; i < validColors.length - 1; i++) {
+       if (validColors[i] !== validColors[i+1]) changes++;
+    }
+    if (changes <= 6) return { type: 'surf', text: '🏄 Surf em alta', color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30 shadow-[0_0_15px_rgba(34,211,238,0.2)]' };
+    if (changes >= 13) return { type: 'xadrez', text: '♟️ Xadrez em alta', color: 'text-fuchsia-400 bg-fuchsia-400/10 border-fuchsia-400/30 shadow-[0_0_15px_rgba(232,121,249,0.2)]' };
+    return null;
+  }, [globalData]);
 
   // ── Helpers visuais ───────────────────────────────────────────────────────
   const StoneIcon = ({ n, size = "md" }: { n: number, size?: "sm" | "md" | "lg" | "ticker" }) => {
@@ -1668,8 +1737,9 @@ export default function RadarAvancado() {
                         title={!isVip ? "Filtro exclusivo VIP" : "Período de Histórico"}
                         disabled={!isVip}
                       >
-                        <option value={168}>7 Dias</option>
-                        <option value={360}>15 Dias</option>
+                        <option value={96}>4d</option>
+                        <option value={168}>7d</option>
+                        <option value={360}>15d</option>
                       </select>
                       <select className={SEL} value={seqColorLen} onChange={e => setSeqColorLen(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                         {[5, 6, 7, 8, 9].map(v => <option key={v} value={v}>{v} Cores</option>)}
@@ -1804,8 +1874,8 @@ export default function RadarAvancado() {
                       <select className={`${SEL_GREEN} flex-1`} value={scanDays} onChange={e => setScanDays(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
                         {[1, 2, 3, 5, 7, 10, 14, 30, 60, 90, 120].map(v => <option key={v} value={v}>{v} Dias</option>)}
                       </select>
-                      <select className={`${SEL_GREEN} flex-1`} value={scanMin} onChange={e => setScanMin(+e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
-                        {[0.5, 1, 2, 3, 5, 10, 15, 20, 30, 45, 60].map(v => <option key={v} value={v}>{v} Min</option>)}
+                      <select className={`${SEL_GREEN} flex-1`} value={scanMinKey} onChange={e => setScanMinKey(e.target.value)} disabled={!isVip} title={!isVip ? "Exclusivo VIP" : ""}>
+                        {['0.5', '1', '2', '2*', '3', '3*', '5', '5*', '10', '10*', '15', '20', '30'].map(v => <option key={v} value={v}>{v} Min</option>)}
                       </select>
                     </div>
                     <button
@@ -1866,15 +1936,17 @@ export default function RadarAvancado() {
 
                         return scannerStats.map(s => {
                           const isMaxSA = s.sa === s.sma && s.sma > 0;
-                          const isCurrent = s.id === currentBlock;
+                          const isCurrent = isSliding
+                            ? (min >= s.id && min < s.id + scanMin)
+                            : s.id === currentBlock;
 
                           const saStyle = s.sa === 0 ? 'bg-emerald-500/50 text-white font-black shadow-[inset_0_0_8px_rgba(16,185,129,0.3)]' : isMaxSA ? 'bg-rose-500/50 text-white font-black shadow-[inset_0_0_8px_rgba(244,63,94,0.3)]' : 'text-slate-300 hover:bg-slate-700/30';
 
                           return (
                             <div key={`${s.id}-${s.hits}`} className={`grid grid-cols-3 text-center border-b border-white/5 text-[11px] font-mono font-bold transition-colors ${isCurrent ? "ring-2 ring-inset ring-amber-500 bg-[#f59e0b]/20 z-10 relative" : "hover:bg-slate-700/20"}`}>
-                              <div className="py-1.5 text-slate-200 border-r border-white/5 tracking-wide flex items-center justify-center gap-1.5">
-                                {isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>}
-                                {s.label}
+                              <div className="py-1.5 text-slate-200 border-r border-white/5 tracking-wide flex items-center justify-center gap-1.5 text-[10px] px-1">
+                                {isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0"></div>}
+                                <span className="truncate">{s.label}</span>
                               </div>
                               <div className={`py-1.5 border-r border-white/5 ${saStyle}`}>{s.sa}</div>
                               <div className="py-1.5 text-slate-400">{s.sma}</div>
@@ -3864,10 +3936,10 @@ function FixedColumnsHistory({ data, reverse, showSec }: any) {
    const cyclePred = (key: string) => {
       setPreds(p => {
          const curr = p[key];
-         let next = 'red';
-         if (curr === 'red') next = 'black';
-         else if (curr === 'black') next = 'white';
-         else if (curr === 'white') next = '';
+         let next = 'white';
+         if (curr === 'white') next = 'red';
+         else if (curr === 'red') next = 'black';
+         else if (curr === 'black') next = '';
          
          if (next === '') {
             const copy = {...p};
@@ -3970,11 +4042,11 @@ function FixedColumnsHistory({ data, reverse, showSec }: any) {
                               <div className="w-full h-full rounded-full border-[2.5px] border-white/50"></div>
                            </div>
                         );
-                     } else if (pred === 'white') {
+                     } else if (pred === 'white' || pred === 'branco') {
                         inner = (
-                           <div className="w-[48px] h-[48px] rounded bg-white flex items-center justify-center">
-                              <div className="w-6 h-6 flex items-center justify-center overflow-hidden">
-                                 <img src="/blaze-white.png" alt="W" className="w-full h-full object-contain grayscale" />
+                           <div className="relative w-[48px] h-[48px] rounded bg-white flex items-center justify-center">
+                              <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
+                                 <img src="/blaze-white.png" alt="W" className="w-full h-full object-contain grayscale" style={{ filter: 'grayscale(100%)' }} />
                               </div>
                            </div>
                         );

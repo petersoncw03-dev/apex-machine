@@ -5,7 +5,8 @@ import { GlobalStoneIcon } from '@/components/GlobalStoneIcon';
 import { LiveHistoryCard } from '@/components/LiveHistoryCard';
 import { TickerData } from '@/components/Ticker';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FlaskConical, ArrowUpDown, Sigma, Hammer, TrendingUp, PlaySquare, Copy } from 'lucide-react';
+import { FlaskConical, ArrowUpDown, Sigma, Hammer, TrendingUp, PlaySquare, Copy, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 import PatternBuilder from '@/components/lab/PatternBuilder';
 import LeiGrandesNumeros from '@/components/lab/LeiGrandesNumeros';
 
@@ -256,9 +257,9 @@ export default function LaboratorioPage(){
            <h1 className="text-xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center gap-2">
              <FlaskConical className="text-blue-500" size={22}/>Laboratório de Padrões
            </h1>
-           {/* <a href="/laboratorio/simulador" className="bg-[#12141c] border border-white/10 hover:border-white/20 text-xs font-bold px-3 py-1.5 rounded-md text-gray-400 hover:text-blue-400 transition-colors flex items-center gap-2 uppercase tracking-wider">
-               <PlaySquare size={14} /> Backtester
-           </a> */}
+           <Link href="/laboratorio/avancado" className="bg-purple-950/40 border border-purple-500/30 hover:border-purple-500/60 text-xs font-bold px-3 py-1.5 rounded-lg text-purple-300 hover:text-white transition-colors flex items-center gap-2 uppercase tracking-wider shadow-sm">
+               <Sparkles size={14} className="text-purple-400" /> Ciclos Avançados
+           </Link>
         </div>
         <div className="flex items-center gap-2">
           {loading&&<div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>}

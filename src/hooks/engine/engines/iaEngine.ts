@@ -59,16 +59,30 @@ class HourlyStatTracker {
     this.colHours[col].set(hourKey, prevCol || isW);
   }
 
-  getMinutePct(m: number, currentHourKey: number): number {
-    const cutoff = currentHourKey - this.maxAgeHours;
-    let total = 0, w = 0;
-    for (const [hk, hadW] of this.minuteHours[m]) {
-      if (hk > cutoff && hk <= currentHourKey) {
-        total++;
-        if (hadW) w++;
-      }
+  getMinutePct(m: number, currentHourKey: number, withMargin: boolean = true): number {
+    const hoursToUse = this.maxAgeHours;
+    if (hoursToUse <= 0) return 0;
+
+    const mPrev = (m - 1 + 60) % 60;
+    const mNext = (m + 1) % 60;
+
+    // Se o minuto alvo m (com a margem mNext) ainda não foi concluído na hora atual,
+    // usamos as últimas `hoursToUse` horas que já foram concluídas (de currentHourKey - hoursToUse até currentHourKey - 1).
+    const currentHourHasRun = (this.minuteHours[m].has(currentHourKey) || this.minuteHours[mNext].has(currentHourKey));
+    const startHk = currentHourHasRun ? (currentHourKey - hoursToUse + 1) : (currentHourKey - hoursToUse);
+    const endHk = currentHourHasRun ? currentHourKey : (currentHourKey - 1);
+
+    let w = 0;
+    for (let hk = startHk; hk <= endHk; hk++) {
+      const hadW = withMargin
+        ? ((this.minuteHours[mPrev].get(hk) || false) ||
+           (this.minuteHours[m].get(hk) || false) ||
+           (this.minuteHours[mNext].get(hk) || false))
+        : (this.minuteHours[m].get(hk) || false);
+      if (hadW) w++;
     }
-    return total > 0 ? (w / total) * 100 : 0;
+
+    return (w / hoursToUse) * 100;
   }
 
   getRowPct(row: number, currentHourKey: number): number {
@@ -128,7 +142,7 @@ export interface IaConfig {
 
 export function calculateIA(globalData: RollData[], periodHours: number = 12, disabledStrats: Set<number> = new Set(), withMargin: boolean = true, iaConfig?: IaConfig) {
     const defaultDisabled = new Set([4, 5, 6, 8, 9, 10, 11, 12]);
-    const localDisabledStrats = disabledStrats && disabledStrats.size > 0 
+    const localDisabledStrats = disabledStrats !== undefined && disabledStrats !== null
         ? new Set(disabledStrats)
         : defaultDisabled;
     const scores = Array(60).fill(0);

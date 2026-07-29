@@ -89,18 +89,31 @@ class HourlyStatTracker {
     this.colHours[col].set(hourKey, prevCol || isW);
   }
 
-  // Retorna { total: horas com dados, w: horas com branco } para um minuto (aceita horas customizadas)
-  getMinutePct(m: number, currentHourKey: number, customHours?: number): number {
+  // Retorna { total: horas com dados, w: horas com branco no minuto m ou na margem {m-1, m, m+1} }
+  getMinutePct(m: number, currentHourKey: number, customHours?: number, withMargin: boolean = true): number {
     const hoursToUse = customHours && customHours > 0 ? customHours : this.maxAgeHours;
-    const cutoff = currentHourKey - hoursToUse;
-    let total = 0, w = 0;
-    for (const [hk, hadW] of this.minuteHours[m]) {
-      if (hk > cutoff && hk <= currentHourKey) {
-        total++;
-        if (hadW) w++;
-      }
+    if (hoursToUse <= 0) return 0;
+
+    const mPrev = (m - 1 + 60) % 60;
+    const mNext = (m + 1) % 60;
+
+    // Se o minuto alvo m (com a margem mNext) ainda não foi concluído na hora atual,
+    // usamos as últimas `hoursToUse` horas que já foram concluídas (de currentHourKey - hoursToUse até currentHourKey - 1).
+    const currentHourHasRun = (this.minuteHours[m].has(currentHourKey) || this.minuteHours[mNext].has(currentHourKey));
+    const startHk = currentHourHasRun ? (currentHourKey - hoursToUse + 1) : (currentHourKey - hoursToUse);
+    const endHk = currentHourHasRun ? currentHourKey : (currentHourKey - 1);
+
+    let w = 0;
+    for (let hk = startHk; hk <= endHk; hk++) {
+      const hadW = withMargin
+        ? ((this.minuteHours[mPrev].get(hk) || false) ||
+           (this.minuteHours[m].get(hk) || false) ||
+           (this.minuteHours[mNext].get(hk) || false))
+        : (this.minuteHours[m].get(hk) || false);
+      if (hadW) w++;
     }
-    return total > 0 ? (w / total) * 100 : 0;
+
+    return (w / hoursToUse) * 100;
   }
 
   // Retorna % de horas com branco para uma linha
@@ -194,7 +207,7 @@ export function useMinutosIa(
 
   return useMemo(() => {
     const defaultDisabled = new Set([4, 5, 6, 8, 9, 10, 11, 12]);
-    const localDisabledStrats = disabledStrats && disabledStrats.size > 0 
+    const localDisabledStrats = disabledStrats !== undefined && disabledStrats !== null
       ? new Set(disabledStrats)
       : defaultDisabled;
     const scores = Array(60).fill(0);
@@ -575,18 +588,18 @@ export function useMinutosIa(
     // FASE 2.5: MODO FANTASMA (Filtro Inteligente SA/SM/WR)
     // ════════════════════════════════════════════════════════════════
     const signalAllowed = new Set<string>();
-          const currentGhostStats = STRAT_NAMES.map(() => ({ sa: 0, sm: 0, wr: 0 }));
+    const defaultMicro: WinrateFilterConfig = { enabled: true, minWr: 20, maxWr: 100, hours: 1 };
+    const defaultMacro: WinrateFilterConfig = { enabled: true, minWr: 30, maxWr: 100, hours: 72 };
+    const activeMicroFilter = microFilter || defaultMicro;
+    const activeMacroFilter = macroFilter || defaultMacro;
+
+    const currentGhostStats = STRAT_NAMES.map(() => ({ sa: 0, sm: 0, wr: 0, wrMicro: 0, wrMacro: 0 }));
 
     for (let sIdx = 0; sIdx < STRAT_NAMES.length; sIdx++) {
       let currentSa = 0;
       let maxSa = 0;
       const history2h: { t: number, won: boolean }[] = [];
       let lastEvalEnd = -1;
-
-      const defaultMicro: WinrateFilterConfig = { enabled: true, minWr: 20, maxWr: 100, hours: 1 };
-      const defaultMacro: WinrateFilterConfig = { enabled: true, minWr: 30, maxWr: 100, hours: 72 };
-      const activeMicroFilter = microFilter || defaultMicro;
-      const activeMacroFilter = macroFilter || defaultMacro;
 
       const microWindowMs = activeMicroFilter.hours * 3600000;
       const macroWindowMs = activeMacroFilter.hours * 3600000;
@@ -606,13 +619,13 @@ export function useMinutosIa(
         const microItems = history2h.filter(h => t - h.t <= microWindowMs);
         const microTotal = microItems.length;
         const microWins = microItems.filter(h => h.won).length;
-        const microWr = microTotal >= 3 ? (microWins / microTotal) * 100 : 100;
+        const microWr = microTotal > 0 ? (microWins / microTotal) * 100 : 0;
 
         // Calcular Winrate Macro no momento T (últimas macroHours)
         const macroItems = history2h.filter(h => t - h.t <= macroWindowMs);
         const macroTotal = macroItems.length;
         const macroWins = macroItems.filter(h => h.won).length;
-        const macroWr = macroTotal >= 3 ? (macroWins / macroTotal) * 100 : 100;
+        const macroWr = macroTotal > 0 ? (macroWins / macroTotal) * 100 : 0;
 
         let passMicro = true;
         if (activeMicroFilter.enabled) {
@@ -624,15 +637,7 @@ export function useMinutosIa(
           passMacro = macroWr >= activeMacroFilter.minWr && macroWr <= activeMacroFilter.maxWr;
         }
 
-        let passMinuto = true;
-        if (minutoFilter?.enabled) {
-          const m = minutes[i];
-          const hk = Math.floor(t / 3600000);
-          const minutoWr = s12h.getMinutePct(m, hk, minutoFilter.hours);
-          passMinuto = minutoWr >= minutoFilter.minWr && minutoWr <= minutoFilter.maxWr;
-        }
-
-        let allowed = passMicro && passMacro && passMinuto;
+        let allowed = passMicro && passMacro;
         if (smartFilter && ![1, 2, 12].includes(sIdx)) {
           let simSa = 0;
           let simMaxSa = 0;
@@ -673,15 +678,28 @@ export function useMinutosIa(
 
       // Salvar estado atual para os sinais futuros (Phase 3)
       const tNow = latestTime;
-      while (history2h.length > 0 && tNow - history2h[0].t > 2 * 3600000) {
+      while (history2h.length > 0 && tNow - history2h[0].t > Math.max(microWindowMs, macroWindowMs, 24 * 3600000)) {
         history2h.shift();
       }
       const total2h = history2h.length;
       const wins2h = history2h.filter(h => h.won).length;
+
+      const microItemsNow = history2h.filter(h => tNow - h.t <= microWindowMs);
+      const microTotalNow = microItemsNow.length;
+      const microWinsNow = microItemsNow.filter(h => h.won).length;
+      const wrMicroNow = microTotalNow > 0 ? (microWinsNow / microTotalNow) * 100 : 0;
+
+      const macroItemsNow = history2h.filter(h => tNow - h.t <= macroWindowMs);
+      const macroTotalNow = macroItemsNow.length;
+      const macroWinsNow = macroItemsNow.filter(h => h.won).length;
+      const wrMacroNow = macroTotalNow > 0 ? (macroWinsNow / macroTotalNow) * 100 : 0;
+
       currentGhostStats[sIdx] = {
         sa: currentSa,
         sm: maxSa,
-        wr: total2h >= 5 ? (wins2h / total2h) * 100 : 0
+        wr: total2h >= 5 ? (wins2h / total2h) * 100 : 0,
+        wrMicro: wrMicroNow,
+        wrMacro: wrMacroNow
       };
     }
 
@@ -692,13 +710,16 @@ export function useMinutosIa(
       // Se o filtro IA está desligado, tudo que não foi desativado manualmente passa.
       if (!useFilter) return true;
       
-      // Estratégias imunes ao filtro IA de WinRate (Sempre passam se o filtro IA estiver ligado, desde que não desativadas manualmente)
-      if ([1, 2, 12].includes(sIdx)) return true;
-      
       const g = currentGhostStats[sIdx];
-      if (g.wr >= 40) return true;
-      if (g.sm >= 4 && g.sa >= Math.floor(g.sm * 0.8)) return true;
-      return false;
+      let passMicro = true;
+      if (activeMicroFilter.enabled) {
+        passMicro = g.wrMicro >= activeMicroFilter.minWr && g.wrMicro <= activeMicroFilter.maxWr;
+      }
+      let passMacro = true;
+      if (activeMacroFilter.enabled) {
+        passMacro = g.wrMacro >= activeMacroFilter.minWr && g.wrMacro <= activeMacroFilter.maxWr;
+      }
+      return passMicro && passMacro;
     };
 
     // ════════════════════════════════════════════════════════════════
@@ -716,25 +737,30 @@ export function useMinutosIa(
         const rawScores = Array(60).fill(0);
         const rawStrats = Array(60).fill(null).map(() => new Set<number>());
 
+        const isLatestWhite = isWhite[globalData.length - 1];
+
         for (let m = 0; m < 60; m++) {
           const row = Math.floor(m / 10);
           const col = m % 10;
 
+          // Se for o minuto atual e a última pedra foi um branco, não deixamos o branco atual inflar a nota estática do próprio minuto
+          const hkToUse = (m === latestM && isLatestWhite) ? latestHourKey : latestHourKey;
+
           if (isStratAllowedNow(0, useFilter)) {
-            const rPct = s3h.getRowPct(row, latestHourKey);
-            const cPct = s3h.getColPct(col, latestHourKey);
+            const rPct = s3h.getRowPct(row, hkToUse);
+            const cPct = s3h.getColPct(col, hkToUse);
             if (rPct >= 66 && cPct >= 66) { rawScores[m]++; rawStrats[m].add(0); }
           }
 
-          if (isStratAllowedNow(1, useFilter) && s6h.getMinutePct(m, latestHourKey) >= 50) { rawScores[m]++; rawStrats[m].add(1); }
-          if (isStratAllowedNow(2, useFilter) && s12h.getMinutePct(m, latestHourKey) >= 35) { rawScores[m]++; rawStrats[m].add(2); }
-          if (isStratAllowedNow(3, useFilter) && s22h.getMinutePct(m, latestHourKey) >= 22) { rawScores[m]++; rawStrats[m].add(3); }
+          if (isStratAllowedNow(1, useFilter) && s6h.getMinutePct(m, hkToUse) >= 50) { rawScores[m]++; rawStrats[m].add(1); }
+          if (isStratAllowedNow(2, useFilter) && s12h.getMinutePct(m, hkToUse) >= 35) { rawScores[m]++; rawStrats[m].add(2); }
+          if (isStratAllowedNow(3, useFilter) && s22h.getMinutePct(m, hkToUse) >= 22) { rawScores[m]++; rawStrats[m].add(3); }
           
           if (isStratAllowedNow(9, useFilter)) {
             let hasData = false;
             let hasWhite = false;
             for (const [hk, hadW] of s12h.minuteHours[m]) {
-              if (hk > latestHourKey - 12 && hk <= latestHourKey) {
+              if (hk > hkToUse - 12 && hk <= hkToUse) {
                 hasData = true;
                 if (hadW) hasWhite = true;
               }
@@ -747,6 +773,12 @@ export function useMinutosIa(
         const latchedGrid = useFilter ? latchedGridFiltered : latchedGridUnfiltered;
 
         for (const pt of pendingTargets) {
+            // Trava Antirretroativa: Alvos criados pela pedra atual ou cujo horário já passou
+            // NUNCA podem alterar ou inflar a confluência do minuto atual ou de minutos passados
+            if (pt.creatorTime >= latestTime || pt.targetTime <= latestTime + 30000) {
+              continue;
+            }
+
             let isAllowed = isStratAllowedNow(pt.stratIdx, useFilter);
             
             if (localDisabledStrats.has(pt.stratIdx)) {
@@ -813,6 +845,14 @@ export function useMinutosIa(
             
             // Garantir que o finalScore nunca ultrapasse o número de estratégias únicas ativas
             finalScore = finalStrats.size;
+
+            if (minutoFilter?.enabled) {
+              const mWr = s12h.getMinutePct(m, latestHourKey, minutoFilter.hours);
+              if (mWr < minutoFilter.minWr || mWr > minutoFilter.maxWr) {
+                finalScore = 0;
+                finalStrats = new Set();
+              }
+            }
 
             latchedGrid.current.set(absMin, { score: finalScore, strats: finalStrats });
             
@@ -989,6 +1029,15 @@ export function useMinutosIa(
         const validStrats = Array.from(filteredSignalsAtRoll[i]).filter(sIdx => !localDisabledStrats.has(sIdx));
         const score = validStrats.length;
         if (score < confLvl) continue;
+
+        if (minutoFilter?.enabled) {
+          const m = minutes[i];
+          const hk = Math.floor(times[i] / 3600000);
+          const minutoWr = s12h.getMinutePct(m, hk, minutoFilter.hours);
+          if (minutoWr < minutoFilter.minWr || minutoWr > minutoFilter.maxWr) {
+            continue;
+          }
+        }
 
         // Para confluência, o creatorTime é o MAIOR creatorTime entre todas as estratégias
         let maxCreator = 0;

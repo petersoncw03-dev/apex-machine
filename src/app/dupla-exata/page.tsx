@@ -500,10 +500,10 @@ function FixedColumnsHistory({ data, stats, numEntradas }: { data: any[], stats?
    const cyclePred = (key: string) => {
       setPreds(p => {
          const curr = p[key];
-         let next = 'red';
-         if (curr === 'red') next = 'black';
-         else if (curr === 'black') next = 'white';
-         else if (curr === 'white') next = '';
+         let next = 'white';
+         if (curr === 'white') next = 'red';
+         else if (curr === 'red') next = 'black';
+         else if (curr === 'black') next = '';
          
          if (next === '') {
             const copy = {...p};

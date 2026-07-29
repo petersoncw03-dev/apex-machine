@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries, Time } from "lightweight-charts";
 import * as htmlToImage from 'html-to-image';
-import { useSSE } from '@/contexts/SSEContext';
+import { useSSESubscribe } from '@/contexts/SSEContext';
 
 function calcSMA(v: number[], p: number) { return v.map((_, i) => i < p - 1 ? null : v.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p); }
 function calcEMA(v: number[], p: number) { const k=2/(p+1); let e: number|null=null; return v.map((x,i)=>{ if(i<p-1)return null; e=e===null?v.slice(0,p).reduce((a,b)=>a+b,0)/p:x*k+e*(1-k); return parseFloat(e.toFixed(2)); }); }
@@ -85,7 +85,7 @@ function LiveBettingStatus() {
   const [black, setBlack] = useState({ amt: 0, count: 0 });
   const [timeLeft, setTimeLeft] = useState(0);
   const [result, setResult] = useState<{color: number, payout: number} | null>(null);
-  const { eurRate } = useSSE();
+  const { eurRate } = useSSESubscribe();
 
   const timerRef = useRef<any>(null);
   const pingRef = useRef<any>(null);
@@ -281,7 +281,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   const chart = useRef<any>(null), candle = useRef<any>(null);
   const sMap = useRef<Map<string, any>>(new Map());
   const cidx = useRef(0);
-  const { eurRate } = useSSE();
+  const { eurRate } = useSSESubscribe();
 
   const [tf, setTf] = useState("tick");
   const [inds, setInds] = useState<Ind[]>([]);

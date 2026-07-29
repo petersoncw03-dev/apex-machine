@@ -55,7 +55,7 @@ export default function SimuladorMinutosIAPage() {
   const [maxGales, setMaxGales] = useState(5); // 5 gales = 6 entradas
 
   // ═══ GESTÃO DE EXECUÇÃO DA SIMULAÇÃO (Auto vs Manual) ═══
-  const [autoRun, setAutoRun] = useState<boolean>(false);
+  const [autoRun, setAutoRun] = useState<boolean>(true);
 
   // Configuração Ativa que alimenta o simulador
   const [activeConfig, setActiveConfig] = useState({
@@ -78,19 +78,17 @@ export default function SimuladorMinutosIAPage() {
     maxGales: 5
   });
 
-  // Se autoRun === true, sincroniza activeConfig automaticamente ao alterar qualquer filtro
+  // Sincroniza activeConfig automaticamente ao alterar qualquer filtro (Auto Run por padrão)
   useEffect(() => {
-    if (autoRun) {
-      setActiveConfig({
-        iaPeriodFilter,
-        microEnabled, microMinWr, microMaxWr, microHours,
-        macroEnabled, macroMinWr, macroMaxWr, macroHours,
-        minutoEnabled, minutoMinWr, minutoMaxWr, minutoHours,
-        selectedConf,
-        initialBet, galeMultiplier, maxGales
-      });
-    }
-  }, [autoRun, iaPeriodFilter, microEnabled, microMinWr, microMaxWr, microHours, macroEnabled, macroMinWr, macroMaxWr, macroHours, minutoEnabled, minutoMinWr, minutoMaxWr, minutoHours, selectedConf, initialBet, galeMultiplier, maxGales]);
+    setActiveConfig({
+      iaPeriodFilter,
+      microEnabled, microMinWr, microMaxWr, microHours,
+      macroEnabled, macroMinWr, macroMaxWr, macroHours,
+      minutoEnabled, minutoMinWr, minutoMaxWr, minutoHours,
+      selectedConf,
+      initialBet, galeMultiplier, maxGales
+    });
+  }, [iaPeriodFilter, microEnabled, microMinWr, microMaxWr, microHours, macroEnabled, macroMinWr, macroMaxWr, macroHours, minutoEnabled, minutoMinWr, minutoMaxWr, minutoHours, selectedConf, initialBet, galeMultiplier, maxGales]);
 
   // Handler do botão manual "Rodar Simulação"
   const handleRunManualSimulation = () => {
@@ -304,6 +302,63 @@ export default function SimuladorMinutosIAPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Sinais Aprovados Ativos no Horário Atual */}
+              <div className="w-full px-4 py-3 bg-[#09120c] border-b border-white/10 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#00c83a] shadow-[0_0_10px_rgba(0,200,58,0.8)] animate-pulse"></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#00c83a]">
+                    Sinais Aprovados no Horário Atual (Confluência {selectedConf}+)
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {(() => {
+                    const approvedMins = iaSignals.scores
+                      .map((score, min) => ({ min, score }))
+                      .filter(item => item.score >= selectedConf);
+
+                    if (approvedMins.length === 0) {
+                      return (
+                        <span className="text-[10px] text-slate-500 font-mono italic">
+                          Nenhum sinal atinge os filtros selecionados
+                        </span>
+                      );
+                    }
+
+                    return approvedMins.map(({ min, score }) => {
+                      const minStr = String(min).padStart(2, '0');
+                      const strats = (iaSignals.activeStratsByMin && iaSignals.activeStratsByMin[min]) || [];
+                      return (
+                        <div key={min} className="group/chip relative cursor-pointer">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-black bg-cyan-950/80 text-cyan-300 px-2.5 py-1 rounded-lg border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)] hover:border-cyan-400 transition-colors">
+                            :{minStr}
+                            <span className="bg-cyan-400 text-black text-[9px] px-1 rounded font-sans font-black">
+                              {score}
+                            </span>
+                          </span>
+                          {strats.length > 0 && (
+                            <div className="absolute left-0 bottom-full mb-2 w-max opacity-0 invisible group-hover/chip:opacity-100 group-hover/chip:visible transition-all z-50">
+                              <div className="bg-[#0b0e14] border border-cyan-500/30 rounded-xl p-2.5 shadow-2xl backdrop-blur-md">
+                                <div className="text-[9px] uppercase font-black text-cyan-400 mb-1">
+                                  Minuto :{minStr} — {strats.length} Estratégias:
+                                </div>
+                                <ul className="flex flex-col gap-1">
+                                  {strats.map(sIdx => (
+                                    <li key={sIdx} className="text-[9px] text-slate-300 font-bold">
+                                      • {iaSignals.activeStrats[sIdx]}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
 
               {/* Grade de 60 Minutos (6 colunas × 10 linhas) com Tooltips */}

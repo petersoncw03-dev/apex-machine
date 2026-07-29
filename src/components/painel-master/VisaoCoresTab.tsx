@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useDeferredValue } from 'react';
-import { useSSE } from '@/contexts/SSEContext';
+import { useSSESubscribe } from '@/contexts/SSEContext';
 import { useMinutosIa } from '@/hooks/useMinutosIa';
 import { useMestreConfluencia } from '@/hooks/useMestreConfluencia';
 import { useMestreCores } from '@/hooks/useMestreCores';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Activity, Clock, Droplets } from 'lucide-react';
-import SniperMinutos from './SniperMinutos';
 
 interface RollData {
   id: string;
@@ -22,8 +21,8 @@ const COLORS = {
   Branco: '#ffffff',
 };
 
-export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { globalData?: any[], onlyZonasQuentes?: boolean, zonaLen?: number }) {
-  const { subscribe } = useSSE();
+export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5, hideSniper = false }: { globalData?: any[], onlyZonasQuentes?: boolean, zonaLen?: number, hideSniper?: boolean }) {
+  const { subscribe } = useSSESubscribe();
   const [localHistory, setLocalHistory] = useState<RollData[]>([]);
   const [loading, setLoading] = useState(!globalData);
   const [radarMode, setRadarMode] = useState<'branco' | 'cor' | 'branco_3' | 'cor_1'>('branco');
@@ -75,7 +74,8 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
 
   const microFilterInternal = useMemo(() => ({ enabled: true, minWr: 20, maxWr: 100, hours: 1 }), []);
   const macroFilterInternal = useMemo(() => ({ enabled: true, minWr: 30, maxWr: 100, hours: 72 }), []);
-  const iaSignals = useMinutosIa(parsedHistory as any, iaPeriodFilter, new Set<number>(), true, false, microFilterInternal, macroFilterInternal);
+  const badStratsAvancado = useMemo(() => new Set<number>([4, 5, 6, 8, 9, 10, 11, 12]), []);
+  const iaSignals = useMinutosIa(parsedHistory as any, iaPeriodFilter, badStratsAvancado, true, false, microFilterInternal, macroFilterInternal);
   const { scores: iaScores, stats: iaStats } = iaSignals;
 
   const StoneIcon = ({ n, size = "md", hideNumber = false }: { n: number, size?: "sm" | "md" | "lg" | "ticker", hideNumber?: boolean }) => {
@@ -2108,10 +2108,7 @@ export function VisaoCoresTab({ globalData, onlyZonasQuentes, zonaLen = 5 }: { g
         </div>
       </div>
 
-      {/* Sniper de Minutos (Nova Ferramenta Preditiva) */}
-      <div className="flex flex-col gap-4 mt-4">
-         <SniperMinutos globalData={globalData || []} />
-      </div>
+
 
       {/* MODAL DE CICLOS DE ZONA */}
       {selectedZoneCycles && (

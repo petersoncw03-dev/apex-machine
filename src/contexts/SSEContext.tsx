@@ -14,23 +14,29 @@ export interface Roll {
 
 type Listener = (roll: Roll) => void;
 
-interface SSEContextValue {
-  /** Último giro recebido ao vivo */
-  latestRoll: Roll | null;
+interface SSESubscribeContextValue {
   /** Assina eventos de pedra nova. Retorna função de cancelamento. */
   subscribe: (fn: Listener) => () => void;
   /** Taxa de câmbio dinâmica de Euro para Real */
   eurRate: number;
 }
 
-const SSEContext = createContext<SSEContextValue>({
-  latestRoll: null,
+interface SSELatestRollContextValue {
+  /** Último giro recebido ao vivo */
+  latestRoll: Roll | null;
+}
+
+const SSESubscribeContext = createContext<SSESubscribeContextValue>({
   subscribe: () => () => {},
   eurRate: 5.8362,
 });
 
+const SSELatestRollContext = createContext<SSELatestRollContextValue>({
+  latestRoll: null,
+});
+
 /**
- * SSEProvider — cria UMA ÚNICA conexão EventSource para todo o app.
+ * SSEProvider — cria UMA ÚNICA conexão EventSource/WebSocket para todo o app.
  * Todas as páginas consomem esse mesmo canal, nunca abrindo conexões extras.
  * Isso evita o estouro do limite de 6 conexões HTTP por domínio do browser.
  */
@@ -250,15 +256,30 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const subscribeValue = React.useMemo(() => ({ subscribe, eurRate }), [subscribe, eurRate]);
+  const latestRollValue = React.useMemo(() => ({ latestRoll }), [latestRoll]);
 
   return (
-    <SSEContext.Provider value={{ latestRoll, subscribe, eurRate }}>
-      {children}
-    </SSEContext.Provider>
+    <SSESubscribeContext.Provider value={subscribeValue}>
+      <SSELatestRollContext.Provider value={latestRollValue}>
+        {children}
+      </SSELatestRollContext.Provider>
+    </SSESubscribeContext.Provider>
   );
 }
 
-/** Hook para consumir a conexão SSE global */
-export function useSSE() {
-  return useContext(SSEContext);
+/** Hook leve para apenas assinar eventos via callback ou obter eurRate (NÃO dispara re-renders quando latestRoll muda) */
+export function useSSESubscribe() {
+  return useContext(SSESubscribeContext);
 }
+
+/** Hook completo para consumir a conexão SSE global */
+export function useSSE() {
+  const subCtx = useContext(SSESubscribeContext);
+  const rollCtx = useContext(SSELatestRollContext);
+  return {
+    ...subCtx,
+    latestRoll: rollCtx.latestRoll,
+  };
+}
+

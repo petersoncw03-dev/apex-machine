@@ -3,17 +3,42 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
 export default function SniperMinutos({ globalData }: { globalData: any[] }) {
-  const [periodDays, setPeriodDays] = useState<7 | 14>(7);
+  const [periodDays, setPeriodDays] = useState<4 | 7 | 14>(4);
+  const [base96hData, setBase96hData] = useState<any[] | null>(null);
   const [extendedData, setExtendedData] = useState<any[] | null>(null);
   const [loadingExtended, setLoadingExtended] = useState(false);
   const inactivityTimer = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Busca 96h (4 dias) obrigatoriamente para o Sniper de Minutos na montagem
+  useEffect(() => {
+    let mounted = true;
+    const fetch96h = async () => {
+      try {
+        const res = await fetch('/api/results/period?hours=96');
+        if (res.ok) {
+          const json = await res.json();
+          const arr = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+          const mappedData = [...arr].map((r: any) => ({
+            ...r,
+            color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
+            roll: r.roll?.toString()
+          }));
+          if (mounted) setBase96hData(mappedData);
+        }
+      } catch (e) {
+        console.error('Erro ao buscar 96h para o SniperMinutos:', e);
+      }
+    };
+    fetch96h();
+    return () => { mounted = false; };
+  }, []);
+
   // Reseta o timer de inatividade quando o usuário interage
   const resetInactivityTimer = () => {
-    if (periodDays !== 14) return;
+    if (periodDays === 4) return;
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     inactivityTimer.current = setTimeout(() => {
-      setPeriodDays(7);
+      setPeriodDays(4);
       setExtendedData(null);
     }, 3 * 60 * 1000); // 3 minutos
   };
@@ -25,50 +50,47 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
     };
   }, []);
 
-  const handleSetPeriod = async (days: 7 | 14) => {
+  const handleSetPeriod = async (days: 4 | 7 | 14) => {
     setPeriodDays(days);
-    if (days === 14 && !extendedData) {
-      setLoadingExtended(true);
-      try {
-        const res = await fetch(`/api/results/period?hours=336`); // 14 dias
-        if (res.ok) {
-          const json = await res.json();
-          const arr = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
-          const mappedData = [...arr].map((r: any) => ({
-            ...r,
-            color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
-            roll: r.roll?.toString()
-          }));
-          setExtendedData(mappedData);
-        }
-      } catch (e) {
-        console.error('Erro ao buscar 14 dias:', e);
-      } finally {
-        setLoadingExtended(false);
-      }
-    }
-    
-    if (days === 7) {
+    if (days === 4) {
       setExtendedData(null);
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-    } else {
-      resetInactivityTimer();
+      return;
     }
+    
+    const targetHours = days * 24; // 168h ou 336h
+    setLoadingExtended(true);
+    try {
+      const res = await fetch(`/api/results/period?hours=${targetHours}`);
+      if (res.ok) {
+        const json = await res.json();
+        const arr = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+        const mappedData = [...arr].map((r: any) => ({
+          ...r,
+          color: r.color?.toString().charAt(0).toUpperCase() + r.color?.toString().slice(1).toLowerCase(),
+          roll: r.roll?.toString()
+        }));
+        setExtendedData(mappedData);
+      }
+    } catch (e) {
+      console.error(`Erro ao buscar ${days} dias:`, e);
+    } finally {
+      setLoadingExtended(false);
+    }
+    
+    resetInactivityTimer();
   };
 
-  // Mescla os dados extras com os dados globais mais recentes (que recebem websocket)
+  // Mescla a base histórica (96h, 7d ou 14d) com o globalData ao vivo do WebSocket
   const mergedData = useMemo(() => {
-    if (periodDays === 7 || !extendedData) return globalData;
-    if (!globalData || globalData.length === 0) return extendedData;
+    const activeHistory = extendedData || base96hData || globalData;
+    if (!activeHistory || activeHistory.length === 0) return globalData || [];
+    if (!globalData || globalData.length === 0) return activeHistory;
     
-    // globalData is oldest-first. The newest item is at the end.
     const oldestGlobalTimestamp = new Date(globalData[0].timestamp).getTime();
-    // extendedData is also oldest-first.
-    // We want items in extendedData that are OLDER than the oldest item in globalData.
-    const olderData = extendedData.filter(d => new Date(d.timestamp).getTime() < oldestGlobalTimestamp);
-    // Oldest items first: olderData comes first, then globalData.
+    const olderData = activeHistory.filter(d => new Date(d.timestamp).getTime() < oldestGlobalTimestamp);
     return [...olderData, ...globalData];
-  }, [globalData, extendedData, periodDays]);
+  }, [globalData, base96hData, extendedData]);
 
   // Filtra dados para o periodo escolhido
   const dataPeriod = useMemo(() => {
@@ -201,17 +223,23 @@ export default function SniperMinutos({ globalData }: { globalData: any[] }) {
         </div>
         <div className="flex gap-2">
           <button 
+            onClick={() => handleSetPeriod(4)}
+            className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${periodDays === 4 ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
+          >
+            4 Dias (96h)
+          </button>
+          <button 
             onClick={() => handleSetPeriod(7)}
             className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${periodDays === 7 ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
           >
-            7 Dias
+            {loadingExtended && periodDays === 7 ? 'Carregando...' : '7 Dias'}
           </button>
           <button 
             onClick={() => handleSetPeriod(14)}
             className={`text-[9px] font-bold px-2 py-1 border rounded uppercase tracking-wider transition-colors ${periodDays === 14 ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-gray-400 bg-white/5 border-white/5 hover:border-white/20 hover:text-white'}`}
-            title="Carrega 14 dias independentemente. Volta para 7 dias após 3 min de inatividade."
+            title="Carrega 14 dias independentemente."
           >
-            {loadingExtended ? 'Carregando...' : '14 Dias'}
+            {loadingExtended && periodDays === 14 ? 'Carregando...' : '14 Dias'}
           </button>
         </div>
       </div>
