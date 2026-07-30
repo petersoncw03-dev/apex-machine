@@ -593,7 +593,7 @@ export function useMinutosIa(
     const activeMicroFilter = microFilter || defaultMicro;
     const activeMacroFilter = macroFilter || defaultMacro;
 
-    const currentGhostStats = STRAT_NAMES.map(() => ({ sa: 0, sm: 0, wr: 0, wrMicro: 0, wrMacro: 0 }));
+    const currentGhostStats = STRAT_NAMES.map(() => ({ sa: 0, sm: 0, wr: 0, wrMicro: 0, wrMacro: 0, microTotal: 0, macroTotal: 0 }));
 
     for (let sIdx = 0; sIdx < STRAT_NAMES.length; sIdx++) {
       let currentSa = 0;
@@ -629,12 +629,12 @@ export function useMinutosIa(
 
         let passMicro = true;
         if (activeMicroFilter.enabled) {
-          passMicro = microWr >= activeMicroFilter.minWr && microWr <= activeMicroFilter.maxWr;
+          passMicro = microTotal > 0 ? (microWr >= activeMicroFilter.minWr && microWr <= activeMicroFilter.maxWr) : true;
         }
 
         let passMacro = true;
         if (activeMacroFilter.enabled) {
-          passMacro = macroWr >= activeMacroFilter.minWr && macroWr <= activeMacroFilter.maxWr;
+          passMacro = macroTotal > 0 ? (macroWr >= activeMacroFilter.minWr && macroWr <= activeMacroFilter.maxWr) : true;
         }
 
         let allowed = passMicro && passMacro;
@@ -699,7 +699,9 @@ export function useMinutosIa(
         sm: maxSa,
         wr: total2h >= 5 ? (wins2h / total2h) * 100 : 0,
         wrMicro: wrMicroNow,
-        wrMacro: wrMacroNow
+        wrMacro: wrMacroNow,
+        microTotal: microTotalNow,
+        macroTotal: macroTotalNow
       };
     }
 
@@ -713,11 +715,11 @@ export function useMinutosIa(
       const g = currentGhostStats[sIdx];
       let passMicro = true;
       if (activeMicroFilter.enabled) {
-        passMicro = g.wrMicro >= activeMicroFilter.minWr && g.wrMicro <= activeMicroFilter.maxWr;
+        passMicro = g.microTotal > 0 ? (g.wrMicro >= activeMicroFilter.minWr && g.wrMicro <= activeMicroFilter.maxWr) : true;
       }
       let passMacro = true;
       if (activeMacroFilter.enabled) {
-        passMacro = g.wrMacro >= activeMacroFilter.minWr && g.wrMacro <= activeMacroFilter.maxWr;
+        passMacro = g.macroTotal > 0 ? (g.wrMacro >= activeMacroFilter.minWr && g.wrMacro <= activeMacroFilter.maxWr) : true;
       }
       return passMicro && passMacro;
     };

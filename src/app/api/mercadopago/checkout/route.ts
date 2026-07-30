@@ -5,10 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 
 // Mapa de planos: days -> { title, price }
 const PLANS: Record<number, { title: string; price: number }> = {
-  1:  { title: 'Passe Diário – Apex Machine',      price: 5  },
-  7:  { title: 'Acesso Semanal – Apex Machine',     price: 15 },
-  15: { title: 'Acesso Quinzenal – Apex Machine',   price: 35 },
-  30: { title: 'Passe Apex Mensal – Apex Machine',  price: 50 },
+  7:  { title: 'Acesso Semanal – Apex Machine',     price: 27 },
+  15: { title: 'Acesso Quinzenal – Apex Machine',   price: 47 },
+  30: { title: 'Passe Apex Mensal – Apex Machine',  price: 57 },
 };
 
 export async function POST(req: Request) {

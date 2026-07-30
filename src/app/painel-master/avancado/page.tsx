@@ -1369,6 +1369,11 @@ export default function RadarAvancado() {
                    </span>
                    <span className="text-[14px] font-black tracking-wide text-white">Tempo Real</span>
                  </div>
+                 {marketMode && (
+                   <div className={`px-2 py-0.5 rounded border text-[9px] font-black tracking-widest uppercase flex items-center gap-1 animate-pulse ${marketMode.color}`}>
+                     {marketMode.text}
+                   </div>
+                 )}
                </div>
                
                <div className="flex items-center gap-4">

@@ -43,7 +43,7 @@ const WarningDisclaimer = () => (
   </div>
 );
 
-export default function VendasPage() {
+export default function TestVendasPage() {
   const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -60,6 +60,7 @@ export default function VendasPage() {
       if (trendLen <= 0) {
         if (isDrop) {
           trend = 'climb';
+          // Use pseudo-random so it looks organic but static
           trendLen = Math.abs(Math.sin(i * 12.3)) * 20 + 15;
           isDrop = false;
         } else {
@@ -185,7 +186,7 @@ export default function VendasPage() {
       { delay: 400, log: { icon: '📡', color: 'text-blue-400', msg: 'Optimizing packet delivery (Delay: 42ms)' } },
       { delay: 500, log: { icon: '🔍', color: 'text-gray-400', msg: 'Isolating White hit probability...' } },
       { delay: 800, log: { icon: '⚡', color: 'text-yellow-400', msg: 'Scanning latest hashes for White triggers...' } },
-      { delay: 2500, log: { icon: '⚪', color: 'text-white font-bold', msg: 'SEARCHING FOR WHITE PATTERN [ V-V-P-P ]...' } },
+      { delay: 2500, log: { icon: '⚪', color: 'text-white font-bold', msg: 'SEARCHING FOR WHITE PATTERN [ V-V-P-P ]...' } }, // Pausa dramática de 2.5s
       { delay: 3000, log: { icon: '🎯', color: 'text-[#00c83a] font-black', msg: 'VICTORY! WHITE HIT FOUND AND VALIDATED!' } },
       { delay: 4000, log: { icon: '🔄', color: 'text-gray-500', msg: 'Restarting data extraction cycle in 4s...' } }
     ];
@@ -194,7 +195,7 @@ export default function VendasPage() {
 
     const runSequence = async () => {
       while (!isCancelled) {
-        setTerminalLogs([]);
+        setTerminalLogs([]); // Limpa o terminal a cada novo ciclo
         for (const step of sequence) {
           if (isCancelled) break;
           await new Promise(resolve => setTimeout(resolve, step.delay));
@@ -224,9 +225,9 @@ export default function VendasPage() {
 
   // Accordion Logic (Right side of Terminal)
   useEffect(() => {
-    setProgressWidth(0);
-    const duration = 6000;
-    const tickRate = 50;
+    setProgressWidth(0); // reset bar
+    const duration = 6000; // 6 seconds per card
+    const tickRate = 50; // update every 50ms
     const totalTicks = duration / tickRate;
     let currentTick = 0;
 
@@ -243,6 +244,7 @@ export default function VendasPage() {
 
     return () => clearInterval(interval);
   }, [activeAccordion]);
+
 
   const scrollToPlanos = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -421,6 +423,8 @@ export default function VendasPage() {
           </div>
         </div>
       </header>
+
+      {/* Aviso removido daqui e passado para o fim das seções */}
 
       <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 pt-16 pb-20 z-10">
         <div className="text-center max-w-5xl mx-auto flex flex-col items-center">
@@ -944,7 +948,7 @@ export default function VendasPage() {
                              <div className="flex items-center justify-center gap-3 mb-5 relative z-10">
                                <h5 className="text-[11px] font-black text-gray-400 uppercase tracking-widest transition-all">PÓS</h5>
                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black shadow-lg transition-all duration-300 ${
-                                 currentStoneData.stone.color === 'red' ? 'bg-[#f12c4c] text-[#ffffff] shadow-[0_0_15px_rgba(241,44,76,0.4)]' :
+                                 currentStoneData.stone.color === 'red' ? 'bg-[#f12c4c] text-white shadow-[0_0_15px_rgba(241,44,76,0.4)]' :
                                  currentStoneData.stone.color === 'black' ? 'bg-[#2a2d35] text-white' :
                                  'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.6)]'
                                }`}>
@@ -1047,7 +1051,7 @@ export default function VendasPage() {
                      }`}
                      onClick={() => {
                         setActiveAccordion(idx);
-                        setProgressWidth(0);
+                        setProgressWidth(0); // reset if clicked manually
                      }}
                    >
                       <div className={`p-5 flex flex-col h-full ${isActive ? 'justify-between' : 'justify-center'}`}>
@@ -1094,7 +1098,7 @@ export default function VendasPage() {
         <WarningDisclaimer />
       </section>
 
-      {/* PLANOS / NÍVEL DE ACESSO */}
+      {/* PLANOS / NÍVEL DE ACESSO (Free, 15d, 30d) */}
       <section id="planos" className="py-32 px-6 relative z-10 border-t border-white/5 bg-white/[0.01]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
@@ -1165,6 +1169,7 @@ export default function VendasPage() {
           ))}
         </div>
         
+
         </div>
         <WarningDisclaimer />
       </section>
@@ -1250,6 +1255,7 @@ export default function VendasPage() {
             <div className="text-[10px] font-bold text-gray-600 tracking-widest uppercase">
               © {new Date().getFullYear()} APEX MACHINE. TODOS OS DIREITOS RESERVADOS SOBRE O SOFTWARE.
             </div>
+
           </div>
           
         </div>
@@ -1257,3 +1263,5 @@ export default function VendasPage() {
     </main>
   );
 }
+
+// HMR Force Reload
