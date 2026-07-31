@@ -4,10 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useVip } from '@/hooks/useVip';
 import {
   Radio, BrainCircuit, BarChart3, FlaskConical, Bot, Zap,
-  Lock,
   LineChart, TrendingUp, Clock, ChevronLeft, ChevronRight, Menu,
   Database, Grid3X3, PlaySquare, Target, SlidersHorizontal,
   Pickaxe, LogOut, RefreshCcw, Home, BarChart2, Activity, Droplets, User
@@ -20,45 +18,21 @@ interface NavItem {
   badge?: string;
 }
 
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
-
-const sections: NavSection[] = [
-  {
-    title: 'Ao Vivo',
-    items: [
-      { href: '/painel-master', label: 'Painel Master', icon: <Home size={18} />, badge: 'Live' },
-      // { href: '/radar', label: 'Radar Avançado', icon: <Radio size={18} /> },
-      // { href: '/radar-rec', label: 'Radar na REC', icon: <Zap size={18} />, badge: 'Novo' },
-      // { href: '/radar-chuva', label: 'Radar de Chuva', icon: <Droplets size={18} />, badge: 'Novo' },
-    ]
-  },
-  {
-    title: 'Inteligência IA',
-    items: [
-      { href: '/analista', label: 'IA Analista', icon: <BrainCircuit size={18} /> },
-      { href: '/max-soro', label: 'IA MaxSoro', icon: <Pickaxe size={18} />, badge: 'Novo' },
-    ]
-  },
-  {
-    title: 'Ferramentas & Simuladores',
-    items: [
-      { href: '/laboratorio', label: 'Laboratório de Padrões', icon: <FlaskConical size={18} /> },
-      { href: '/casa-exata', label: 'Casa Exata', icon: <TrendingUp size={18} /> },
-      { href: '/dupla-exata', label: 'Dupla Exata', icon: <Target size={18} />, badge: 'Novo' },
-      { href: '/analysis', label: 'Análise Avançada', icon: <Grid3X3 size={18} />, badge: 'Beta' },
-      { href: '/mensal-avancado', label: 'Mensal Avançado', icon: <BarChart2 size={18} />, badge: 'VIP' },
-    ]
-  }
+const navItems: NavItem[] = [
+  { href: '/painel-master', label: 'Painel Master', icon: <Home size={18} />, badge: 'Live' },
+  { href: '/radar/avancado', label: 'Radar Avançado', icon: <Radio size={18} />, badge: 'Novo' },
+  { href: '/analista', label: 'IA Analista', icon: <BrainCircuit size={18} /> },
+  { href: '/laboratorio', label: 'Laboratório de Padrões', icon: <FlaskConical size={18} /> },
+  { href: '/casa-exata', label: 'Casa Exata', icon: <TrendingUp size={18} /> },
+  { href: '/dupla-exata', label: 'Dupla Exata', icon: <Target size={18} /> },
+  { href: '/analysis', label: 'Análise Avançada', icon: <Grid3X3 size={18} /> },
+  { href: '/mensal-avancado', label: 'Mensal Avançado', icon: <BarChart2 size={18} /> },
 ];
 
 export default function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(true);
-  const { isVip } = useVip();
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -129,71 +103,56 @@ export default function SidebarNav() {
         </div>
 
         {/* Navegação principal */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 flex flex-col gap-1 custom-scrollbar">
-          {sections.map((section, sIdx) => (
-            <div key={section.title} className={sIdx !== 0 ? 'mt-4' : ''}>
-              {!collapsed && (
-                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-600 px-3 mb-2">
-                  {section.title}
-                </div>
-              )}
-              {collapsed && sIdx !== 0 && <div className="border-t border-white/5 my-2 mx-2" />}
-              
-              <div className="flex flex-col gap-1">
-                {section.items.map(item => {
-                  const isActive = pathname === item.href;
-                  const isRestricted = item.href !== '/painel-master';
-                  const isLocked = isRestricted && !isVip;
-                  
-                  return (
-                    <Link
-                      key={item.href}
-                      href={isLocked ? '#' : item.href}
-                      title={collapsed ? item.label : undefined}
-                      onClick={(e) => {
-                        if (isLocked) {
-                           e.preventDefault();
-                           alert('Ferramenta exclusiva VIP! Faça o upgrade do seu plano para acessar.');
-                           router.push('/planos');
-                           return;
-                        }
-                        if (!collapsed) setCollapsed(true);
-                      }}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group relative ${
-                        isActive
-                          ? 'bg-[#181a20] text-[#00ff41]' 
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03]'
-                      } ${collapsed ? 'justify-center' : ''} ${isLocked ? 'opacity-50 hover:opacity-80' : ''}`}
-                    >
-                      <span className={`shrink-0 transition-colors ${isActive ? 'text-[#00ff41]' : 'text-gray-400 group-hover:text-gray-300'}`}>
-                        {item.icon}
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 flex flex-col gap-1.5 custom-scrollbar">
+          {navItems.map(item => {
+            const isActive = pathname === item.href;
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={collapsed ? item.label : undefined}
+                onClick={() => {
+                  if (!collapsed) setCollapsed(true);
+                }}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group relative ${
+                  isActive
+                    ? 'bg-[#181a20] text-[#00ff41]' 
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03]'
+                } ${collapsed ? 'justify-center' : ''}`}
+              >
+                <span className={`shrink-0 transition-colors ${isActive ? 'text-[#00ff41]' : 'text-gray-400 group-hover:text-gray-300'}`}>
+                  {item.icon}
+                </span>
+
+                {!collapsed && (
+                  <span className={`text-[13px] font-medium truncate flex-1 flex items-center justify-between ${isActive ? 'text-[#00ff41]' : ''}`}>
+                    <span>{item.label}</span>
+                    {item.badge && (
+                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                        item.badge === 'Live' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                        'bg-[#00ff41]/20 text-[#00ff41] border border-[#00ff41]/30'
+                      }`}>
+                        {item.badge}
                       </span>
+                    )}
+                  </span>
+                )}
 
-                      {!collapsed && (
-                        <span className={`text-[13px] font-medium truncate flex-1 flex items-center gap-2 ${isActive ? 'text-[#00ff41]' : ''}`}>
-                          {item.label}
-                          {isLocked && <Lock size={12} className="text-amber-500" />}
-                        </span>
-                      )}
+                {/* Bolinha indicador lateral */}
+                {!collapsed && isActive && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#00ff41] shrink-0 shadow-[0_0_8px_rgba(0,255,65,0.8)]" />
+                )}
 
-                      {/* Bolinha indicador lateral */}
-                      {!collapsed && isActive && !isLocked && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#00ff41] shrink-0 shadow-[0_0_8px_rgba(0,255,65,0.8)]" />
-                      )}
-
-                      {/* Tooltip quando recolhido */}
-                      {collapsed && (
-                        <div className="absolute left-full ml-2 px-2 py-1 bg-[#12141c] border border-white/10 rounded-lg text-xs text-white font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-2xl flex items-center gap-2">
-                          {item.label}
-                          {isLocked && <Lock size={10} className="text-amber-500" />}
-                        </div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                {/* Tooltip quando recolhido */}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-[#12141c] border border-white/10 rounded-lg text-xs text-white font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-2xl flex items-center gap-2">
+                    {item.label}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Footer do Menu */}
