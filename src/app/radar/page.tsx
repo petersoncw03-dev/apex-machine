@@ -580,7 +580,7 @@ export default function RadarPage() {
          setGlobalStats(nxt);
       }
     }
-  }, [data, casasLimit, minWin, periodHoursOportunidades, periodHoursConfluencias, warRoomPeriodHours, sortColumn, sortDirection, confMinOcorrencias, confMinWinRate, confMaxWinRate, confMinSa, confSortMode, audioEnabledFor, initialStake, playAlert]);
+  }, [data.length, casasLimit, minWin, periodHoursOportunidades, periodHoursConfluencias, warRoomPeriodHours, sortColumn, sortDirection, confMinOcorrencias, confMinWinRate, confMaxWinRate, confMinSa, confSortMode, audioEnabledFor, initialStake, playAlert]);
 
   const handleSort = (col: 'TX' | 'SA' | 'PNL' | 'SM') => {
     if (sortColumn === col) setSortDirection(d => d === 'desc' ? 'asc' : 'desc');

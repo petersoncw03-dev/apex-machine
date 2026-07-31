@@ -22,19 +22,21 @@ export interface SimulationResult {
 }
 
 const STRAT_NAMES = [
-  'Cruzamento Linha x Coluna (3h)',
-  'Quentes (6h - 50%+)',
-  'Quentes (12h - 35%+)',
-  'Quentes (22h - 22%+)',
-  'Brancos Curtos (Média < 12)',
-  'Ciclos de Finais de Minuto',
-  'Soma Anterior (+Pedra)',
-  'Soma Posterior (+Pedra)',
-  'Fibonacci Espaçado (3/5/8)',
-  'Zero Absoluto (12h - 0%)',
-  'Frequência Dinâmica (6h/12h)',
-  'Fibo Filtrado (Alta Freq)',
-  'Soma Sanduíche (Cores Iguais)'
+  'Cruzamento Linha x Coluna (3h)',   // 0
+  'Quentes (6h - 50%+)',              // 1
+  'Quentes (12h - 35%+)',             // 2
+  'Quentes (22h - 22%+)',             // 3
+  'Minutagem (10/20m)',               // 4
+  'Horário Cheio (60/120m)',          // 5
+  'Soma Anterior (+Pedra)',           // 6
+  'Soma Posterior (+Pedra)',          // 7
+  'Fibonacci Espaçado (3/5/8)',       // 8
+  'Zero Absoluto (12h - 0%)',         // 9
+  'Frequência Dinâmica (6h/12h)',     // 10
+  'Fibo Filtrado (Alta Freq)',        // 11
+  'Soma Sanduíche (Cores Iguais)',    // 12
+  'Momentum Gaps (Chuva de Brancos)',// 13
+  'Matriz de Markov (3ª Ordem)'       // 14
 ];
 
 export function runMestreSimulation(
@@ -59,13 +61,13 @@ export function runMestreSimulation(
         aggStep[name] = 0;
     }
 
-    // Agrupamento de resultados individuais (As 13 estratégias)
+    // Agrupamento de resultados individuais (As 15 estratégias)
     const resultsBrancosStrats: Record<number, SimulationResult> = {};
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i < 15; i++) {
         resultsBrancosStrats[i] = { level: i, target: STRAT_NAMES[i], wins: 0, losses: 0, sa: 0, sm: 0, winrate: 0, total: 0, pnl: 0 };
     }
-    const stratStatus: ('standby' | 'active')[] = Array(13).fill('standby');
-    const stratStep: number[] = Array(13).fill(0);
+    const stratStatus: ('standby' | 'active')[] = Array(15).fill('standby');
+    const stratStep: number[] = Array(15).fill(0);
 
     // Agrupamento de resultados individuais (Os 3 do Radar)
     const resultsRadarStrats: Record<number, SimulationResult> = {};
@@ -93,13 +95,13 @@ export function runMestreSimulation(
         // ==========================================
         // MESTRE DOS BRANCOS SIMULATION
         // ==========================================
-        const disabledIA = new Set([4, 5, 6, 8, 9, 10, 11, 12]);
+        const disabledIA = new Set([4, 5, 6, 8, 9, 10, 11, 12, 13, 14]);
         const radarData = calculateRadar(currentSlice as any, radarConfig);
         const iaData3h = calculateIA(currentSlice as any, 3, disabledIA, true, iaConfig);
         const iaData1h = calculateIA(currentSlice as any, 1, disabledIA, true, iaConfig);
 
-        // 1. Simulação INDIVIDUAL das 13 estratégias
-        for (let sIdx = 0; sIdx < 13; sIdx++) {
+        // 1. Simulação INDIVIDUAL das 15 estratégias
+        for (let sIdx = 0; sIdx < 15; sIdx++) {
             if (stratStatus[sIdx] === 'active') {
                 const betAmount = 1.0 * Math.pow(1.078, stratStep[sIdx]);
                 if (isBranco) {

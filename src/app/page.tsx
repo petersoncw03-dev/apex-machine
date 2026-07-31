@@ -47,6 +47,32 @@ export default function VendasPage() {
   const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
 
+  // Preloader Splash State
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashProgress, setSplashProgress] = useState(0);
+  const [splashPhase, setSplashPhase] = useState<'intro' | 'shrinking' | 'done'>('intro');
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const duration = 1400;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
+      setSplashProgress(progress);
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        setSplashPhase('shrinking');
+        setTimeout(() => {
+          setSplashPhase('done');
+          setShowSplash(false);
+        }, 600);
+      }
+    }, 20);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // States
   const [heroImageIndex, setHeroImageIndex] = useState(0);
   const [terminalLogs, setTerminalLogs] = useState<{ icon: string; color: string; msg: string; }[]>([]);
@@ -357,6 +383,88 @@ export default function VendasPage() {
 
   return (
     <main className="min-h-screen bg-[#050507] text-gray-200 font-sans selection:bg-[#00c83a]/30 relative overflow-x-hidden">
+      
+      {/* Intro Preloader Splash Animation */}
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div 
+            key="splash-overlay"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: splashPhase === 'shrinking' ? 0 : 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="fixed inset-0 z-[999] bg-[#050507] flex flex-col items-center justify-center p-6 select-none overflow-hidden"
+          >
+            {/* Ambient Background Glowing Orbs */}
+            <div className="absolute w-[500px] h-[500px] bg-[#f12c4c]/10 rounded-full blur-[140px] pointer-events-none animate-pulse"></div>
+            <div className="absolute w-[400px] h-[400px] bg-[#00c83a]/10 rounded-full blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '500ms' }}></div>
+            
+            {/* Central Morphing Brand Container */}
+            <motion.div 
+              initial={{ scale: 0.85, y: 20 }}
+              animate={
+                splashPhase === 'shrinking'
+                  ? { scale: 0.5, y: -260, opacity: 0 }
+                  : { scale: 1, y: 0 }
+              }
+              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col items-center justify-center gap-5 relative z-10"
+            >
+              {/* Logo Icon with Rotating Dashed Ring */}
+              <div className="relative flex items-center justify-center">
+                <motion.div 
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                  className="absolute -inset-5 rounded-full border border-dashed border-white/15"
+                ></motion.div>
+                <motion.img 
+                  initial={{ scale: 0, rotate: -45 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ duration: 0.6, ease: "backOut" }}
+                  src="/icon.svg" 
+                  alt="Apex Machine" 
+                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_35px_rgba(241,44,76,0.7)]" 
+                />
+              </div>
+
+              {/* Brand Title */}
+              <motion.h1 
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.5 }}
+                className="text-3xl sm:text-5xl font-black tracking-tighter flex gap-2 uppercase"
+              >
+                <span className="text-[#f12c4c] drop-shadow-[0_0_20px_rgba(241,44,76,0.5)]">APEX</span>
+                <span className="text-[#00c83a] drop-shadow-[0_0_20px_rgba(0,200,58,0.5)]">MACHINE</span>
+              </motion.h1>
+
+              {/* Loading Indicator Subtitle */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.4 }}
+                className="flex flex-col items-center gap-2.5 mt-2 w-64 sm:w-80"
+              >
+                <div className="flex items-center justify-between w-full text-[10px] font-mono font-bold tracking-widest uppercase text-gray-400">
+                  <span className="text-[#00c83a] flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00c83a] animate-ping"></span>
+                    CARREGANDO ENGINE...
+                  </span>
+                  <span className="text-white">{splashProgress}%</span>
+                </div>
+
+                {/* Progress Bar Container */}
+                <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden border border-white/5 relative">
+                  <div 
+                    className="h-full bg-gradient-to-r from-[#f12c4c] via-[#eab308] to-[#00c83a] shadow-[0_0_12px_rgba(0,200,58,0.8)] transition-all duration-75 ease-out rounded-full"
+                    style={{ width: `${splashProgress}%` }}
+                  ></div>
+                </div>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Background Grid com Red Glow */}
       <div className="fixed inset-0 z-0 pointer-events-none">

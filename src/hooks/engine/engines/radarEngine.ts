@@ -6,11 +6,14 @@ export interface RollData {
 }
 
 export interface RadarConfig {
+    blockSize?: 6 | 10;
     enableZonas?: boolean;
     zonaGeralHours?: number;
     zonaGeralMinWr?: number;
+    zonaGeralMaxWr?: number;
     zonaCicloHours?: number;
     zonaCicloMinWr?: number;
+    zonaCicloMaxWr?: number;
 
     enableCasas?: boolean;
     casaGeralHours?: number;
@@ -24,17 +27,21 @@ export interface RadarConfig {
 }
 
 export function calculateRadar(history: RollData[], config?: RadarConfig) {
-    const zonesStats = calculateZones(history, config?.zonaGeralHours, config?.zonaCicloHours);
+    const zonesStats = calculateZones(history, config?.zonaGeralHours, config?.zonaCicloHours, config?.blockSize);
     const radarStats = calculatePatternsAndCasas(history, config?.casaGeralHours, config?.casaCicloHours, config?.padraoGeralHours);
 
     const zonaGWR = config?.zonaGeralMinWr ?? 35;
+    const zonaGWRMax = config?.zonaGeralMaxWr ?? 100;
     const zonaCWR = config?.zonaCicloMinWr ?? 35;
+    const zonaCWRMax = config?.zonaCicloMaxWr ?? 100;
     let hasZonasQuentes = false;
     
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < zonesStats.blocksMicro.length; i++) {
         const bMicro = zonesStats.blocksMicro[i];
         const bMacro = zonesStats.blocksMacro[i];
-        if (bMicro.status === 'ativo' && bMicro.winrate >= zonaGWR && bMacro.winrate >= zonaCWR) {
+        if (bMicro.status === 'ativo' 
+            && bMicro.winrate >= zonaGWR && bMicro.winrate <= zonaGWRMax
+            && bMacro.winrate >= zonaCWR && bMacro.winrate <= zonaCWRMax) {
             hasZonasQuentes = true;
             break;
         }
@@ -105,7 +112,7 @@ export function calculateRadar(history: RollData[], config?: RadarConfig) {
     };
 }
 
-function calcZoneBlocks(rolls: RollData[]) {
+function calcZoneBlocks(rolls: RollData[], blockSize: number = 6) {
     const whiteIndices = rolls.reduce((acc, r, i) => {
         if (r.color?.toLowerCase().includes('branco') || r.roll === 0) acc.push(i);
         return acc;
@@ -121,7 +128,11 @@ function calcZoneBlocks(rolls: RollData[]) {
     const currentGap = rolls.length - 1 - whiteIndices[whiteIndices.length - 1];
     const nextEnt = currentGap + 1;
 
-    const zones = [
+    const zones = blockSize === 10 ? [
+        { label: '1 a 10', s: 1, e: 10 },
+        { label: '11 a 20', s: 11, e: 20 },
+        { label: '21 a 30', s: 21, e: 30 }
+    ] : [
         { label: '1 a 6', s: 1, e: 6 },
         { label: '7 a 12', s: 7, e: 12 },
         { label: '13 a 18', s: 13, e: 18 },
@@ -164,15 +175,15 @@ function calcZoneBlocks(rolls: RollData[]) {
     return { blocks, currentGap };
 }
 
-function calculateZones(history: RollData[], microHours?: number, macroHours?: number) {
+function calculateZones(history: RollData[], microHours?: number, macroHours?: number, blockSize: number = 6) {
     const limitMicro = (microHours && microHours > 0) ? microHours * 120 : 3 * 120;
     const limitMacro = (macroHours && macroHours > 0) ? macroHours * 120 : 72 * 120;
 
     const rollsMicro = history.slice(-limitMicro);
     const rollsMacro = history.slice(-limitMacro);
 
-    const rMicro = calcZoneBlocks(rollsMicro);
-    const rMacro = calcZoneBlocks(rollsMacro);
+    const rMicro = calcZoneBlocks(rollsMicro, blockSize);
+    const rMacro = calcZoneBlocks(rollsMacro, blockSize);
 
     return { blocksMicro: rMicro.blocks, blocksMacro: rMacro.blocks, currentGap: rMicro.currentGap };
 }

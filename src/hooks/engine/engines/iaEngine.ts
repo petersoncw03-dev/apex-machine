@@ -112,19 +112,21 @@ class HourlyStatTracker {
 
 const ONE_MIN = 60_000;
 const STRAT_NAMES = [
-  'Cruzamento Linha x Coluna (3h)',
-  'Quentes (6h - 50%+)',
-  'Quentes (12h - 35%+)',
-  'Quentes (22h - 22%+)',
-  'Brancos Curtos (Média < 12)',
-  'Ciclos de Finais de Minuto',
-  'Soma Anterior (+Pedra)',
-  'Soma Posterior (+Pedra)',
-  'Fibonacci Espaçado (3/5/8)',
-  'Zero Absoluto (12h - 0%)',
-  'Frequência Dinâmica (6h/12h)',
-  'Fibo Filtrado (Alta Freq)',
-  'Soma Sanduíche (Cores Iguais)'
+  'Cruzamento Linha x Coluna (3h)',   // 0
+  'Quentes (6h - 50%+)',              // 1
+  'Quentes (12h - 35%+)',             // 2
+  'Quentes (22h - 22%+)',             // 3
+  'Minutagem (10/20m)',               // 4
+  'Horário Cheio (60/120m)',          // 5
+  'Soma Anterior (+Pedra)',           // 6
+  'Soma Posterior (+Pedra)',          // 7
+  'Fibonacci Espaçado (3/5/8)',       // 8
+  'Zero Absoluto (12h - 0%)',         // 9
+  'Frequência Dinâmica (6h/12h)',     // 10
+  'Fibo Filtrado (Alta Freq)',        // 11
+  'Soma Sanduíche (Cores Iguais)',    // 12
+  'Momentum Gaps (Chuva de Brancos)',// 13
+  'Matriz de Markov (3ª Ordem)'       // 14
 ];
 
 interface AbsMinSlot {
@@ -141,7 +143,7 @@ export interface IaConfig {
 }
 
 export function calculateIA(globalData: RollData[], periodHours: number = 12, disabledStrats: Set<number> = new Set(), withMargin: boolean = true, iaConfig?: IaConfig) {
-    const defaultDisabled = new Set([4, 5, 6, 8, 9, 10, 11, 12]);
+    const defaultDisabled = new Set([4, 5, 6, 8, 9, 10, 11, 12, 13, 14]);
     const localDisabledStrats = disabledStrats !== undefined && disabledStrats !== null
         ? new Set(disabledStrats)
         : defaultDisabled;
@@ -233,24 +235,6 @@ export function calculateIA(globalData: RollData[], periodHours: number = 12, di
                 if (!localDisabledStrats.has(2) && s12h.getMinutePct(minOfHour, hk) >= 35) addSignal(aMin, 2, 0);
                 if (!localDisabledStrats.has(3) && s22h.getMinutePct(minOfHour, hk) >= 22) addSignal(aMin, 3, 0);
                 
-                if (!localDisabledStrats.has(5)) {
-                    let z1w = 0, z1t = 0, z2w = 0, z2t = 0, z3w = 0, z3t = 0;
-                    const cutoff = hk - 3;
-                    for (let c = 0; c <= 2; c++) { for (const [h, w] of s3h.colHours[c]) { if (h > cutoff && h <= hk) { z1t++; if (w) z1w++; } } }
-                    for (let c = 3; c <= 5; c++) { for (const [h, w] of s3h.colHours[c]) { if (h > cutoff && h <= hk) { z2t++; if (w) z2w++; } } }
-                    for (let c = 6; c <= 9; c++) { for (const [h, w] of s3h.colHours[c]) { if (h > cutoff && h <= hk) { z3t++; if (w) z3w++; } } }
-                    const wr1 = z1t > 0 ? z1w / z1t : 0;
-                    const wr2 = z2t > 0 ? z2w / z2t : 0;
-                    const wr3 = z3t > 0 ? z3w / z3t : 0;
-                    const maxWr = Math.max(wr1, wr2, wr3);
-                    if (maxWr > 0.2) {
-                        const currentZ = col <= 2 ? 1 : (col <= 5 ? 2 : 3);
-                        if (currentZ === 1 && maxWr === wr1) addSignal(aMin, 5, 0);
-                        if (currentZ === 2 && maxWr === wr2) addSignal(aMin, 5, 0);
-                        if (currentZ === 3 && maxWr === wr3) addSignal(aMin, 5, 0);
-                    }
-                }
-                
                 if (!localDisabledStrats.has(9)) {
                     let hasData = false; let hasWhite = false;
                     for (const [hk12, hadW] of s12h.minuteHours[minOfHour]) {
@@ -264,25 +248,12 @@ export function calculateIA(globalData: RollData[], periodHours: number = 12, di
 
         if (w) {
             if (!localDisabledStrats.has(4)) {
-                let whitesCount = 0;
-                let idx5th = -1;
-                for (let j = i - 1; j >= 0; j--) {
-                    if (isWhite[j]) {
-                        whitesCount++;
-                        if (whitesCount === 5) {
-                            idx5th = j;
-                            break;
-                        }
-                    }
-                }
-                if (whitesCount === 5 && idx5th !== -1) {
-                    const avgGap = (i - idx5th) / 5;
-                    if (avgGap < 12) {
-                        for (let k = 1; k <= 6; k++) {
-                            addSignal(Math.floor((t + k * ONE_MIN) / ONE_MIN), 4, t);
-                        }
-                    }
-                }
+                addSignal(Math.floor((t + 10 * ONE_MIN) / ONE_MIN), 4, t);
+                addSignal(Math.floor((t + 20 * ONE_MIN) / ONE_MIN), 4, t);
+            }
+            if (!localDisabledStrats.has(5)) {
+                addSignal(Math.floor((t + 60 * ONE_MIN) / ONE_MIN), 5, t);
+                addSignal(Math.floor((t + 120 * ONE_MIN) / ONE_MIN), 5, t);
             }
             if (!localDisabledStrats.has(8)) {
                addSignal(Math.floor((t + 3 * ONE_MIN) / ONE_MIN), 8, t);
@@ -315,6 +286,43 @@ export function calculateIA(globalData: RollData[], periodHours: number = 12, di
                   addSignal(Math.floor((t + 3 * ONE_MIN) / ONE_MIN), 11, t);
                   addSignal(Math.floor((t + 5 * ONE_MIN) / ONE_MIN), 11, t);
                   addSignal(Math.floor((t + 8 * ONE_MIN) / ONE_MIN), 11, t);
+               }
+            }
+            if (!localDisabledStrats.has(13)) {
+               let whites: number[] = [];
+               for (let j = i; j >= 0 && whites.length < 4; j--) {
+                 if (isWhite[j]) whites.push(times[j]);
+               }
+               if (whites.length >= 4) {
+                 const g1 = Math.round((whites[2] - whites[3]) / ONE_MIN);
+                 const g2 = Math.round((whites[1] - whites[2]) / ONE_MIN);
+                 const g3 = Math.round((whites[0] - whites[1]) / ONE_MIN);
+                 if (g3 < g2 && g2 < g1 && g3 <= 15) {
+                   const proj = Math.max(2, g3 + Math.round((g3 - g1) / 2));
+                   addSignal(Math.floor((t + proj * ONE_MIN) / ONE_MIN), 13, t);
+                 }
+               }
+            }
+            if (!localDisabledStrats.has(14) && i >= 3) {
+               const c3 = isWhite[i-3] ? 'W' : (Number(globalData[i-3]?.roll) >= 1 && Number(globalData[i-3]?.roll) <= 7 ? 'R' : 'B');
+               const c2 = isWhite[i-2] ? 'W' : (Number(globalData[i-2]?.roll) >= 1 && Number(globalData[i-2]?.roll) <= 7 ? 'R' : 'B');
+               const c1 = isWhite[i-1] ? 'W' : (Number(globalData[i-1]?.roll) >= 1 && Number(globalData[i-1]?.roll) <= 7 ? 'R' : 'B');
+               const stateKey = `${c3}_${c2}_${c1}`;
+               let stateCount = 0;
+               let whiteHits = 0;
+               for (let j = i - 1; j >= Math.max(0, i - 1500); j--) {
+                 if (j >= 3) {
+                   const p3 = isWhite[j-3] ? 'W' : (Number(globalData[j-3]?.roll) >= 1 && Number(globalData[j-3]?.roll) <= 7 ? 'R' : 'B');
+                   const p2 = isWhite[j-2] ? 'W' : (Number(globalData[j-2]?.roll) >= 1 && Number(globalData[j-2]?.roll) <= 7 ? 'R' : 'B');
+                   const p1 = isWhite[j-1] ? 'W' : (Number(globalData[j-1]?.roll) >= 1 && Number(globalData[j-1]?.roll) <= 7 ? 'R' : 'B');
+                   if (`${p3}_${p2}_${p1}` === stateKey) {
+                     stateCount++;
+                     if (isWhite[j]) whiteHits++;
+                   }
+                 }
+               }
+               if (stateCount >= 5 && (whiteHits / stateCount) >= 0.10) {
+                 addSignal(Math.floor((t + 3 * ONE_MIN) / ONE_MIN), 14, t);
                }
             }
             if (!localDisabledStrats.has(7)) pendingSomaPost.push({ creatorTime: t, creatorIdx: i, whiteMinuteTime: t });
