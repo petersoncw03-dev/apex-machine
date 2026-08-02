@@ -19,7 +19,7 @@ function connectPg() {
   console.log('[VPS SSE Service] Conectando ao PostgreSQL...');
   
   pgClient = new Client({
-    host: process.env.DB_HOST || '151.242.25.148',
+    host: process.env.DB_HOST || '193.111.116.40',
     port: parseInt(process.env.DB_PORT || '15721', 10),
     user: process.env.DB_USER || 'postgresmachine',
     password: process.env.DB_PASS || '125320pepe',

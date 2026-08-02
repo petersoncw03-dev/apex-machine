@@ -36,6 +36,7 @@ interface ActiveCycle {
   currentStep: number;
   winRate: string;
   cycleWinRate: string;
+  occurrences: number;
   sm: number;
   sa: number;
   currentValue: number;
@@ -56,8 +57,9 @@ export default function RadarAvancadoPage() {
   const [minWinRateCiclo, setMinWinRateCiclo] = useState<number>(50);
   const [initialStake, setInitialStake] = useState<number>(1.00);
 
-  const [periodHoursOportunidades, setPeriodHoursOportunidades] = useState(10);
-  const [maxFetchedHours, setMaxFetchedHours] = useState(60);
+  const [periodHoursGeral, setPeriodHoursGeral] = useState(24);
+  const [periodHoursCiclo, setPeriodHoursCiclo] = useState(168);
+  const [maxFetchedHours, setMaxFetchedHours] = useState(168);
   
   const [warRoomPeriodHours, setWarRoomPeriodHours] = useState(2);
   const [sortColumn, setSortColumn] = useState<'TX' | 'TX_CICLO' | 'SA' | 'PNL' | 'SM'>('PNL');
@@ -137,12 +139,12 @@ export default function RadarAvancadoPage() {
   useEffect(() => { fetchData(maxFetchedHours); }, []);
 
   useEffect(() => {
-    const requiredHours = Math.max(periodHoursOportunidades, warRoomPeriodHours);
+    const requiredHours = Math.max(periodHoursGeral, periodHoursCiclo, warRoomPeriodHours);
     if (requiredHours > maxFetchedHours) {
       setMaxFetchedHours(requiredHours);
       fetchData(requiredHours);
     }
-  }, [periodHoursOportunidades, warRoomPeriodHours]);
+  }, [periodHoursGeral, periodHoursCiclo, warRoomPeriodHours]);
 
   useEffect(() => {
     const unsub = subscribe((mappedRoll) => {
@@ -192,7 +194,7 @@ export default function RadarAvancadoPage() {
   useEffect(() => {
     if (!data || data.length === 0) return;
     const currentLatest = data[data.length - 1];
-    const maxPeriod = Math.max(periodHoursOportunidades, warRoomPeriodHours, 60);
+    const maxPeriod = Math.max(periodHoursGeral, periodHoursCiclo, warRoomPeriodHours, 60);
     const history = data.slice(-maxPeriod * 120);
     const last10 = history.slice(-10);
     const isLatestWhite = last10[last10.length-1].roll === '0' || last10[last10.length-1].color.includes('Branco');
@@ -237,23 +239,22 @@ export default function RadarAvancadoPage() {
     }
 
     const stats: PatternStat[] = Array.from(new Map(discovered.map(trigger => {
+      // 1. Estatísticas Gerais (baseado em periodHoursGeral)
       let win = 0; let loss = 0; let curL = 0; let maxL = 0; let casasW = Array(casasLimit).fill(0);
       let pnlV = 0; let active: any[] = [];
-      const outcomes: ('W' | 'L')[] = [];
-      const sub = history.slice(-(periodHoursOportunidades * 120));
+      const subGeral = history.slice(-(periodHoursGeral * 120));
 
-      for (let i = 0; i < sub.length - 1; i++) {
-        const hR = sub[i]; const isW = hR.color.includes('Branco') || hR.roll === '0';
+      for (let i = 0; i < subGeral.length - 1; i++) {
+        const hR = subGeral[i]; const isW = hR.color.includes('Branco') || hR.roll === '0';
         if (active.length > 0) {
           if (isW) { 
-            active.forEach(t => { win++; pnlV += (t.currentBet * 14) - t.invested; casasW[t.step]++; outcomes.push('W'); }); 
+            active.forEach(t => { win++; pnlV += (t.currentBet * 14) - t.invested; casasW[t.step]++; }); 
             active = []; curL = 0; 
           } else {
             for (let t = active.length - 1; t >= 0; t--) {
               active[t].entriesLeft--; active[t].step++;
               if (active[t].entriesLeft === 0) { 
                 pnlV -= active[t].invested; loss++; curL++; if (curL > maxL) maxL = curL; 
-                outcomes.push('L'); 
                 active.splice(t, 1); 
               } else { 
                 const nxt = active[t].currentBet * 1.078; active[t].currentBet = nxt; active[t].invested += nxt; 
@@ -264,7 +265,7 @@ export default function RadarAvancadoPage() {
         if (i >= trigger.valArray.length - 1) {
           let m = true;
           for (let p = 0; p < trigger.valArray.length; p++) {
-            const r = sub[i - (trigger.valArray.length - 1) + p]; if (!r) { m = false; break; }
+            const r = subGeral[i - (trigger.valArray.length - 1) + p]; if (!r) { m = false; break; }
             const rN = parseInt(r.roll as string);
             const valP = trigger.valArray[p];
             if (trigger.type === 'color' || valP === 'V' || valP === 'P' || valP === 'B') {
@@ -277,13 +278,52 @@ export default function RadarAvancadoPage() {
         }
       }
 
-      // Compute invisible cycle
+      // 2. Estatísticas de Ciclo (baseado em periodHoursCiclo)
+      const outcomesCiclo: ('W' | 'L')[] = [];
+      let activeCiclo: any[] = [];
+      const subCiclo = history.slice(-(periodHoursCiclo * 120));
+
+      for (let i = 0; i < subCiclo.length - 1; i++) {
+        const hR = subCiclo[i]; const isW = hR.color.includes('Branco') || hR.roll === '0';
+        if (activeCiclo.length > 0) {
+          if (isW) { 
+            activeCiclo.forEach(() => { outcomesCiclo.push('W'); }); 
+            activeCiclo = []; 
+          } else {
+            for (let t = activeCiclo.length - 1; t >= 0; t--) {
+              activeCiclo[t].entriesLeft--;
+              if (activeCiclo[t].entriesLeft === 0) { 
+                outcomesCiclo.push('L'); 
+                activeCiclo.splice(t, 1); 
+              } else { 
+                activeCiclo[t].currentBet *= 1.078; 
+              }
+            }
+          }
+        }
+        if (i >= trigger.valArray.length - 1) {
+          let m = true;
+          for (let p = 0; p < trigger.valArray.length; p++) {
+            const r = subCiclo[i - (trigger.valArray.length - 1) + p]; if (!r) { m = false; break; }
+            const rN = parseInt(r.roll as string);
+            const valP = trigger.valArray[p];
+            if (trigger.type === 'color' || valP === 'V' || valP === 'P' || valP === 'B') {
+              let rC = 'B'; if (r.color.includes('Vermelho') || (rN >= 1 && rN <= 7)) rC = 'V';
+              if (r.color.includes('Preto') || (rN >= 8 && rN <= 14)) rC = 'P';
+              if (rC !== valP) { m = false; break; }
+            } else { if (r.roll !== valP) { m = false; break; } }
+          }
+          if (m) activeCiclo.push({ entriesLeft: casasLimit, step: 0, currentBet: 1.0, invested: 1.0 });
+        }
+      }
+
+      // Compute cycle stats
       const cycleStats: { W: Record<number, {win: number, loss: number}>, L: Record<number, {win: number, loss: number}> } = { W: {}, L: {} };
       let runningType: 'W' | 'L' | null = null;
       let runningCount = 0;
 
-      for (let i = 0; i < outcomes.length; i++) {
-        const out = outcomes[i];
+      for (let i = 0; i < outcomesCiclo.length; i++) {
+        const out = outcomesCiclo[i];
         if (runningType && runningCount > 0) {
           if (!cycleStats[runningType][runningCount]) {
             cycleStats[runningType][runningCount] = { win: 0, loss: 0 };
@@ -413,6 +453,7 @@ export default function RadarAvancadoPage() {
                   currentStep: 1,
                   winRate: pattern.winRate,
                   cycleWinRate: pattern.cycleWinRate,
+                  occurrences: pattern.win + pattern.loss,
                   sm: pattern.sm,
                   sa: pattern.sa,
                   currentValue: initialStake,
@@ -442,7 +483,7 @@ export default function RadarAvancadoPage() {
          setGlobalStats(nxt);
       }
     }
-  }, [data.length, casasLimit, minWin, minLen, maxLen, autoBetEnabled, minOcorrencias, minWinRateGeral, minWinRateCiclo, initialStake, periodHoursOportunidades, warRoomPeriodHours, sortColumn, sortDirection]);
+  }, [data.length, casasLimit, minWin, minLen, maxLen, autoBetEnabled, minOcorrencias, minWinRateGeral, minWinRateCiclo, initialStake, periodHoursGeral, periodHoursCiclo, warRoomPeriodHours, sortColumn, sortDirection]);
 
   const handleSort = (col: 'TX' | 'TX_CICLO' | 'SA' | 'PNL' | 'SM') => {
     if (sortColumn === col) setSortDirection(d => d === 'desc' ? 'asc' : 'desc');
@@ -478,18 +519,25 @@ export default function RadarAvancadoPage() {
                   Filtros da Estratégia
                 </h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Entradas</label>
-                  <select className="bg-[#12141c] border border-white/10 text-white px-3 py-1.5 rounded-md outline-none focus:border-[#00c83a] text-xs font-bold" value={casasLimit} onChange={(e) => setCasasLimit(Number(e.target.value))}>
+                  <select className="bg-[#12141c] border border-white/10 text-white px-2 py-1.5 rounded-md outline-none focus:border-[#00c83a] text-xs font-bold" value={casasLimit} onChange={(e) => setCasasLimit(Number(e.target.value))}>
                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(num => <option key={num} value={num}>{num} {num === 1 ? 'Entrada' : 'Entradas'}</option>)}
                   </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Período</label>
-                  <select className="bg-[#12141c] border border-white/10 text-white px-3 py-1.5 rounded-md outline-none focus:border-[#00c83a] text-xs font-bold" value={periodHoursOportunidades} onChange={(e) => setPeriodHoursOportunidades(Number(e.target.value))}>
-                    {[1,2,3,4,6,12,24,48,72,120,168].map(h => <option key={h} value={h}>{h < 24 ? `${h} Horas` : `${h/24} Dias`}</option>)}
+                  <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Período Geral</label>
+                  <select className="bg-[#12141c] border border-white/10 text-white px-2 py-1.5 rounded-md outline-none focus:border-[#00c83a] text-xs font-bold" value={periodHoursGeral} onChange={(e) => setPeriodHoursGeral(Number(e.target.value))}>
+                    {[1,2,3,4,6,12,24,48,72,120,168,240,360].map(h => <option key={h} value={h}>{h < 24 ? `${h} Horas` : `${h/24} ${h/24 === 1 ? 'Dia' : 'Dias'}`}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">Período Ciclo</label>
+                  <select className="bg-[#12141c] border border-amber-500/30 text-amber-400 px-2 py-1.5 rounded-md outline-none focus:border-amber-400 text-xs font-bold" value={periodHoursCiclo} onChange={(e) => setPeriodHoursCiclo(Number(e.target.value))}>
+                    {[1,2,3,4,6,12,24,48,72,120,168,240,360].map(h => <option key={h} value={h}>{h < 24 ? `${h} Horas` : `${h/24} ${h/24 === 1 ? 'Dia' : 'Dias'}`}</option>)}
                   </select>
                 </div>
 
@@ -700,44 +748,53 @@ export default function RadarAvancadoPage() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     {activeCycles.map((cycle) => (
-                      <div key={cycle.id} className="bg-[#12141c] border border-white/10 p-2.5 rounded-xl flex items-center justify-between gap-3 shadow-md hover:border-white/20 transition-all">
-                        {/* Padrão */}
-                        <div className="flex gap-1 items-center">
+                      <div key={cycle.id} className="bg-[#12141c] border border-white/10 p-2.5 rounded-xl flex items-center justify-between gap-2 shadow-md hover:border-white/20 transition-all">
+                        {/* Padrão (lado esquerdo flexível com scroll se o padrão for grande) */}
+                        <div className="flex gap-1 items-center overflow-x-auto custom-scrollbar flex-1 min-w-0 pr-2">
                           {cycle.patternArray?.map((v, i) => {
                             const n = parseInt(v); let bg = 'bg-[#262831]'; let text = 'text-white';
                             const isColor = v === 'V' || v === 'P' || v === 'B';
                             if (isColor) { if (v === 'V') bg = 'bg-[#f12c4c]'; if (v === 'B') { bg = 'bg-white'; text = 'text-black'; } }
                             else { if (n === 0) { bg = 'bg-white'; text = 'text-black'; } else if (n >= 1 && n <= 7) bg = 'bg-[#f12c4c]'; }
-                            return <div key={i} className={`w-6 h-6 rounded-sm border border-black/30 flex items-center justify-center text-[9px] font-black ${bg} ${text}`}>{isColor ? '' : v}</div>;
+                            return <div key={i} className={`w-5 h-5 rounded-sm border border-black/30 flex items-center justify-center text-[9px] font-black shrink-0 ${bg} ${text}`}>{isColor ? '' : v}</div>;
                           })}
                         </div>
 
-                        {/* Winrates */}
-                        <div className="flex items-center gap-3 text-xs font-bold">
-                          <div className="flex flex-col items-center">
+                        {/* Colunas de Informações Fixas na Direita */}
+                        <div className="flex items-center gap-3 shrink-0 text-xs font-bold">
+                          {/* Ocorrências (Wins + Losses) */}
+                          <div className="flex flex-col items-center min-w-[42px]">
+                            <span className="text-[8px] text-gray-500 uppercase font-black">OCORR.</span>
+                            <span className="text-gray-300 font-mono text-[11px]">{cycle.occurrences ?? 0}</span>
+                          </div>
+
+                          {/* TX % */}
+                          <div className="flex flex-col items-center min-w-[45px]">
                             <span className="text-[8px] text-gray-500 uppercase font-black">TX %</span>
-                            <span className="text-[#4ade80]">{cycle.winRate}%</span>
+                            <span className="text-[#4ade80] font-mono text-[11px]">{cycle.winRate}%</span>
                           </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-[8px] text-gray-500 uppercase font-black">TX CICLO %</span>
-                            <span className="text-amber-400">{cycle.cycleWinRate || '0.0'}%</span>
+
+                          {/* TX CICLO % */}
+                          <div className="flex flex-col items-center min-w-[55px]">
+                            <span className="text-[8px] text-gray-500 uppercase font-black">TX CICLO</span>
+                            <span className="text-amber-400 font-mono text-[11px]">{cycle.cycleWinRate || '0.0'}%</span>
                           </div>
-                        </div>
 
-                        {/* Entrada (X/Y) */}
-                        <div className="flex flex-col items-center">
-                          <span className="text-[8px] text-gray-500 uppercase font-black">Entrada</span>
-                          <span className="bg-white/10 border border-white/15 px-2 py-0.5 rounded text-[10px] font-black text-white font-mono">
-                            {cycle.currentStep || 1}/{cycle.maxEntries || casasLimit}
-                          </span>
-                        </div>
+                          {/* Entrada (X/Y) */}
+                          <div className="flex flex-col items-center min-w-[45px]">
+                            <span className="text-[8px] text-gray-500 uppercase font-black">ENTRADA</span>
+                            <span className="bg-white/10 border border-white/15 px-1.5 py-0.5 rounded text-[10px] font-black text-white font-mono">
+                              {cycle.currentStep || 1}/{cycle.maxEntries || casasLimit}
+                            </span>
+                          </div>
 
-                        {/* Valor Rodada */}
-                        <div className="flex flex-col items-end">
-                          <span className="text-[8px] text-gray-500 uppercase font-black">Aposta</span>
-                          <span className="text-xs font-black text-[#eab308] font-mono">
-                            R$ {(cycle.currentValue || 0).toFixed(2)}
-                          </span>
+                          {/* Valor Rodada */}
+                          <div className="flex flex-col items-end min-w-[55px]">
+                            <span className="text-[8px] text-gray-500 uppercase font-black">APOSTA</span>
+                            <span className="text-xs font-black text-[#eab308] font-mono">
+                              R$ {(cycle.currentValue || 0).toFixed(2)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -777,13 +834,13 @@ export default function RadarAvancadoPage() {
                             return <div key={i} className={`w-8 h-8 rounded-sm border border-black/30 flex items-center justify-center text-[10px] font-black ${bg} ${text}`}>{isColor ? '' : v}</div>;
                           })}
                         </td>
-                        <td className="p-3 border-r border-white/5 text-center text-[#4ade80] font-bold">{stat.winRate}%</td>
+                        <td className="p-3 border-r border-white/5 text-center text-[#4ade80] font-bold">{stat.winRate || '0.0'}%</td>
                         <td className="p-3 border-r border-white/5 text-center text-amber-400 font-bold">{stat.cycleWinRate || '0.0'}%</td>
-                        <td className="p-3 border-r border-white/5 text-center text-gray-300 font-semibold">{stat.win}</td>
-                        <td className="p-3 border-r border-white/5 text-center text-gray-300 font-semibold">{stat.loss}</td>
-                        <td className={`p-3 border-r border-white/5 text-center font-bold ${stat.pnl >= 0 ? 'text-[#4ade80]' : 'text-[#f12c4c]'}`}>R$ {stat.pnl.toFixed(0)}</td>
-                        <td className={`p-3 border-r border-white/5 text-center text-white font-bold ${stat.sa >= stat.sm - 1 && stat.sa > 0 ? 'bg-[#8b008b]' : ''}`}>{stat.sm}</td>
-                        <td className={`p-3 border-r border-white/5 text-center text-white font-bold ${stat.sa >= stat.sm - 1 && stat.sa > 0 ? 'bg-[#8b008b]' : ''}`}>{stat.sa}</td>
+                        <td className="p-3 border-r border-white/5 text-center text-gray-300 font-semibold">{stat.win ?? 0}</td>
+                        <td className="p-3 border-r border-white/5 text-center text-gray-300 font-semibold">{stat.loss ?? 0}</td>
+                        <td className={`p-3 border-r border-white/5 text-center font-bold ${(stat.pnl || 0) >= 0 ? 'text-[#4ade80]' : 'text-[#f12c4c]'}`}>R$ {(stat.pnl || 0).toFixed(0)}</td>
+                        <td className={`p-3 border-r border-white/5 text-center text-white font-bold ${(stat.sa || 0) >= (stat.sm || 0) - 1 && (stat.sa || 0) > 0 ? 'bg-[#8b008b]' : ''}`}>{stat.sm ?? 0}</td>
+                        <td className={`p-3 border-r border-white/5 text-center text-white font-bold ${(stat.sa || 0) >= (stat.sm || 0) - 1 && (stat.sa || 0) > 0 ? 'bg-[#8b008b]' : ''}`}>{stat.sa ?? 0}</td>
                         <td className="p-3 border-r border-white/5 text-center font-bold">
                           <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider border shadow-sm ${
                             (stat.currentCycleText || '').startsWith('L') 

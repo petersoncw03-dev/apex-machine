@@ -1,6 +1,6 @@
 # Microserviço Independente de SSE — VPS (Apex Machine)
 
-Este microserviço foi desacoplado do Vercel para rodar 100% de forma independente no seu servidor **Ubuntu / Easypanel** no IP `151.242.25.148`.
+Este microserviço foi desacoplado do Vercel para rodar 100% de forma independente no seu servidor **Ubuntu / Easypanel** no IP `193.111.116.40`.
 
 ---
 
@@ -22,13 +22,13 @@ Rodando este microserviço na VPS:
 5. Configure as Variáveis de Ambiente no Easypanel:
    ```env
    PORT=4000
-   DB_HOST=151.242.25.148
+   DB_HOST=193.111.116.40
    DB_PORT=15721
    DB_USER=postgresmachine
    DB_PASS=125320pepe
    DB_NAME=apexmachine
    ```
-6. Exponha a porta `4000` ou configure o domínio no Easypanel (ex: `https://events.seu-dominio.com` ou `http://151.242.25.148:4000`).
+6. Exponha a porta `4000` ou configure o domínio no Easypanel (ex: `https://events.seu-dominio.com` ou `http://193.111.116.40:4000`).
 
 ---
 
@@ -37,7 +37,7 @@ Rodando este microserviço na VPS:
 No arquivo `.env.local` (ou nas Environment Variables da Vercel no projeto principal):
 
 ```env
-NEXT_PUBLIC_VPS_URL=http://151.242.25.148:4000
+NEXT_PUBLIC_VPS_URL=http://193.111.116.40:4000
 ```
 
 Pronto! O frontend se conectará automaticamente ao microserviço da VPS para escutar os eventos em tempo real, enquanto a Vercel servirá apenas as páginas e APIs com cache otimizado Edge.

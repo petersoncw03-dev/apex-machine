@@ -35,11 +35,14 @@ function buildTick(data: Roll[]) {
   let acc = 0; const times: number[] = [];
   let lastT = 0;
   return data.map(r => {
-    const key = r.id || (r.timestamp + r.color + r.roll);
+    if (!r || !r.timestamp) return null;
+    const key = r.id || (r.timestamp + String(r.color || '') + String(r.roll || ''));
     let t = globalTimeCache.get(key);
     if (t === undefined) {
-      const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
-      const rawT = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
+      const tsDate = new Date(r.timestamp);
+      if (isNaN(tsDate.getTime())) return null;
+      const offsetSeconds = tsDate.getTimezoneOffset() * 60;
+      const rawT = Math.floor(tsDate.getTime() / 1000) - offsetSeconds;
       t = Math.max(rawT, lastT + 1);
       globalTimeCache.set(key, t);
     }
@@ -49,9 +52,9 @@ function buildTick(data: Roll[]) {
     const prev = acc;
     const profit = parseFloat(String(r.house_profit || 0));
     acc = parseFloat((acc + profit).toFixed(2));
-    const c = CMAP[r.color?.toUpperCase()] ?? "#555566";
+    const c = CMAP[(r.color || '').toString().toUpperCase()] ?? "#555566";
     return { candle: { time: t as Time, open: prev, high: Math.max(prev, acc), low: Math.min(prev, acc), close: acc, color: c, wickColor: c, borderColor: c }, acc, time: t };
-  });
+  }).filter((item): item is NonNullable<typeof item> => item !== null);
 }
 
 function buildAgg(data: Roll[], minutes: number) {
@@ -59,8 +62,11 @@ function buildAgg(data: Roll[], minutes: number) {
   const bOrder: number[] = [];
   const interval = minutes * 60;
   data.forEach(r => {
-    const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
-    const t = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
+    if (!r || !r.timestamp) return;
+    const tsDate = new Date(r.timestamp);
+    if (isNaN(tsDate.getTime())) return;
+    const offsetSeconds = tsDate.getTimezoneOffset() * 60;
+    const t = Math.floor(tsDate.getTime() / 1000) - offsetSeconds;
     const bs = Math.floor(t / interval) * interval;
     const profit = parseFloat(String(r.house_profit || 0));
     acc = parseFloat((acc + profit).toFixed(2));
@@ -73,9 +79,11 @@ function buildAgg(data: Roll[], minutes: number) {
     }
   });
   return bOrder.map(bs => {
-    const b = bMap.get(bs)!; const up = b.close >= b.open; const c = up ? "#e51e3e" : "rgba(200,200,220,0.8)";
+    const b = bMap.get(bs)!;
+    if (!b) return null;
+    const up = b.close >= b.open; const c = up ? "#e51e3e" : "rgba(200,200,220,0.8)";
     return { candle: { time: bs as Time, open: b.open, high: b.high, low: b.low, close: b.close, color: c, wickColor: c, borderColor: c }, acc: b.close, time: bs };
-  });
+  }).filter((item): item is NonNullable<typeof item> => item !== null);
 }
 
 function LiveBettingStatus() {
@@ -85,15 +93,9 @@ function LiveBettingStatus() {
   const [black, setBlack] = useState({ amt: 0, count: 0 });
   const [timeLeft, setTimeLeft] = useState(0);
   const [result, setResult] = useState<{color: number, payout: number} | null>(null);
-  const { eurRate } = useSSESubscribe();
 
   const timerRef = useRef<any>(null);
   const pingRef = useRef<any>(null);
-
-  const eurRateRef = useRef(eurRate);
-  useEffect(() => {
-    eurRateRef.current = eurRate;
-  }, [eurRate]);
 
   useEffect(() => {
     let ws: WebSocket;
@@ -138,9 +140,9 @@ function LiveBettingStatus() {
                   if (p.color !== undefined && p.color !== null) {
                      const c = p.color;
                      let payout = 0;
-                     if (c === 1) payout = parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0") * eurRateRef.current * 2;
-                     if (c === 2) payout = parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0") * eurRateRef.current * 2;
-                     if (c === 0) payout = parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0") * eurRateRef.current * 14;
+                     if (c === 1) payout = parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0") * 2;
+                     if (c === 2) payout = parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0") * 2;
+                     if (c === 0) payout = parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0") * 14;
                      setResult({ color: c, payout });
                   }
                } else if (p.status === "complete") {
@@ -152,17 +154,17 @@ function LiveBettingStatus() {
                   if (p.color !== undefined && p.color !== null) {
                      const c = p.color;
                      let payout = 0;
-                     if (c === 1) payout = parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0") * eurRateRef.current * 2;
-                     if (c === 2) payout = parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0") * eurRateRef.current * 2;
-                     if (c === 0) payout = parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0") * eurRateRef.current * 14;
+                     if (c === 1) payout = parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0") * 2;
+                     if (c === 2) payout = parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0") * 2;
+                     if (c === 0) payout = parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0") * 14;
                      setResult({ color: c, payout });
                   }
                }
                
                if (p.total_red_bet !== undefined || p.total_red_eur_bet !== undefined) {
-                  setRed({ amt: parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0") * eurRateRef.current, count: p.total_red_bets_placed || 0 });
-                  setWhite({ amt: parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0") * eurRateRef.current, count: p.total_white_bets_placed || 0 });
-                  setBlack({ amt: parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0") * eurRateRef.current, count: p.total_black_bets_placed || 0 });
+                  setRed({ amt: parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0"), count: p.total_red_bets_placed || 0 });
+                  setWhite({ amt: parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0"), count: p.total_white_bets_placed || 0 });
+                  setBlack({ amt: parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0"), count: p.total_black_bets_placed || 0 });
                }
             }
           }
@@ -281,7 +283,6 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   const chart = useRef<any>(null), candle = useRef<any>(null);
   const sMap = useRef<Map<string, any>>(new Map());
   const cidx = useRef(0);
-  const { eurRate } = useSSESubscribe();
 
   const [tf, setTf] = useState("tick");
   const [inds, setInds] = useState<Ind[]>([]);
