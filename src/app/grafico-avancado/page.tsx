@@ -18,6 +18,7 @@ interface Roll {
   color: string;
   roll: number;
   timestamp: string;
+  created_at?: string;
   total_bets?: number;
   total_payout?: number;
   house_profit?: number;
