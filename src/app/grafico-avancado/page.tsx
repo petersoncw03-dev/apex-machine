@@ -458,6 +458,15 @@ export default function GraficoAvancadoPage() {
                 >
                   <Award size={14} /> Winrate %
                 </button>
+
+                <a
+                  href="/api/players/export-7d"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-[#00c83a]/15 text-[#00c83a] border border-[#00c83a]/30 hover:bg-[#00c83a]/25 transition-all shadow-[0_0_12px_rgba(0,200,58,0.15)] ml-2"
+                >
+                  <BarChart3 size={14} /> Exportar 7D (CSV)
+                </a>
               </div>
 
             </div>
