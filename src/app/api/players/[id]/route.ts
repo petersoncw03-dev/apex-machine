@@ -45,7 +45,7 @@ export async function GET(
       [userId]
     );
 
-    const history = betsRes.rows.map(b => ({
+    const history = betsRes.rows.map((b: any) => ({
       id: b.id,
       roll_id: b.roll_id,
       color: b.color,

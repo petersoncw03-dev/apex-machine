@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 
     const res = await query(sql, params);
 
-    const data = res.rows.map(p => ({
+    const data = res.rows.map((p: any) => ({
       id: String(p.id),
       name: p.name || 'Jogador Anônimo',
       total_bets_count: Number(p.total_bets_count || 0),
