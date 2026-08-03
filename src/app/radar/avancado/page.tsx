@@ -377,8 +377,9 @@ export default function RadarAvancadoPage() {
       return sortDirection === 'desc' ? parseFloat(b.winRate) - parseFloat(a.winRate) : parseFloat(a.winRate) - parseFloat(b.winRate);
     }));
 
-    if (currentLatest.id !== lastProcessedId.current) {
-      lastProcessedId.current = currentLatest.id ?? null;
+    const latestKey = currentLatest.id || (currentLatest.timestamp + '_' + currentLatest.roll + '_' + currentLatest.color);
+    if (latestKey !== lastProcessedId.current) {
+      lastProcessedId.current = latestKey;
 
       const prevCycles = activeCyclesRef.current;
       const nextCycles: ActiveCycle[] = [];

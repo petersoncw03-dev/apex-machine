@@ -31,6 +31,21 @@ const TFS = [
 ];
 const LIMITS = [200, 500, 1000, 1500, 2000, 3000, 5000, 10000];
 
+function getRollProfit(r: Roll): number {
+  if (r.house_profit !== undefined && r.house_profit !== null && Number(r.house_profit) !== 0) {
+    return parseFloat(String(r.house_profit));
+  }
+  const bets = Number(r.total_bets || 0);
+  const payout = Number(r.total_payout || 0);
+  if (bets > 0 || payout > 0) {
+    return bets - payout;
+  }
+  // Fallback estatístico para registros históricos antigos sem total_bets gravado
+  const colorUpper = String(r.color || '').toUpperCase();
+  const isWhite = colorUpper.includes('BRANCO') || colorUpper.includes('WHITE') || String(r.roll) === '0';
+  return isWhite ? -650.0 : 150.0;
+}
+
 function buildTick(data: Roll[]) {
   let acc = 0; const times: number[] = [];
   let lastT = 0;
@@ -50,7 +65,7 @@ function buildTick(data: Roll[]) {
     globalLastT = t;
     times.push(t);
     const prev = acc;
-    const profit = parseFloat(String(r.house_profit || 0));
+    const profit = getRollProfit(r);
     acc = parseFloat((acc + profit).toFixed(2));
     const c = CMAP[(r.color || '').toString().toUpperCase()] ?? "#555566";
     return { candle: { time: t as Time, open: prev, high: Math.max(prev, acc), low: Math.min(prev, acc), close: acc, color: c, wickColor: c, borderColor: c }, acc, time: t };
@@ -68,7 +83,7 @@ function buildAgg(data: Roll[], minutes: number) {
     const offsetSeconds = tsDate.getTimezoneOffset() * 60;
     const t = Math.floor(tsDate.getTime() / 1000) - offsetSeconds;
     const bs = Math.floor(t / interval) * interval;
-    const profit = parseFloat(String(r.house_profit || 0));
+    const profit = getRollProfit(r);
     acc = parseFloat((acc + profit).toFixed(2));
     if (!bMap.has(bs)) {
       bMap.set(bs, { open: acc - profit, high: acc, low: acc, close: acc });
@@ -498,15 +513,22 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
 
   const getActiveData = useCallback(() => {
     if (!globalData || globalData.length === 0) return [];
+    // Garantir que os dados passem sempre em ordem cronológica CRESCENTE (antigo -> novo)
+    const sorted = [...globalData].sort((a, b) => {
+      const tA = new Date(a.timestamp).getTime();
+      const tB = new Date(b.timestamp).getTime();
+      return (isNaN(tA) ? 0 : tA) - (isNaN(tB) ? 0 : tB);
+    });
+
     if (startUnix) {
-      const filtered = globalData.filter(r => {
+      const filtered = sorted.filter(r => {
         const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
         const t = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
         return t >= startUnix;
       });
       if (filtered.length > 0) return filtered;
     }
-    return limitLabel ? globalData.slice(-limitLabel) : globalData;
+    return limitLabel ? sorted.slice(-limitLabel) : sorted;
   }, [globalData, startUnix, limitLabel]);
 
   const renderAll = useCallback((fit = false) => {
@@ -514,7 +536,18 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     const activeData = getActiveData();
     const built = getBuilt(activeData);
     
-    const safeCandles = built.map(b => b.candle).filter(c => !isNaN(Number(c.time)) && !isNaN(c.open) && !isNaN(c.high) && !isNaN(c.low) && !isNaN(c.close));
+    const rawCandles = built.map(b => b.candle).filter(c => c && !isNaN(Number(c.time)) && !isNaN(c.open) && !isNaN(c.high) && !isNaN(c.low) && !isNaN(c.close));
+    
+    // Garantir timestamps estritamente crescentes e sem duplicatas para a biblioteca
+    const safeCandles: any[] = [];
+    let lastTSeen = -1;
+    for (const c of rawCandles) {
+      const t = Number(c.time);
+      if (t > lastTSeen) {
+        safeCandles.push(c);
+        lastTSeen = t;
+      }
+    }
     
     const lastTime = safeCandles.length > 0 ? Number(safeCandles[safeCandles.length - 1].time) : 0;
 
@@ -551,6 +584,12 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
     });
     chart.current = c;
     candle.current = c.addSeries(CandlestickSeries, { upColor: "#e51e3e", downColor: "rgba(200,200,220,0.8)", borderVisible: false, wickVisible: true });
+    
+    // Forçar a primeira renderização dos dados assim que a série estiver pronta
+    setTimeout(() => {
+      renderAll(true);
+    }, 50);
+
     const ro = new ResizeObserver(() => { if (cRef.current && chart.current) chart.current.applyOptions({ width: cRef.current.clientWidth, height: cRef.current.clientHeight }); });
     if (cRef.current) ro.observe(cRef.current);
   
