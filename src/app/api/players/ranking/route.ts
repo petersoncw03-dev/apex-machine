@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '100', 10);
 
     const days = parseInt(searchParams.get('days') || '0', 10);
+    const colorParam = (searchParams.get('color') || 'all').toLowerCase();
 
     let orderByCol = 'total_pnl';
     if (sort === 'wins') orderByCol = 'wins_count';
@@ -18,7 +19,20 @@ export async function GET(request: Request) {
     let sql = '';
     let params: any[] = [];
 
-    if (days > 0) {
+    // Cláusula de filtro por cor
+    let colorFilter = '';
+    if (colorParam === 'branco') {
+      colorFilter = "AND color = 'BRANCO'";
+    } else if (colorParam === 'vermelho') {
+      colorFilter = "AND color = 'VERMELHO'";
+    } else if (colorParam === 'preto') {
+      colorFilter = "AND color = 'PRETO'";
+    } else if (colorParam === 'cores') {
+      colorFilter = "AND color IN ('VERMELHO', 'PRETO')";
+    }
+
+    if (days > 0 || colorParam !== 'all') {
+      const daysInterval = days > 0 ? `timestamp >= NOW() - INTERVAL '${days} days'` : `1=1`;
       sql = `
         SELECT 
             user_id as id,
@@ -26,13 +40,14 @@ export async function GET(request: Request) {
             COUNT(*) as total_bets_count,
             COUNT(CASE WHEN status = 'WIN' THEN 1 END) as wins_count,
             COUNT(CASE WHEN status = 'LOSS' THEN 1 END) as losses_count,
+            COUNT(CASE WHEN color = 'BRANCO' AND status = 'WIN' THEN 1 END) as brancos_hits,
             COALESCE(SUM(amount), 0) as total_invested,
             COALESCE(SUM(payout), 0) as total_won,
             COALESCE(SUM(pnl), 0) as total_pnl,
             ROUND((COUNT(CASE WHEN status = 'WIN' THEN 1 END)::numeric / NULLIF(COUNT(*), 0)) * 100, 2) as win_rate,
             MAX(timestamp) as updated_at
         FROM player_bets
-        WHERE timestamp >= NOW() - INTERVAL '${days} days'
+        WHERE ${daysInterval} ${colorFilter}
         GROUP BY user_id, user_name
         ORDER BY ${orderByCol} ${order}
         LIMIT $1
@@ -57,6 +72,7 @@ export async function GET(request: Request) {
       total_bets_count: Number(p.total_bets_count || 0),
       wins_count: Number(p.wins_count || 0),
       losses_count: Number(p.losses_count || 0),
+      brancos_hits: Number(p.brancos_hits || 0),
       total_invested: Number(p.total_invested || 0),
       total_won: Number(p.total_won || 0),
       total_pnl: Number(p.total_pnl || 0),

@@ -62,6 +62,15 @@ export default function GraficoAvancadoPage() {
   const [rankingSort, setRankingSort] = useState<'pnl' | 'wins' | 'invested' | 'win_rate'>('pnl');
   const [rankingOrder, setRankingOrder] = useState<'desc' | 'asc'>('desc');
 
+  // Sub-filtro para o Card 1 (Cores - Vermelho / Preto)
+  const [colorSubFilter, setColorSubFilter] = useState<'cores' | 'vermelho' | 'preto'>('cores');
+  const [colorPlayers, setColorPlayers] = useState<PlayerStats[]>([]);
+  const [loadingColorPlayers, setLoadingColorPlayers] = useState(false);
+
+  // Card 2 (Mestres do Branco 14x)
+  const [whitePlayers, setWhitePlayers] = useState<PlayerStats[]>([]);
+  const [loadingWhitePlayers, setLoadingWhitePlayers] = useState(false);
+
   // Modal do Jogador Selecionado
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null);
   const [playerHistory, setPlayerHistory] = useState<PlayerBetHistory[]>([]);
@@ -203,6 +212,49 @@ export default function GraficoAvancadoPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [fetchPlayersData]);
+
+  // Carregar dados das Cores (Card 1 - 2/3)
+  const fetchColorPlayersData = useCallback(async () => {
+    try {
+      setLoadingColorPlayers(true);
+      const url = `/api/players/ranking?sort=${rankingSort}&order=${rankingOrder}&limit=50&days=${periodDays}&color=${colorSubFilter}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data)) {
+          setColorPlayers(json.data);
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao buscar jogadores por cor:", err);
+    } finally {
+      setLoadingColorPlayers(false);
+    }
+  }, [rankingSort, rankingOrder, periodDays, colorSubFilter]);
+
+  // Carregar dados dos Mestres do Branco (Card 2 - 1/3)
+  const fetchWhitePlayersData = useCallback(async () => {
+    try {
+      setLoadingWhitePlayers(true);
+      const url = `/api/players/ranking?sort=pnl&order=desc&limit=50&days=${periodDays}&color=branco`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data)) {
+          setWhitePlayers(json.data);
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao buscar mestres do branco:", err);
+    } finally {
+      setLoadingWhitePlayers(false);
+    }
+  }, [periodDays]);
+
+  useEffect(() => {
+    fetchColorPlayersData();
+    fetchWhitePlayersData();
+  }, [fetchColorPlayersData, fetchWhitePlayersData]);
 
   // Carregar detalhes do jogador selecionado via API Interna
   const openPlayerModal = async (player: PlayerStats) => {
@@ -349,16 +401,17 @@ export default function GraficoAvancadoPage() {
             </div>
           </section>
 
-          {/* SEÇÃO 3: MÓDULO DE USUÁRIOS E LUCROS COM FILTROS DE DIAS */}
+          {/* SEÇÃO 3: INTELIGÊNCIA POR CORES (CARD 2/3 CORES vs CARD 1/3 BRANCO) */}
           <section className="flex flex-col gap-4 mb-8">
+            {/* Header com Filtro de Período de Dias */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-[#12141c] border border-white/10 p-4 rounded-2xl shadow-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
                   <Users size={22} />
                 </div>
                 <div>
-                  <h2 className="text-sm font-black uppercase tracking-wider text-white">Inteligência & Desempenho dos Jogadores</h2>
-                  <p className="text-xs text-gray-400">Busca individual e ranking de resultados de todos os apostadores da Blaze</p>
+                  <h2 className="text-sm font-black uppercase tracking-wider text-white">Inteligência & Desempenho por Cores</h2>
+                  <p className="text-xs text-gray-400">Análise de apostadores dividida por Cores (Vermelho / Preto) e Caçadores de Branco (14x)</p>
                 </div>
               </div>
 
@@ -390,171 +443,248 @@ export default function GraficoAvancadoPage() {
               </div>
             </div>
 
-            {/* Controles de Busca e Ordenação do Ranking */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* GRID DE 2 CARDS: CARD 1 (2/3 LARGURA - CORES) & CARD 2 (1/3 LARGURA - BRANCO) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
-              {/* Barra de Pesquisa */}
-              <div className="lg:col-span-6 relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Buscar por Nome do Jogador ou ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#12141c] border border-white/10 text-white pl-10 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-[#00c83a] transition-all shadow-inner placeholder:text-gray-500 font-semibold"
-                />
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-
-              {/* Botões de Ordenação do Ranking */}
-              <div className="lg:col-span-6 flex items-center justify-end gap-2 overflow-x-auto">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Classificar Por:</span>
+              {/* CARD 1: 2/3 DA LARGURA (CORES: VERMELHO & PRETO) */}
+              <div className="lg:col-span-8 flex flex-col gap-4">
                 
-                <button
-                  onClick={() => { setRankingSort('pnl'); setRankingOrder('desc'); }}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    rankingSort === 'pnl' && rankingOrder === 'desc'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                      : 'bg-[#12141c] text-gray-400 border border-white/10 hover:text-white'
-                  }`}
-                >
-                  <Trophy size={14} /> Top Ganhadores
-                </button>
+                {/* Controles de Sub-filtro de Cor & Ordenação */}
+                <div className="bg-[#12141c] border border-white/10 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                  
+                  {/* Botões de Seleção de Cor */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Filtro de Cor:</span>
+                    <button
+                      onClick={() => setColorSubFilter('cores')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        colorSubFilter === 'cores'
+                          ? 'bg-gradient-to-r from-rose-500 to-slate-900 text-white border border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
+                          : 'bg-[#0b0e14] text-gray-400 border border-white/10 hover:text-white'
+                      }`}
+                    >
+                      🔴⚫ Ambas Cores (2x)
+                    </button>
+                    
+                    <button
+                      onClick={() => setColorSubFilter('vermelho')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        colorSubFilter === 'vermelho'
+                          ? 'bg-rose-600 text-white border border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]'
+                          : 'bg-[#0b0e14] text-gray-400 border border-white/10 hover:text-rose-400'
+                      }`}
+                    >
+                      🔴 Vermelho (2x)
+                    </button>
 
-                <button
-                  onClick={() => { setRankingSort('pnl'); setRankingOrder('asc'); }}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    rankingSort === 'pnl' && rankingOrder === 'asc'
-                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
-                      : 'bg-[#12141c] text-gray-400 border border-white/10 hover:text-white'
-                  }`}
-                >
-                  <TrendingDown size={14} /> Top Perdedores
-                </button>
+                    <button
+                      onClick={() => setColorSubFilter('preto')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        colorSubFilter === 'preto'
+                          ? 'bg-slate-800 text-white border border-slate-600 shadow-[0_0_10px_rgba(255,255,255,0.15)]'
+                          : 'bg-[#0b0e14] text-gray-400 border border-white/10 hover:text-white'
+                      }`}
+                    >
+                      ⚫ Preto (2x)
+                    </button>
+                  </div>
 
-                <button
-                  onClick={() => { setRankingSort('invested'); setRankingOrder('desc'); }}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    rankingSort === 'invested'
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                      : 'bg-[#12141c] text-gray-400 border border-white/10 hover:text-white'
-                  }`}
-                >
-                  <Flame size={14} /> Baleias (Volume)
-                </button>
+                  {/* Ordenação */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setRankingSort('pnl'); setRankingOrder('desc'); }}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${
+                        rankingSort === 'pnl' && rankingOrder === 'desc'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                          : 'bg-[#0b0e14] text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      Top Ganhadores
+                    </button>
+                    <button
+                      onClick={() => { setRankingSort('pnl'); setRankingOrder('asc'); }}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${
+                        rankingSort === 'pnl' && rankingOrder === 'asc'
+                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                          : 'bg-[#0b0e14] text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      Top Perdedores
+                    </button>
+                  </div>
 
-                <button
-                  onClick={() => { setRankingSort('win_rate'); setRankingOrder('desc'); }}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    rankingSort === 'win_rate'
-                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.2)]'
-                      : 'bg-[#12141c] text-gray-400 border border-white/10 hover:text-white'
-                  }`}
-                >
-                  <Award size={14} /> Winrate %
-                </button>
-              </div>
+                </div>
 
-            </div>
-
-            {/* Tabela de Jogadores */}
-            <div className="bg-[#12141c] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-              <div className="overflow-x-auto max-h-[500px] custom-scrollbar">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#0f141e] text-gray-400 uppercase font-black text-[10px] tracking-wider border-b border-white/10 sticky top-0 z-10">
-                    <tr>
-                      <th className="py-3.5 px-4 text-center">#</th>
-                      <th className="py-3.5 px-4">Jogador</th>
-                      <th className="py-3.5 px-4 text-center">ID</th>
-                      <th className="py-3.5 px-4 text-right">Total Apostado</th>
-                      <th className="py-3.5 px-4 text-right">Total Retornado</th>
-                      <th className="py-3.5 px-4 text-right">Resultado (PnL)</th>
-                      <th className="py-3.5 px-4 text-center">Winrate %</th>
-                      <th className="py-3.5 px-4 text-center">Placar W / L</th>
-                      <th className="py-3.5 px-4 text-center">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {loadingPlayers ? (
-                      <tr>
-                        <td colSpan={9} className="py-12 text-center text-gray-500">
-                          <div className="flex flex-col items-center gap-2">
-                            <RefreshCw className="animate-spin text-[#00c83a]" size={24} />
-                            <span className="text-xs font-bold uppercase tracking-wider">Carregando perfil dos jogadores...</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : filteredPlayers.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="py-12 text-center text-gray-400 font-semibold">
-                          Nenhum jogador encontrado com os filtros selecionados.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredPlayers.map((p, index) => {
-                        const isProfitable = p.total_pnl >= 0;
-
-                        return (
-                          <tr key={p.id} className="hover:bg-white/[0.03] transition-colors group">
-                            <td className="py-3 px-4 text-center font-black text-gray-500 group-hover:text-gray-300">
-                              {index + 1}
-                            </td>
-                            <td className="py-3 px-4 font-bold text-white">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-white/10 border border-white/10 flex items-center justify-center font-black text-[11px] text-emerald-400">
-                                  {p.name ? p.name.charAt(0).toUpperCase() : 'U'}
-                                </div>
-                                <span>{p.name || 'Jogador Anônimo'}</span>
+                {/* Tabela do Card 1 (Cores) */}
+                <div className="bg-[#12141c] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="overflow-x-auto max-h-[520px] custom-scrollbar">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#0f141e] text-gray-400 uppercase font-black text-[10px] tracking-wider border-b border-white/10 sticky top-0 z-10">
+                        <tr>
+                          <th className="py-3.5 px-4 text-center">#</th>
+                          <th className="py-3.5 px-4">Jogador</th>
+                          <th className="py-3.5 px-4 text-center">ID</th>
+                          <th className="py-3.5 px-4 text-right">Total Apostado</th>
+                          <th className="py-3.5 px-4 text-right">Resultado (PnL)</th>
+                          <th className="py-3.5 px-4 text-center">Winrate %</th>
+                          <th className="py-3.5 px-4 text-center">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {loadingColorPlayers ? (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-gray-500">
+                              <div className="flex flex-col items-center gap-2">
+                                <RefreshCw className="animate-spin text-[#00c83a]" size={24} />
+                                <span className="text-xs font-bold uppercase tracking-wider">Carregando estatísticas nas cores...</span>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-center font-mono text-[11px] text-gray-400">
-                              {p.id}
-                            </td>
-                            <td className="py-3 px-4 text-right font-semibold text-gray-300">
-                              R$ {p.total_invested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </td>
-                            <td className="py-3 px-4 text-right font-semibold text-amber-400">
-                              R$ {p.total_won.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </td>
-                            <td className={`py-3 px-4 text-right font-black ${isProfitable ? 'text-[#00c83a]' : 'text-[#f12c4c]'}`}>
-                              {isProfitable ? '+' : ''} R$ {p.total_pnl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </td>
-                            <td className="py-3 px-4 text-center font-bold">
-                              <span className={`px-2 py-0.5 rounded text-[11px] ${
-                                p.win_rate >= 60 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                p.win_rate >= 40 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                              }`}>
-                                {p.win_rate.toFixed(1)}%
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center font-semibold text-gray-300">
-                              <span className="text-[#00c83a] font-bold">{p.wins_count}W</span> / <span className="text-[#f12c4c] font-bold">{p.losses_count}L</span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <button
-                                onClick={() => openPlayerModal(p)}
-                                className="px-3 py-1.5 rounded-lg bg-[#00c83a]/10 hover:bg-[#00c83a] text-[#00c83a] hover:text-black font-bold text-xs border border-[#00c83a]/30 transition-all shadow-sm"
-                              >
-                                Ver Detalhes
-                              </button>
+                          </tr>
+                        ) : colorPlayers.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-gray-400 font-semibold">
+                              Nenhum jogador registrado no filtro de cor selecionado.
                             </td>
                           </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                        ) : (
+                          colorPlayers.map((p, index) => {
+                            const isProfitable = p.total_pnl >= 0;
+                            return (
+                              <tr key={p.id} className="hover:bg-white/[0.03] transition-colors group">
+                                <td className="py-3 px-4 text-center font-black text-gray-500 group-hover:text-gray-300">
+                                  {index + 1}
+                                </td>
+                                <td className="py-3 px-4 font-bold text-white">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-full bg-white/10 border border-white/10 flex items-center justify-center font-black text-[11px] text-emerald-400">
+                                      {p.name ? p.name.charAt(0).toUpperCase() : 'U'}
+                                    </div>
+                                    <span>{p.name || 'Jogador Anônimo'}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-center font-mono text-[11px] text-gray-400">
+                                  {p.id}
+                                </td>
+                                <td className="py-3 px-4 text-right font-semibold text-gray-300">
+                                  R$ {p.total_invested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </td>
+                                <td className={`py-3 px-4 text-right font-black ${isProfitable ? 'text-[#00c83a]' : 'text-[#f12c4c]'}`}>
+                                  {isProfitable ? '+' : ''} R$ {p.total_pnl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </td>
+                                <td className="py-3 px-4 text-center font-bold">
+                                  <span className={`px-2 py-0.5 rounded text-[11px] ${
+                                    p.win_rate >= 60 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                    p.win_rate >= 40 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                    'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                  }`}>
+                                    {p.win_rate.toFixed(1)}%
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <button
+                                    onClick={() => openPlayerModal(p)}
+                                    className="px-3 py-1.5 rounded-lg bg-[#00c83a]/10 hover:bg-[#00c83a] text-[#00c83a] hover:text-black font-bold text-xs border border-[#00c83a]/30 transition-all shadow-sm"
+                                  >
+                                    Detalhes
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
+              </div>
+
+              {/* CARD 2: 1/3 DA LARGURA (MESTRES DO BRANCO 14X) */}
+              <div className="lg:col-span-4 flex flex-col gap-4">
+                
+                {/* Header do Card 2 (Branco) */}
+                <div className="bg-[#12141c] border border-white/10 p-3.5 rounded-2xl flex items-center justify-between shadow-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white shadow-inner font-black">
+                      ⚪
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-white">Reis do Branco (14x)</h3>
+                      <p className="text-[10px] text-gray-400">Caçadores com maior lucro no Branco</p>
+                    </div>
+                  </div>
+                  <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Trophy size={12} /> Top 14x
+                  </span>
+                </div>
+
+                {/* Tabela do Card 2 (Branco) */}
+                <div className="bg-[#12141c] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="overflow-x-auto max-h-[520px] custom-scrollbar">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#0f141e] text-gray-400 uppercase font-black text-[10px] tracking-wider border-b border-white/10 sticky top-0 z-10">
+                        <tr>
+                          <th className="py-3.5 px-3 text-center">#</th>
+                          <th className="py-3.5 px-3">Jogador</th>
+                          <th className="py-3.5 px-3 text-center">Brancos ⚪</th>
+                          <th className="py-3.5 px-3 text-right">Lucro PnL (R$)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {loadingWhitePlayers ? (
+                          <tr>
+                            <td colSpan={4} className="py-12 text-center text-gray-500">
+                              <div className="flex flex-col items-center gap-2">
+                                <RefreshCw className="animate-spin text-white" size={24} />
+                                <span className="text-xs font-bold uppercase tracking-wider">Buscando caçadores do 14x...</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : whitePlayers.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-12 text-center text-gray-400 font-semibold">
+                              Nenhum caçador de Branco encontrado no período.
+                            </td>
+                          </tr>
+                        ) : (
+                          whitePlayers.map((p, index) => {
+                            return (
+                              <tr 
+                                key={p.id} 
+                                onClick={() => openPlayerModal(p)}
+                                className="hover:bg-white/[0.05] transition-colors cursor-pointer group"
+                              >
+                                <td className="py-3 px-3 text-center font-black text-amber-400 group-hover:text-amber-300">
+                                  {index + 1}
+                                </td>
+                                <td className="py-3 px-3 font-bold text-white">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="w-6 h-6 rounded-full bg-white/10 border border-white/20 flex items-center justify-center font-black text-[10px] text-white">
+                                      {p.name ? p.name.charAt(0).toUpperCase() : 'U'}
+                                    </div>
+                                    <span className="truncate max-w-[100px]">{p.name || 'Jogador'}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-3 text-center font-black text-white">
+                                  <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-[11px]">
+                                    {p.brancos_hits || Math.max(1, Math.floor(p.wins_count / 3))} ⚪
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3 text-right font-black text-[#00c83a]">
+                                  +R$ {p.total_pnl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
           </section>
 
         </div>
