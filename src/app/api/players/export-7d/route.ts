@@ -36,7 +36,7 @@ export async function GET() {
 
     // Gerar conteúdo CSV (separador ponto e vírgula para Excel do Brasil)
     let csvContent = 'ID Jogador;Nome;Total Apostas (7D);Wins;Losses;Total Apostado (R$);Total Retornado (R$);Lucro Liquido PnL (R$);Winrate %\n';
-    rows.forEach(r => {
+    rows.forEach((r: any) => {
       csvContent += `${r.user_id};${r.user_name};${r.total_bets_7d};${r.wins_7d};${r.losses_7d};${Number(r.total_invested_7d).toFixed(2)};${Number(r.total_won_7d).toFixed(2)};${Number(r.total_pnl_7d).toFixed(2)};${r.win_rate_7d}%\n`;
     });
 
