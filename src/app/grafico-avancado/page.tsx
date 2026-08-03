@@ -104,7 +104,17 @@ export default function GraficoAvancadoPage() {
       setGlobalData(prev => {
         const exists = prev.some(r => r.id === mappedRoll.id);
         if (exists) return prev;
-        const newArr = [...prev, mappedRoll];
+        const normalizedRoll: Roll = {
+          id: mappedRoll.id,
+          color: mappedRoll.color,
+          roll: Number(mappedRoll.roll || 0),
+          created_at: mappedRoll.created_at,
+          timestamp: mappedRoll.created_at,
+          total_bets: mappedRoll.total_bets,
+          total_payout: mappedRoll.total_payout,
+          house_profit: mappedRoll.house_profit
+        };
+        const newArr = [...prev, normalizedRoll];
         return newArr.slice(-2000); // Mantém no máximo 2000 pedras na memória
       });
 
