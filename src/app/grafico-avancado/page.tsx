@@ -90,6 +90,14 @@ export default function GraficoAvancadoPage() {
     fetchDbResults();
   }, []);
 
+  const rankingSortRef = useRef(rankingSort);
+  const rankingOrderRef = useRef(rankingOrder);
+
+  useEffect(() => {
+    rankingSortRef.current = rankingSort;
+    rankingOrderRef.current = rankingOrder;
+  }, [rankingSort, rankingOrder]);
+
   // Inscrição em tempo real via SSE
   useEffect(() => {
     const unsub = subscribe((mappedRoll) => {
@@ -105,6 +113,9 @@ export default function GraficoAvancadoPage() {
         if (!prevPlayers || prevPlayers.length === 0) return prevPlayers;
         const rollColor = (mappedRoll.color || '').toUpperCase();
         const isWhite = rollColor.includes('BRANCO') || rollColor.includes('WHITE') || String(mappedRoll.roll) === '0';
+
+        const currentSort = rankingSortRef.current;
+        const currentOrder = rankingOrderRef.current;
 
         const updated = prevPlayers.map((p, idx) => {
           const avgBet = Math.round((p.total_invested / Math.max(p.total_bets_count, 1)));
@@ -139,16 +150,16 @@ export default function GraficoAvancadoPage() {
         return [...updated].sort((a, b) => {
           let valA = a.total_pnl;
           let valB = b.total_pnl;
-          if (rankingSort === 'wins') { valA = a.wins_count; valB = b.wins_count; }
-          else if (rankingSort === 'invested') { valA = a.total_invested; valB = b.total_invested; }
-          else if (rankingSort === 'win_rate') { valA = a.win_rate; valB = b.win_rate; }
+          if (currentSort === 'wins') { valA = a.wins_count; valB = b.wins_count; }
+          else if (currentSort === 'invested') { valA = a.total_invested; valB = b.total_invested; }
+          else if (currentSort === 'win_rate') { valA = a.win_rate; valB = b.win_rate; }
           
-          return rankingOrder === 'asc' ? valA - valB : valB - valA;
+          return currentOrder === 'asc' ? valA - valB : valB - valA;
         });
       });
     });
     return () => unsub();
-  }, [subscribe, rankingSort, rankingOrder]);
+  }, [subscribe]);
 
   // 2. Carregar dados dos Jogadores via API Interna (Zero CORS)
   const fetchPlayersData = useCallback(async () => {
