@@ -30,6 +30,7 @@ interface PlayerStats {
   total_bets_count: number;
   wins_count: number;
   losses_count: number;
+  brancos_hits?: number;
   total_invested: number;
   total_won: number;
   total_pnl: number;
