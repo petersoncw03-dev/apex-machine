@@ -31,7 +31,7 @@ const TFS = [
 ];
 const LIMITS = [200, 500, 1000, 1500, 2000, 3000, 5000, 10000];
 
-function getRollProfit(r: Roll): number {
+function getRollProfit(r: any): number {
   if (r.house_profit !== undefined && r.house_profit !== null && Number(r.house_profit) !== 0) {
     return parseFloat(String(r.house_profit));
   }
