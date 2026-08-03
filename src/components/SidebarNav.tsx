@@ -20,7 +20,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/painel-master', label: 'Painel Master', icon: <Home size={18} />, badge: 'Live' },
-  { href: '/radar/avancado', label: 'Radar Avançado', icon: <Radio size={18} />, badge: 'Novo' },
+  { href: '/radar/avancado', label: 'Radar Avançado', icon: <Radio size={18} /> },
+  { href: '/grafico-avancado', label: 'Gráfico Avançado', icon: <LineChart size={18} />, badge: 'Novo' },
   { href: '/analista', label: 'IA Analista', icon: <BrainCircuit size={18} /> },
   { href: '/laboratorio', label: 'Laboratório de Padrões', icon: <FlaskConical size={18} /> },
   { href: '/casa-exata', label: 'Casa Exata', icon: <TrendingUp size={18} /> },
