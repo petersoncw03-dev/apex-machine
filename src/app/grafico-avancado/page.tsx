@@ -103,17 +103,18 @@ export default function GraficoAvancadoPage() {
   useEffect(() => {
     const unsub = subscribe((mappedRoll) => {
       setGlobalData(prev => {
-        const exists = prev.some(r => r.id === mappedRoll.id);
+        const mAny = mappedRoll as any;
+        const exists = prev.some(r => r.id === mAny.id);
         if (exists) return prev;
         const normalizedRoll: Roll = {
-          id: mappedRoll.id,
-          color: mappedRoll.color,
-          roll: Number(mappedRoll.roll || 0),
-          created_at: mappedRoll.created_at,
-          timestamp: mappedRoll.created_at,
-          total_bets: mappedRoll.total_bets,
-          total_payout: mappedRoll.total_payout,
-          house_profit: mappedRoll.house_profit
+          id: mAny.id,
+          color: mAny.color,
+          roll: Number(mAny.roll || 0),
+          created_at: mAny.created_at || mAny.timestamp,
+          timestamp: mAny.timestamp || mAny.created_at,
+          total_bets: mAny.total_bets,
+          total_payout: mAny.total_payout,
+          house_profit: mAny.house_profit
         };
         const newArr = [...prev, normalizedRoll];
         return newArr.slice(-2000); // Mantém no máximo 2000 pedras na memória
