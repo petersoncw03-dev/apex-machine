@@ -8,20 +8,48 @@ export async function GET(request: Request) {
     const order = (searchParams.get('order') || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     const limit = parseInt(searchParams.get('limit') || '100', 10);
 
+    const days = parseInt(searchParams.get('days') || '0', 10);
+
     let orderByCol = 'total_pnl';
     if (sort === 'wins') orderByCol = 'wins_count';
     else if (sort === 'invested') orderByCol = 'total_invested';
     else if (sort === 'win_rate') orderByCol = 'win_rate';
 
-    const sql = `
-      SELECT id, name, total_bets_count, wins_count, losses_count, 
-             total_invested, total_won, total_pnl, win_rate, updated_at
-      FROM players
-      ORDER BY ${orderByCol} ${order}
-      LIMIT $1
-    `;
+    let sql = '';
+    let params: any[] = [];
 
-    const res = await query(sql, [limit]);
+    if (days > 0) {
+      sql = `
+        SELECT 
+            user_id as id,
+            user_name as name,
+            COUNT(*) as total_bets_count,
+            COUNT(CASE WHEN status = 'WIN' THEN 1 END) as wins_count,
+            COUNT(CASE WHEN status = 'LOSS' THEN 1 END) as losses_count,
+            COALESCE(SUM(amount), 0) as total_invested,
+            COALESCE(SUM(payout), 0) as total_won,
+            COALESCE(SUM(pnl), 0) as total_pnl,
+            ROUND((COUNT(CASE WHEN status = 'WIN' THEN 1 END)::numeric / NULLIF(COUNT(*), 0)) * 100, 2) as win_rate,
+            MAX(timestamp) as updated_at
+        FROM player_bets
+        WHERE timestamp >= NOW() - INTERVAL '${days} days'
+        GROUP BY user_id, user_name
+        ORDER BY ${orderByCol} ${order}
+        LIMIT $1
+      `;
+      params = [limit];
+    } else {
+      sql = `
+        SELECT id, name, total_bets_count, wins_count, losses_count, 
+               total_invested, total_won, total_pnl, win_rate, updated_at
+        FROM players
+        ORDER BY ${orderByCol} ${order}
+        LIMIT $1
+      `;
+      params = [limit];
+    }
+
+    const res = await query(sql, params);
 
     const data = res.rows.map(p => ({
       id: String(p.id),

@@ -165,7 +165,7 @@ export default function GraficoAvancadoPage() {
   const fetchPlayersData = useCallback(async () => {
     try {
       setLoadingPlayers(true);
-      let url = `/api/players/ranking?sort=${rankingSort}&order=${rankingOrder}&limit=100`;
+      let url = `/api/players/ranking?sort=${rankingSort}&order=${rankingOrder}&limit=100&days=${periodDays}`;
       
       if (searchQuery.trim().length > 0) {
         url = `/api/players/search?q=${encodeURIComponent(searchQuery.trim())}`;
@@ -183,7 +183,7 @@ export default function GraficoAvancadoPage() {
     } finally {
       setLoadingPlayers(false);
     }
-  }, [rankingSort, rankingOrder, searchQuery]);
+  }, [rankingSort, rankingOrder, searchQuery, periodDays]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -211,18 +211,8 @@ export default function GraficoAvancadoPage() {
     }
   };
 
-  // Filtragem local por Período de Dias (se timestamp existir)
-  const filteredPlayers = useMemo(() => {
-    if (periodDays === 0) return players; // 0 = Todos os Dias
-    const now = Date.now();
-    const maxDiffMs = periodDays * 24 * 60 * 60 * 1000;
-
-    return players.filter(p => {
-      if (!p.updated_at) return true;
-      const t = new Date(p.updated_at).getTime();
-      return (now - t) <= maxDiffMs;
-    });
-  }, [players, periodDays]);
+  // Jogadores retornados diretamente do banco PostgreSQL com filtro por período SQL
+  const filteredPlayers = players;
 
   // Pedras recentes em ordem decrescente (mais nova no topo) para a tabela de histórico de rodadas
   const recentRollsReversed = useMemo(() => {
