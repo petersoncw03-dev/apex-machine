@@ -12,11 +12,27 @@ export interface Roll {
   house_profit?: number;
 }
 
+export interface LiveTick {
+  id: string;
+  status: 'waiting' | 'rolling' | 'complete' | string;
+  color?: string | number;
+  roll?: string | number;
+  total_red_bet?: number;
+  total_black_bet?: number;
+  total_white_bet?: number;
+  total_red_bets_count?: number;
+  total_black_bets_count?: number;
+  total_white_bets_count?: number;
+}
+
 type Listener = (roll: Roll) => void;
+type TickListener = (tick: LiveTick) => void;
 
 interface SSESubscribeContextValue {
   /** Assina eventos de pedra nova. Retorna função de cancelamento. */
   subscribe: (fn: Listener) => () => void;
+  /** Assina eventos de pulso ao vivo (ticks de aposta aberta/fechada). */
+  subscribeTick: (fn: TickListener) => () => void;
   /** Taxa de câmbio dinâmica de Euro para Real */
   eurRate: number;
 }
@@ -28,6 +44,7 @@ interface SSELatestRollContextValue {
 
 const SSESubscribeContext = createContext<SSESubscribeContextValue>({
   subscribe: () => () => {},
+  subscribeTick: () => () => {},
   eurRate: 5.8362,
 });
 
@@ -44,12 +61,18 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
   const [latestRoll, setLatestRoll] = useState<Roll | null>(null);
   const [eurRate, setEurRate] = useState<number>(5.8362);
   const listenersRef = useRef<Set<Listener>>(new Set());
+  const tickListenersRef = useRef<Set<TickListener>>(new Set());
   const latestTimeRef = useRef<number>(0);
   const seenIdsRef = useRef<Set<string>>(new Set());
 
   const subscribe = useCallback((fn: Listener) => {
     listenersRef.current.add(fn);
     return () => { listenersRef.current.delete(fn); };
+  }, []);
+
+  const subscribeTick = useCallback((fn: TickListener) => {
+    tickListenersRef.current.add(fn);
+    return () => { tickListenersRef.current.delete(fn); };
   }, []);
 
   // Busca a taxa de câmbio Euro -> Real atualizada
@@ -94,6 +117,24 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
             const ev = data[1];
             if (ev.id === "double.tick" || ev.id === "double.update") {
                const p = ev.payload;
+               
+               // Transmite os pulsos da rodada em tempo real (status waiting, rolling, complete)
+               if (p && p.id) {
+                 const tickObj: LiveTick = {
+                   id: String(p.id),
+                   status: p.status || 'waiting',
+                   color: p.color,
+                   roll: p.roll,
+                   total_red_bet: parseFloat(p.total_red_bet ?? p.total_red_eur_bet ?? "0"),
+                   total_black_bet: parseFloat(p.total_black_bet ?? p.total_black_eur_bet ?? "0"),
+                   total_white_bet: parseFloat(p.total_white_bet ?? p.total_white_eur_bet ?? "0"),
+                   total_red_bets_count: parseInt(p.total_red_bets_count ?? p.red_bets_count ?? p.total_red_count ?? "0"),
+                   total_black_bets_count: parseInt(p.total_black_bets_count ?? p.black_bets_count ?? p.total_black_count ?? "0"),
+                   total_white_bets_count: parseInt(p.total_white_bets_count ?? p.white_bets_count ?? p.total_white_count ?? "0")
+                 };
+                 tickListenersRef.current.forEach(fn => fn(tickObj));
+               }
+
                // Captura a pedra no exato milissegundo em que as apostas fecham e ela começa a rolar!
                if ((p.status === "rolling" || p.status === "complete") && p.color !== undefined && p.roll !== undefined) {
                    const rollId = String(p.id);
@@ -256,7 +297,7 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const subscribeValue = React.useMemo(() => ({ subscribe, eurRate }), [subscribe, eurRate]);
+  const subscribeValue = React.useMemo(() => ({ subscribe, subscribeTick, eurRate }), [subscribe, subscribeTick, eurRate]);
   const latestRollValue = React.useMemo(() => ({ latestRoll }), [latestRoll]);
 
   return (

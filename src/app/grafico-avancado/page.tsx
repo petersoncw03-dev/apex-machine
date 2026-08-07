@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Carregamento dinâmico do gráfico PnL para evitar SSR issues com canvas/lightweight-charts
 const GraficoPnlPanel = dynamic(() => import('@/components/painel-master/GraficoPnlPanel'), { ssr: false });
+import { SmartMoneyRadar } from '@/components/SmartMoneyRadar';
 
 interface Roll {
   id?: string;
@@ -218,7 +219,7 @@ export default function GraficoAvancadoPage() {
   const fetchColorPlayersData = useCallback(async () => {
     try {
       setLoadingColorPlayers(true);
-      const url = `/api/players/ranking?sort=${rankingSort}&order=${rankingOrder}&limit=50&days=${periodDays}&color=${colorSubFilter}`;
+      const url = `/api/players/ranking?sort=${rankingSort}&order=${rankingOrder}&limit=30&days=${periodDays}&color=${colorSubFilter}&q=${encodeURIComponent(searchQuery)}`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
@@ -231,13 +232,13 @@ export default function GraficoAvancadoPage() {
     } finally {
       setLoadingColorPlayers(false);
     }
-  }, [rankingSort, rankingOrder, periodDays, colorSubFilter]);
+  }, [rankingSort, rankingOrder, periodDays, colorSubFilter, searchQuery]);
 
   // Carregar dados dos Mestres do Branco (Card 2 - 1/3)
   const fetchWhitePlayersData = useCallback(async () => {
     try {
       setLoadingWhitePlayers(true);
-      const url = `/api/players/ranking?sort=pnl&order=desc&limit=50&days=${periodDays}&color=branco`;
+      const url = `/api/players/ranking?sort=pnl&order=desc&limit=30&days=${periodDays}&color=branco&q=${encodeURIComponent(searchQuery)}`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
@@ -250,7 +251,7 @@ export default function GraficoAvancadoPage() {
     } finally {
       setLoadingWhitePlayers(false);
     }
-  }, [periodDays]);
+  }, [periodDays, searchQuery]);
 
   useEffect(() => {
     fetchColorPlayersData();
@@ -265,7 +266,10 @@ export default function GraficoAvancadoPage() {
       const res = await fetch(`/api/players/${player.id}`);
       if (res.ok) {
         const json = await res.json();
-        if (json.history) {
+        if (json.player) {
+          setSelectedPlayer(json.player);
+        }
+        if (json.history && Array.isArray(json.history)) {
           setPlayerHistory(json.history);
         }
       }
@@ -290,7 +294,7 @@ export default function GraficoAvancadoPage() {
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar relative">
         {/* Header Superior */}
-        <header className="bg-[#12141c] border-b border-white/5 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30 shadow-md">
+        <header className="bg-[#12141c] border-b border-white/5 px-6 py-3 flex flex-wrap items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00c83a]/20 to-emerald-950 border border-[#00c83a]/30 flex items-center justify-center text-[#00c83a] shadow-[0_0_15px_rgba(0,200,58,0.2)]">
               <BarChart3 size={22} />
@@ -303,103 +307,22 @@ export default function GraficoAvancadoPage() {
               <p className="text-xs text-gray-400">Análise Financeira de PnL da Blaze, Histórico com Valores e Inteligência de Jogadores</p>
             </div>
           </div>
-
-          <button 
-            onClick={fetchDbResults}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-gray-300 transition-all hover:text-white"
-          >
-            <RefreshCw size={14} className={loadingRolls ? 'animate-spin' : ''} />
-            Atualizar Dados
-          </button>
         </header>
 
-        <div className="p-4 sm:p-6 flex flex-col gap-6 max-w-[1700px] w-full mx-auto">
+        <div className="p-3 sm:p-4 flex flex-col gap-4 w-full mx-auto">
           
-          {/* SEÇÃO 1: GRÁFICO PNL E STATUS AO VIVO */}
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp size={18} className="text-[#00c83a]" />
-                <h2 className="text-sm font-black uppercase tracking-wider text-gray-200">Balanço Financeiro da Casa (PnL Ao Vivo)</h2>
-              </div>
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Atualização Contínua em Tempo Real</span>
-            </div>
-
+          {/* SEÇÃO 1: GRÁFICO PNL */}
+          <section>
             <div className="bg-[#12141c] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
               <GraficoPnlPanel globalData={globalData} isVip={true} />
             </div>
           </section>
 
-          {/* SEÇÃO 2: HISTÓRICO DAS RODADAS COM VALORES */}
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock size={18} className="text-amber-400" />
-                <h2 className="text-sm font-black uppercase tracking-wider text-gray-200">Histórico Detalhado das Rodadas (Valores na Mesa)</h2>
-              </div>
-              <span className="text-[10px] text-gray-400 font-bold uppercase bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
-                Mostrando Últimas 50 Rodadas
-              </span>
-            </div>
 
-            <div className="bg-[#12141c] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-              <div className="overflow-x-auto max-h-[380px] custom-scrollbar">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#0f141e] text-gray-400 uppercase font-black text-[10px] tracking-wider border-b border-white/10 sticky top-0 z-10">
-                    <tr>
-                      <th className="py-3 px-4 text-center">Pedra</th>
-                      <th className="py-3 px-4 text-center">Horário</th>
-                      <th className="py-3 px-4 text-right">Total Apostado</th>
-                      <th className="py-3 px-4 text-right">Total Pago (Payout)</th>
-                      <th className="py-3 px-4 text-right">Lucro da Casa (PnL)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {recentRollsReversed.map((r, idx) => {
-                      const totalBets = r.total_bets ?? 0;
-                      const totalPayout = r.total_payout ?? 0;
-                      const profit = r.house_profit ?? (totalBets - totalPayout);
-                      const isProfitPositive = profit >= 0;
 
-                      let colorBg = 'bg-[#262831] text-white border-white/20';
-                      let colorName = r.color;
-                      if (r.color === 'VERMELHO' || r.color === 'Vermelho') {
-                        colorBg = 'bg-[#f12c4c] text-white border-[#f12c4c]';
-                      } else if (r.color === 'BRANCO' || r.color === 'Branco') {
-                        colorBg = 'bg-white text-black border-white';
-                      }
-
-                      const timeFormatted = r.timestamp ? new Date(r.timestamp).toLocaleTimeString('pt-BR') : '--:--:--';
-
-                      return (
-                        <tr key={r.id || idx} className="hover:bg-white/[0.03] transition-colors">
-                          <td className="py-2.5 px-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <div className={`w-7 h-7 rounded flex items-center justify-center font-black border text-[11px] shadow-sm ${colorBg}`}>
-                                {r.roll}
-                              </div>
-                              <span className="font-bold uppercase text-[11px] text-gray-300">{colorName}</span>
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-4 text-center font-semibold text-gray-400">
-                            {timeFormatted}
-                          </td>
-                          <td className="py-2.5 px-4 text-right font-bold text-gray-200">
-                            R$ {totalBets.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-2.5 px-4 text-right font-bold text-amber-400">
-                            R$ {totalPayout.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className={`py-2.5 px-4 text-right font-black ${isProfitPositive ? 'text-[#00c83a]' : 'text-[#f12c4c]'}`}>
-                            {isProfitPositive ? '+' : ''} R$ {profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          {/* SEÇÃO RADAR SMART MONEY LIVE */}
+          <section className="mb-8">
+            <SmartMoneyRadar />
           </section>
 
           {/* SEÇÃO 3: INTELIGÊNCIA POR CORES (CARD 2/3 CORES vs CARD 1/3 BRANCO) */}
@@ -442,6 +365,27 @@ export default function GraficoAvancadoPage() {
                   </button>
                 ))}
               </div>
+
+              {/* BUSCA DE JOGADORES NO RANKING */}
+              <div className="relative w-full max-w-sm">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00c83a]" />
+                <input
+                  type="text"
+                  placeholder="🔍 Buscar apostador por nome..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[#12141c] border border-white/10 rounded-xl pl-9 pr-8 py-1.5 text-xs font-bold text-white placeholder-gray-500 outline-none focus:border-[#00c83a] transition-all shadow-inner"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs font-bold"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
             </div>
 
             {/* GRID DE 2 CARDS: CARD 1 (2/3 LARGURA - CORES) & CARD 2 (1/3 LARGURA - BRANCO) */}
@@ -516,14 +460,14 @@ export default function GraficoAvancadoPage() {
 
                 </div>
 
-                {/* Tabela do Card 1 (Cores) */}
+                {/* Tabela do Card 1 (Cores - Top 30) */}
                 <div className="bg-[#12141c] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-                  <div className="overflow-x-auto max-h-[520px] custom-scrollbar">
+                  <div className="overflow-x-auto overflow-y-auto max-h-[580px] custom-scrollbar">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-[#0f141e] text-gray-400 uppercase font-black text-[10px] tracking-wider border-b border-white/10 sticky top-0 z-10">
                         <tr>
                           <th className="py-3.5 px-4 text-center">#</th>
-                          <th className="py-3.5 px-4">Jogador</th>
+                          <th className="py-3.5 px-4">Jogador (Top 30)</th>
                           <th className="py-3.5 px-4 text-center">ID</th>
                           <th className="py-3.5 px-4 text-right">Total Apostado</th>
                           <th className="py-3.5 px-4 text-right">Resultado (PnL)</th>
@@ -548,7 +492,7 @@ export default function GraficoAvancadoPage() {
                             </td>
                           </tr>
                         ) : (
-                          colorPlayers.map((p, index) => {
+                          colorPlayers.slice(0, 30).map((p, index) => {
                             const isProfitable = p.total_pnl >= 0;
                             return (
                               <tr key={p.id} className="hover:bg-white/[0.03] transition-colors group">
@@ -600,7 +544,7 @@ export default function GraficoAvancadoPage() {
 
               </div>
 
-              {/* CARD 2: 1/3 DA LARGURA (MESTRES DO BRANCO 14X) */}
+              {/* CARD 2: 1/3 DA LARGURA (MESTRES DO BRANCO 14X - TOP 30) */}
               <div className="lg:col-span-4 flex flex-col gap-4">
                 
                 {/* Header do Card 2 (Branco) */}
@@ -610,31 +554,32 @@ export default function GraficoAvancadoPage() {
                       ⚪
                     </div>
                     <div>
-                      <h3 className="text-xs font-black uppercase tracking-wider text-white">Reis do Branco (14x)</h3>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-white">Reis do Branco (Top 30)</h3>
                       <p className="text-[10px] text-gray-400">Caçadores com maior lucro no Branco</p>
                     </div>
                   </div>
                   <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Trophy size={12} /> Top 14x
+                    <Trophy size={12} /> Top 30
                   </span>
                 </div>
 
                 {/* Tabela do Card 2 (Branco) */}
                 <div className="bg-[#12141c] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-                  <div className="overflow-x-auto max-h-[520px] custom-scrollbar">
+                  <div className="overflow-x-auto overflow-y-auto max-h-[580px] custom-scrollbar">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-[#0f141e] text-gray-400 uppercase font-black text-[10px] tracking-wider border-b border-white/10 sticky top-0 z-10">
                         <tr>
                           <th className="py-3.5 px-3 text-center">#</th>
                           <th className="py-3.5 px-3">Jogador</th>
                           <th className="py-3.5 px-3 text-center">Brancos ⚪</th>
+                          <th className="py-3.5 px-3 text-center">Winrate %</th>
                           <th className="py-3.5 px-3 text-right">Lucro PnL (R$)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {loadingWhitePlayers ? (
                           <tr>
-                            <td colSpan={4} className="py-12 text-center text-gray-500">
+                            <td colSpan={5} className="py-12 text-center text-gray-500">
                               <div className="flex flex-col items-center gap-2">
                                 <RefreshCw className="animate-spin text-white" size={24} />
                                 <span className="text-xs font-bold uppercase tracking-wider">Buscando caçadores do 14x...</span>
@@ -643,12 +588,12 @@ export default function GraficoAvancadoPage() {
                           </tr>
                         ) : whitePlayers.length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="py-12 text-center text-gray-400 font-semibold">
+                            <td colSpan={5} className="py-12 text-center text-gray-400 font-semibold">
                               Nenhum caçador de Branco encontrado no período.
                             </td>
                           </tr>
                         ) : (
-                          whitePlayers.map((p, index) => {
+                          whitePlayers.slice(0, 30).map((p, index) => {
                             return (
                               <tr 
                                 key={p.id} 
@@ -671,8 +616,17 @@ export default function GraficoAvancadoPage() {
                                     {p.brancos_hits || Math.max(1, Math.floor(p.wins_count / 3))} ⚪
                                   </span>
                                 </td>
-                                <td className="py-3 px-3 text-right font-black text-[#00c83a]">
-                                  +R$ {p.total_pnl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                <td className="py-3 px-3 text-center font-bold">
+                                  <span className={`px-2 py-0.5 rounded text-[11px] ${
+                                    p.win_rate >= 50 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                                    p.win_rate >= 30 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                                    'bg-gray-500/20 text-gray-300 border border-white/10'
+                                  }`}>
+                                    {p.win_rate.toFixed(1)}%
+                                  </span>
+                                </td>
+                                <td className={`py-3 px-3 text-right font-black ${p.total_pnl >= 0 ? 'text-[#00c83a]' : 'text-[#f12c4c]'}`}>
+                                  {p.total_pnl >= 0 ? '+R$ ' : '-R$ '}{Math.abs(p.total_pnl).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </td>
                               </tr>
                             );
@@ -759,7 +713,7 @@ export default function GraficoAvancadoPage() {
                       <table className="w-full text-left text-xs">
                         <thead className="bg-[#0f141e] text-gray-400 uppercase font-black text-[10px] border-b border-white/10">
                           <tr>
-                            <th className="py-2.5 px-3">Horário</th>
+                            <th className="py-2.5 px-3">Data & Horário</th>
                             <th className="py-2.5 px-3 text-center">Cor Apostada</th>
                             <th className="py-2.5 px-3 text-right">Valor Apostado</th>
                             <th className="py-2.5 px-3 text-right">Retorno Pago</th>
@@ -769,11 +723,12 @@ export default function GraficoAvancadoPage() {
                         <tbody className="divide-y divide-white/5">
                           {playerHistory.map((h) => {
                             const isWin = h.status === 'WIN';
-                            const timeStr = h.timestamp ? new Date(h.timestamp).toLocaleTimeString('pt-BR') : '--:--';
+                            const dateObj = h.timestamp ? new Date(h.timestamp) : null;
+                            const dateTimeStr = dateObj ? `${dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : '--:--';
 
                             return (
                               <tr key={h.id} className="hover:bg-white/[0.02]">
-                                <td className="py-2.5 px-3 font-semibold text-gray-400">{timeStr}</td>
+                                <td className="py-2.5 px-3 font-semibold text-gray-400">{dateTimeStr}</td>
                                 <td className="py-2.5 px-3 text-center">
                                   <span className={`px-2 py-0.5 rounded font-black text-[10px] uppercase ${
                                     h.color === 'VERMELHO' ? 'bg-[#f12c4c] text-white' :

@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/client';
 import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries, Time } from "lightweight-charts";
 import * as htmlToImage from 'html-to-image';
 import { useSSESubscribe } from '@/contexts/SSEContext';
+import { Flame } from 'lucide-react';
 
 function calcSMA(v: number[], p: number) { return v.map((_, i) => i < p - 1 ? null : v.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p); }
 function calcEMA(v: number[], p: number) { const k=2/(p+1); let e: number|null=null; return v.map((x,i)=>{ if(i<p-1)return null; e=e===null?v.slice(0,p).reduce((a,b)=>a+b,0)/p:x*k+e*(1-k); return parseFloat(e.toFixed(2)); }); }
@@ -31,14 +32,26 @@ const TFS = [
 ];
 const LIMITS = [200, 500, 1000, 1500, 2000, 3000, 5000, 10000];
 
+function getCandleColor(colorStr: any, rollNum: any): string {
+  const k = String(colorStr || '').trim().toUpperCase();
+  if (k.includes('VERMELHO') || k.includes('RED')) return '#e51e3e';
+  if (k.includes('BRANCO') || k.includes('WHITE') || String(rollNum) === '0') return '#ffffff';
+  if (k.includes('PRETO') || k.includes('BLACK')) return '#555566';
+  return '#555566';
+}
+
 function getRollProfit(r: any): number {
-  if (r.house_profit !== undefined && r.house_profit !== null && Number(r.house_profit) !== 0) {
-    return parseFloat(String(r.house_profit));
+  if (!r) return 0;
+  if (r.house_profit !== undefined && r.house_profit !== null) {
+    const parsed = parseFloat(String(r.house_profit));
+    if (!isNaN(parsed) && parsed !== 0) return parsed;
   }
-  const bets = Number(r.total_bets || 0);
-  const payout = Number(r.total_payout || 0);
-  if (bets > 0 || payout > 0) {
-    return bets - payout;
+  const bets = parseFloat(String(r.total_bets || 0));
+  const payout = parseFloat(String(r.total_payout || 0));
+  const safeBets = isNaN(bets) ? 0 : bets;
+  const safePayout = isNaN(payout) ? 0 : payout;
+  if (safeBets > 0 || safePayout > 0) {
+    return safeBets - safePayout;
   }
   // Fallback estatístico para registros históricos antigos sem total_bets gravado
   const colorUpper = String(r.color || '').toUpperCase();
@@ -66,10 +79,41 @@ function buildTick(data: Roll[]) {
     times.push(t);
     const prev = acc;
     const profit = getRollProfit(r);
-    acc = parseFloat((acc + profit).toFixed(2));
-    const c = CMAP[(r.color || '').toString().toUpperCase()] ?? "#555566";
-    return { candle: { time: t as Time, open: prev, high: Math.max(prev, acc), low: Math.min(prev, acc), close: acc, color: c, wickColor: c, borderColor: c }, acc, time: t };
-  }).filter((item): item is NonNullable<typeof item> => item !== null);
+    const safeProfit = isNaN(profit) ? 0 : profit;
+    acc = parseFloat((acc + safeProfit).toFixed(2));
+    if (isNaN(acc)) acc = prev;
+    const c = getCandleColor(r.color, r.roll);
+    const openVal = prev;
+    const closeVal = acc;
+    const highVal = Math.max(openVal, closeVal);
+    const lowVal = Math.min(openVal, closeVal);
+    return { 
+      candle: { 
+        time: t as Time, 
+        open: openVal, 
+        high: highVal, 
+        low: lowVal, 
+        close: closeVal, 
+        color: c, 
+        wickColor: c, 
+        borderColor: c 
+      }, 
+      acc, 
+      time: t 
+    };
+  }).filter((item): item is NonNullable<typeof item> => 
+    item !== null && 
+    item.candle !== null && 
+    item.candle.time !== null && 
+    !isNaN(Number(item.candle.time)) &&
+    typeof item.candle.open === 'number' && !isNaN(item.candle.open) &&
+    typeof item.candle.high === 'number' && !isNaN(item.candle.high) &&
+    typeof item.candle.low === 'number' && !isNaN(item.candle.low) &&
+    typeof item.candle.close === 'number' && !isNaN(item.candle.close) &&
+    typeof item.candle.color === 'string' && item.candle.color.trim().length > 0 &&
+    typeof item.candle.wickColor === 'string' && item.candle.wickColor.trim().length > 0 &&
+    typeof item.candle.borderColor === 'string' && item.candle.borderColor.trim().length > 0
+  );
 }
 
 function buildAgg(data: Roll[], minutes: number) {
@@ -84,9 +128,11 @@ function buildAgg(data: Roll[], minutes: number) {
     const t = Math.floor(tsDate.getTime() / 1000) - offsetSeconds;
     const bs = Math.floor(t / interval) * interval;
     const profit = getRollProfit(r);
-    acc = parseFloat((acc + profit).toFixed(2));
+    const safeProfit = isNaN(profit) ? 0 : profit;
+    acc = parseFloat((acc + safeProfit).toFixed(2));
+    if (isNaN(acc)) acc = 0;
     if (!bMap.has(bs)) {
-      bMap.set(bs, { open: acc - profit, high: acc, low: acc, close: acc });
+      bMap.set(bs, { open: acc - safeProfit, high: acc, low: acc, close: acc });
       bOrder.push(bs);
     } else {
       const b = bMap.get(bs)!;
@@ -94,11 +140,37 @@ function buildAgg(data: Roll[], minutes: number) {
     }
   });
   return bOrder.map(bs => {
-    const b = bMap.get(bs)!;
-    if (!b) return null;
-    const up = b.close >= b.open; const c = up ? "#e51e3e" : "rgba(200,200,220,0.8)";
-    return { candle: { time: bs as Time, open: b.open, high: b.high, low: b.low, close: b.close, color: c, wickColor: c, borderColor: c }, acc: b.close, time: bs };
-  }).filter((item): item is NonNullable<typeof item> => item !== null);
+    const b = bMap.get(bs);
+    if (!b || isNaN(b.open) || isNaN(b.high) || isNaN(b.low) || isNaN(b.close)) return null;
+    const up = b.close >= b.open; 
+    const c = up ? "#e51e3e" : "#555566";
+    return { 
+      candle: { 
+        time: bs as Time, 
+        open: b.open, 
+        high: b.high, 
+        low: b.low, 
+        close: b.close, 
+        color: c, 
+        wickColor: c, 
+        borderColor: c 
+      }, 
+      acc: b.close, 
+      time: bs 
+    };
+  }).filter((item): item is NonNullable<typeof item> => 
+    item !== null && 
+    item.candle !== null && 
+    item.candle.time !== null && 
+    !isNaN(Number(item.candle.time)) &&
+    typeof item.candle.open === 'number' && !isNaN(item.candle.open) &&
+    typeof item.candle.high === 'number' && !isNaN(item.candle.high) &&
+    typeof item.candle.low === 'number' && !isNaN(item.candle.low) &&
+    typeof item.candle.close === 'number' && !isNaN(item.candle.close) &&
+    typeof item.candle.color === 'string' && item.candle.color.trim().length > 0 &&
+    typeof item.candle.wickColor === 'string' && item.candle.wickColor.trim().length > 0 &&
+    typeof item.candle.borderColor === 'string' && item.candle.borderColor.trim().length > 0
+  );
 }
 
 function LiveBettingStatus() {
@@ -401,6 +473,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
 
       if (!drawingStartPt.current) {
         drawingStartPt.current = { time, value: price };
+        if (chart.current) {
           previewLine.current = chart.current.addSeries(LineSeries, { 
             color: '#00c83a', 
             lineWidth: 2, 
@@ -409,7 +482,10 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
             priceLineVisible: false, 
             lastValueVisible: false
           });
-        previewLine.current.setData([{ time: time, value: price }]);
+          if (time !== undefined && price !== undefined && !isNaN(time) && !isNaN(price)) {
+            previewLine.current.setData([{ time: time, value: price }]);
+          }
+        }
       } else {
         const pt2 = { time, value: price };
         const pt1 = drawingStartPt.current;
@@ -420,7 +496,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
 
         drawingStartPt.current = null;
         
-        if (previewLine.current) {
+        if (previewLine.current && pt1 && pt2 && pt1.value !== null && pt1.value !== undefined && !isNaN(pt1.value) && pt2.value !== null && pt2.value !== undefined && !isNaN(pt2.value)) {
           const sorted = [pt1, pt2].sort((a, b) => Number(a.time) - Number(b.time));
           previewLine.current.setData(sorted);
           previewLine.current.applyOptions({ crosshairMarkerVisible: false });
@@ -429,8 +505,6 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
           drawnLinesMap.current.set(id, previewLine.current);
           
           previewLine.current = null;
-          
-          // Sai do modo de desenho automaticamente após criar 1 linha
           setIsDrawingMode(false);
         }
       }
@@ -500,13 +574,13 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
         const sl = sMap.current.get(ind.key + "_lower");
         if (!su || !sm || !sl) return;
         const vals = calcBB(accumulated, ind.period, 2);
-        su.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).upper } : null).filter(Boolean) as any);
-        sm.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).middle } : null).filter(Boolean) as any);
-        sl.setData(times.map((t, i) => vals[i] !== null ? { time: t, value: (vals[i] as any).lower } : null).filter(Boolean) as any);
+        su.setData(times.map((t, i) => (vals[i] && (vals[i] as any).upper !== null && (vals[i] as any).upper !== undefined && !isNaN((vals[i] as any).upper)) ? { time: t as Time, value: (vals[i] as any).upper } : null).filter((x): x is { time: Time, value: number } => x !== null && x.value !== null && x.value !== undefined && !isNaN(x.value)) as any);
+        sm.setData(times.map((t, i) => (vals[i] && (vals[i] as any).middle !== null && (vals[i] as any).middle !== undefined && !isNaN((vals[i] as any).middle)) ? { time: t as Time, value: (vals[i] as any).middle } : null).filter((x): x is { time: Time, value: number } => x !== null && x.value !== null && x.value !== undefined && !isNaN(x.value)) as any);
+        sl.setData(times.map((t, i) => (vals[i] && (vals[i] as any).lower !== null && (vals[i] as any).lower !== undefined && !isNaN((vals[i] as any).lower)) ? { time: t as Time, value: (vals[i] as any).lower } : null).filter((x): x is { time: Time, value: number } => x !== null && x.value !== null && x.value !== undefined && !isNaN(x.value)) as any);
       } else {
         const s = sMap.current.get(ind.key); if (!s) return;
         const vals = ind.type === "sma" ? calcSMA(accumulated, ind.period) : calcEMA(accumulated, ind.period);
-        s.setData(times.map((t, i) => vals[i] !== null && !isNaN(vals[i] as number) && !isNaN(t) ? { time: t, value: vals[i] } : null).filter(Boolean) as any);
+        s.setData(times.map((t, i) => (vals[i] !== null && vals[i] !== undefined && typeof vals[i] === 'number' && !isNaN(vals[i] as number) && t !== null && !isNaN(t)) ? { time: t as Time, value: vals[i] as number } : null).filter((x): x is { time: Time, value: number } => x !== null && x.value !== null && x.value !== undefined && !isNaN(x.value)) as any);
       }
     });
   }, []);
@@ -522,6 +596,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
 
     if (startUnix) {
       const filtered = sorted.filter(r => {
+        if (!r.timestamp) return false;
         const offsetSeconds = new Date(r.timestamp).getTimezoneOffset() * 60;
         const t = Math.floor(new Date(r.timestamp).getTime() / 1000) - offsetSeconds;
         return t >= startUnix;
@@ -532,24 +607,48 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   }, [globalData, startUnix, limitLabel]);
 
   const renderAll = useCallback((fit = false) => {
-    if (!isMounted.current || !candle.current || !globalData.length) return;
+    if (!isMounted.current || !candle.current || !globalData || !globalData.length) return;
     const activeData = getActiveData();
+    if (!activeData || activeData.length === 0) return;
     const built = getBuilt(activeData);
     
-    const rawCandles = built.map(b => b.candle).filter(c => c && !isNaN(Number(c.time)) && !isNaN(c.open) && !isNaN(c.high) && !isNaN(c.low) && !isNaN(c.close));
+    const rawCandles = built.map(b => b.candle).filter(c => 
+      c !== null && 
+      c !== undefined && 
+      c.time !== null && 
+      c.time !== undefined && 
+      !isNaN(Number(c.time)) && 
+      c.open !== null && c.open !== undefined && typeof c.open === 'number' && !isNaN(c.open) &&
+      c.high !== null && c.high !== undefined && typeof c.high === 'number' && !isNaN(c.high) &&
+      c.low !== null && c.low !== undefined && typeof c.low === 'number' && !isNaN(c.low) &&
+      c.close !== null && c.close !== undefined && typeof c.close === 'number' && !isNaN(c.close)
+    );
     
-    // Garantir timestamps estritamente crescentes e sem duplicatas para a biblioteca
+    // Garantir timestamps estritamente crescentes e propriedades de cor 100% validas para a biblioteca
     const safeCandles: any[] = [];
     let lastTSeen = -1;
     for (const c of rawCandles) {
       const t = Number(c.time);
       if (t > lastTSeen) {
-        safeCandles.push(c);
+        const safeColor = (typeof c.color === 'string' && c.color.trim().length > 0) ? c.color : '#555566';
+        const safeWick = (typeof c.wickColor === 'string' && c.wickColor.trim().length > 0) ? c.wickColor : safeColor;
+        const safeBorder = (typeof c.borderColor === 'string' && c.borderColor.trim().length > 0) ? c.borderColor : safeColor;
+        
+        safeCandles.push({
+          time: t as Time,
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
+          color: safeColor,
+          wickColor: safeWick,
+          borderColor: safeBorder
+        });
         lastTSeen = t;
       }
     }
     
-    const lastTime = safeCandles.length > 0 ? Number(safeCandles[safeCandles.length - 1].time) : 0;
+    if (safeCandles.length === 0) return;
 
     try {
       const timeScale = chart.current?.timeScale();
@@ -557,7 +656,8 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
 
       candle.current.setData(safeCandles as any);
       
-      const accs = built.map(b => b.acc); const times = built.map(b => b.time);
+      const accs = safeCandles.map(c => Number(c.close)); 
+      const times = safeCandles.map(c => Number(c.time));
       setProfit(accs[accs.length - 1] ?? 0);
       setInds(prev => { updateInds(accs, times, prev); return prev; });
       
@@ -734,7 +834,7 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
   }, [inds, isSettingsLoaded, renderAll]);
 
   return (
-    <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative w-full h-[700px]">
+    <div className="bg-[#0f141e]/80 backdrop-blur-xl border border-[#00c83a]/25 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col relative w-full h-[640px]">
       <style>{`
         #tv-attr-logo { display: none !important; opacity: 0 !important; pointer-events: none !important; }
       `}</style>
@@ -746,32 +846,19 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
         </div>
       )}
       {/* HEADER PREMIUM */}
-      <div className="px-5 py-4 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-[3px] border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] shrink-0 z-10">
-        <div className="flex items-center gap-4">
-          <span className="text-[14px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-[#00c83a]"><path d="M3 3v18h18" /><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" /></svg>
+      <div className="px-4 py-2.5 bg-gradient-to-b from-[#00c83a]/10 to-transparent border-b border-[#00c83a]/20 flex justify-between items-center border-t-2 border-t-[#00c83a] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] shrink-0 z-10">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[#00c83a]"><path d="M3 3v18h18" /><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" /></svg>
             Gráfico de Lucros (PNL)
           </span>
-          <span className={`px-2.5 py-1 rounded-md text-[12px] font-bold tracking-widest ${profit >= 0 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/20 text-rose-400 border border-rose-500/30"}`}>
+          <span className={`px-2 py-0.5 rounded text-[11px] font-bold tracking-wider ${profit >= 0 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/20 text-rose-400 border border-rose-500/30"}`}>
             {profit >= 0 ? "+" : ""}R$ {profit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </span>
         </div>
 
-        {/* TF Selector */}
-        <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 gap-1 overflow-x-auto custom-scrollbar max-w-full">
-          {TFS.map(t => (
-            <button key={t.k} onClick={() => {
-              if (!isVip && t.k !== 'tick') {
-                alert('Tempo gráfico customizado é exclusivo para usuários VIP!');
-                return;
-              }
-              setTf(t.k);
-            }} className={`px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${tf === t.k ? "bg-[#00c83a] text-white shadow-[0_2px_10px_rgba(0,98,255,0.4)]" : "text-slate-500 hover:text-white"} ${!isVip && t.k !== 'tick' ? "opacity-50 cursor-not-allowed" : ""}`} title={!isVip && t.k !== 'tick' ? "Exclusivo VIP" : ""}>{t.l}</button>
-          ))}
-        </div>
-      </div>
 
-      <LiveBettingStatus />
+      </div>
 
       {/* CHART WRAPPER */}
       <div ref={wrapRef} className="relative flex-1 bg-[#050507]">
@@ -873,6 +960,90 @@ export default function GraficoPnlPanel({ globalData, isVip = false }: { globalD
             </div>
           </div>
         )}
+      </div>
+
+      {/* FAIXA HORIZONTAL DE CARDS DE HISTÓRICO DE RODADAS (NO RODAPÉ DO CARD DO GRÁFICO) */}
+      <div className="bg-[#0b0e14] border-t border-white/10 p-2 flex items-center gap-2 overflow-x-auto custom-scrollbar shrink-0 z-20 select-none">
+        {(() => {
+          const recentRolls = [...globalData].reverse().slice(0, 40);
+          if (!recentRolls || recentRolls.length === 0) return null;
+
+          // Calcular o limite médio de lucro relativo para diferenciar Verde Claro vs Verde Forte
+          const profits = recentRolls.map(r => getRollProfit(r));
+          const positiveProfits = profits.filter(p => p > 0);
+          const medianProfit = positiveProfits.length > 0 
+            ? (positiveProfits.reduce((a, b) => a + b, 0) / positiveProfits.length) 
+            : 300;
+
+          return recentRolls.map((r, idx) => {
+            const profit = getRollProfit(r);
+            const rollNum = r.roll !== undefined ? r.roll : '?';
+            const colorUpper = (r.color || '').toString().toUpperCase();
+            const isWhite = colorUpper.includes('BRANCO') || colorUpper.includes('WHITE') || String(r.roll) === '0';
+            const isRed = colorUpper.includes('VERMELHO') || colorUpper.includes('RED');
+            const isBlack = !isWhite && !isRed;
+
+            let timeStr = '--:--';
+            if (r.timestamp) {
+              const d = new Date(r.timestamp);
+              if (!isNaN(d.getTime())) {
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mm = String(d.getMinutes()).padStart(2, '0');
+                timeStr = `${hh}:${mm}`;
+              }
+            }
+
+            // Lógica Relativa de Cores do Card:
+            // - Vermelho (Prejuízo da banca): profit < 0
+            // - Verde Claro (Lucro menor/moderado para a casa): 0 <= profit < medianProfit
+            // - Verde Forte (Maior rendimento/lucro para a casa): profit >= medianProfit
+            let cardBgClass = '';
+            if (profit < 0) {
+              cardBgClass = 'bg-[#4a121a] border-[#f12c4c]/50 text-rose-100 shadow-[0_2px_8px_rgba(241,44,76,0.2)]';
+            } else if (profit >= medianProfit) {
+              cardBgClass = 'bg-[#055c3a] border-[#10b981]/70 text-emerald-100 shadow-[0_0_12px_rgba(16,185,129,0.35)]';
+            } else {
+              cardBgClass = 'bg-[#083d2e] border-[#10b981]/30 text-emerald-200';
+            }
+
+            let badgeBgClass = 'bg-[#181a20] text-white border-white/20';
+            if (isRed) {
+              badgeBgClass = 'bg-[#f12c4c] text-white border-rose-400 shadow-[0_0_8px_rgba(241,44,76,0.4)]';
+            } else if (isWhite) {
+              badgeBgClass = 'bg-white text-black font-black border-white shadow-[0_0_8px_rgba(255,255,255,0.4)]';
+            } else if (isBlack) {
+              badgeBgClass = 'bg-[#1e222b] text-white border-white/30';
+            }
+
+            return (
+              <div
+                key={r.id || idx}
+                className={`flex flex-col items-center justify-between p-1 rounded-lg border min-w-[58px] w-[58px] h-[78px] shrink-0 transition-all hover:scale-105 select-none shadow-md ${cardBgClass}`}
+              >
+                {/* Ícone da Pedra GRANDE */}
+                <div className={`w-8.5 h-8.5 rounded-lg flex items-center justify-center border font-black text-xs shadow-sm ${badgeBgClass}`}>
+                  {isWhite ? (
+                    <img src="/blaze-white.png" alt="W" className="w-5.5 h-5.5 object-contain drop-shadow-sm" />
+                  ) : (
+                    <span className="w-6 h-6 rounded-full border border-current/30 flex items-center justify-center text-[11px] font-black">
+                      {rollNum}
+                    </span>
+                  )}
+                </div>
+
+                {/* Grupo Resultado + Horário */}
+                <div className="flex flex-col items-center justify-center leading-none text-center gap-0.5">
+                  <span className="text-[10px] font-black font-mono tracking-tighter text-white">
+                    {Math.round(profit).toLocaleString('pt-BR')}
+                  </span>
+                  <span className="text-[9px] font-bold text-gray-300 opacity-90">
+                    {timeStr}
+                  </span>
+                </div>
+              </div>
+            );
+          });
+        })()}
       </div>
     </div>
   );

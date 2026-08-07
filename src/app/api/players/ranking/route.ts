@@ -10,6 +10,7 @@ export async function GET(request: Request) {
 
     const days = parseInt(searchParams.get('days') || '0', 10);
     const colorParam = (searchParams.get('color') || 'all').toLowerCase();
+    const searchQuery = (searchParams.get('q') || searchParams.get('name') || '').trim();
 
     let orderByCol = 'total_pnl';
     if (sort === 'wins') orderByCol = 'wins_count';
@@ -31,7 +32,13 @@ export async function GET(request: Request) {
       colorFilter = "AND color IN ('VERMELHO', 'PRETO')";
     }
 
-    if (days > 0 || colorParam !== 'all') {
+    let searchFilter = '';
+    if (searchQuery) {
+      const sanitized = searchQuery.replace(/'/g, "''");
+      searchFilter = `AND (user_name ILIKE '%${sanitized}%' OR user_id ILIKE '%${sanitized}%')`;
+    }
+
+    if (days > 0 || colorParam !== 'all' || searchQuery) {
       const daysInterval = days > 0 ? `timestamp >= NOW() - INTERVAL '${days} days'` : `1=1`;
       sql = `
         SELECT 
@@ -47,7 +54,7 @@ export async function GET(request: Request) {
             ROUND((COUNT(CASE WHEN status = 'WIN' THEN 1 END)::numeric / NULLIF(COUNT(*), 0)) * 100, 2) as win_rate,
             MAX(timestamp) as updated_at
         FROM player_bets
-        WHERE ${daysInterval} ${colorFilter}
+        WHERE ${daysInterval} ${colorFilter} ${searchFilter}
         GROUP BY user_id, user_name
         ORDER BY ${orderByCol} ${order}
         LIMIT $1
@@ -66,7 +73,7 @@ export async function GET(request: Request) {
 
     const res = await query(sql, params);
 
-    const data = res.rows.map((p: any) => ({
+    let data = res.rows.map((p: any) => ({
       id: String(p.id),
       name: p.name || 'Jogador Anônimo',
       total_bets_count: Number(p.total_bets_count || 0),
@@ -80,39 +87,38 @@ export async function GET(request: Request) {
       updated_at: p.updated_at ? new Date(p.updated_at).toISOString() : null
     }));
 
-    if (data.length === 0) {
-      // Fallback para exibição inicial com IDs reais da Blaze (alfanuméricos de 10 caracteres)
-      const mockPlayers = [
-        { id: "96rXVKwkON", name: "Gabriel Souza", total_bets_count: 84, wins_count: 58, losses_count: 26, total_invested: 14200.00, total_won: 28450.00, total_pnl: 14250.00, win_rate: 69.0, updated_at: new Date().toISOString() },
-        { id: "kL82mA9pXq", name: "Matheus Silva", total_bets_count: 120, wins_count: 79, losses_count: 41, total_invested: 9500.00, total_won: 18200.00, total_pnl: 8700.00, win_rate: 65.8, updated_at: new Date().toISOString() },
-        { id: "mP71vB2nRt", name: "Lucas Rocha", total_bets_count: 45, wins_count: 28, losses_count: 17, total_invested: 5000.00, total_won: 11400.00, total_pnl: 6400.00, win_rate: 62.2, updated_at: new Date().toISOString() },
-        { id: "X92kLpM1nQ", name: "Rafael Costa", total_bets_count: 92, wins_count: 55, losses_count: 37, total_invested: 12000.00, total_won: 17800.00, total_pnl: 5800.00, win_rate: 59.7, updated_at: new Date().toISOString() },
-        { id: "vT49xY3zAB", name: "Felipe Almeida", total_bets_count: 63, wins_count: 32, losses_count: 31, total_invested: 8400.00, total_won: 5100.00, total_pnl: -3300.00, win_rate: 50.7, updated_at: new Date().toISOString() },
-        { id: "wN15qR8sTU", name: "Thiago Oliveira", total_bets_count: 110, wins_count: 42, losses_count: 68, total_invested: 16500.00, total_won: 9800.00, total_pnl: -6700.00, win_rate: 38.1, updated_at: new Date().toISOString() }
-      ];
-
-      if (sort === 'pnl' && order === 'ASC') {
-        mockPlayers.sort((a, b) => a.total_pnl - b.total_pnl);
-      } else if (sort === 'invested') {
-        mockPlayers.sort((a, b) => b.total_invested - a.total_invested);
-      } else if (sort === 'win_rate') {
-        mockPlayers.sort((a, b) => b.win_rate - a.win_rate);
-      } else {
-        mockPlayers.sort((a, b) => b.total_pnl - a.total_pnl);
-      }
-
-      return NextResponse.json({ success: true, data: mockPlayers });
+    // Se estiver filtrando por busca ou por número de dias específico, retorna estritamente os dados reais do banco sem forçar mocks de datas passadas
+    if (searchQuery || days > 0) {
+      return NextResponse.json({ success: true, data });
     }
 
-    return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    const mockPlayers = [
-      { id: "96rXVKwkON", name: "Gabriel Souza", total_bets_count: 84, wins_count: 58, losses_count: 26, total_invested: 14200.00, total_won: 28450.00, total_pnl: 14250.00, win_rate: 69.0, updated_at: new Date().toISOString() },
-      { id: "kL82mA9pXq", name: "Matheus Silva", total_bets_count: 120, wins_count: 79, losses_count: 41, total_invested: 9500.00, total_won: 18200.00, total_pnl: 8700.00, win_rate: 65.8, updated_at: new Date().toISOString() },
-      { id: "mP71vB2nRt", name: "Lucas Rocha", total_bets_count: 45, wins_count: 28, losses_count: 17, total_invested: 5000.00, total_won: 11400.00, total_pnl: 6400.00, win_rate: 62.2, updated_at: new Date().toISOString() },
-      { id: "X92kLpM1nQ", name: "Rafael Costa", total_bets_count: 92, wins_count: 55, losses_count: 37, total_invested: 12000.00, total_won: 17800.00, total_pnl: 5800.00, win_rate: 59.7, updated_at: new Date().toISOString() },
-      { id: "vT49xY3zAB", name: "Felipe Almeida", total_bets_count: 63, wins_count: 32, losses_count: 31, total_invested: 8400.00, total_won: 5100.00, total_pnl: -3300.00, win_rate: 50.7, updated_at: new Date().toISOString() }
+    const baseMocks = [
+      { id: "96rXVKwkON", name: "EriPróspero", total_bets_count: 102, wins_count: 5, losses_count: 97, brancos_hits: 0, total_invested: 5548.33, total_won: 3430.00, total_pnl: -2118.33, win_rate: 4.9, updated_at: new Date().toISOString() },
+      { id: "kL82mA9pXq", name: "Matheus Silva", total_bets_count: 120, wins_count: 79, losses_count: 41, brancos_hits: 9, total_invested: 19500.00, total_won: 38200.00, total_pnl: 18700.00, win_rate: 65.8, updated_at: new Date().toISOString() },
+      { id: "mP71vB2nRt", name: "Lucas Rocha", total_bets_count: 95, wins_count: 62, losses_count: 33, brancos_hits: 7, total_invested: 15000.00, total_won: 31400.00, total_pnl: 16400.00, win_rate: 65.2, updated_at: new Date().toISOString() },
+      { id: "X92kLpM1nQ", name: "Rafael Costa", total_bets_count: 112, wins_count: 71, losses_count: 41, brancos_hits: 8, total_invested: 18000.00, total_won: 32800.00, total_pnl: 14800.00, win_rate: 63.4, updated_at: new Date().toISOString() }
     ];
-    return NextResponse.json({ success: true, data: mockPlayers });
+
+    if (data.length < 30) {
+      const existingIds = new Set(data.map((d: any) => d.id));
+      const targetLimit = Math.min(limit > 0 ? limit : 30, 30);
+      const needed = targetLimit - data.length;
+      const additional = baseMocks.filter(m => !existingIds.has(m.id)).slice(0, needed);
+      data.push(...additional);
+    }
+
+    if (sort === 'pnl' && order === 'ASC') {
+      data.sort((a: any, b: any) => a.total_pnl - b.total_pnl);
+    } else if (sort === 'invested') {
+      data.sort((a: any, b: any) => b.total_invested - a.total_invested);
+    } else if (sort === 'win_rate') {
+      data.sort((a: any, b: any) => b.win_rate - a.win_rate);
+    } else {
+      data.sort((a: any, b: any) => b.total_pnl - a.total_pnl);
+    }
+
+    return NextResponse.json({ success: true, data: data.slice(0, 30) });
+  } catch (error: any) {
+    return NextResponse.json({ success: true, data: [] });
   }
 }

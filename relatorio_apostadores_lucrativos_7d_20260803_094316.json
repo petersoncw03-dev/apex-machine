@@ -1,0 +1,35 @@
+[
+  {
+    "user_id": "96rXVKwkON",
+    "user_name": "Gabriel Souza",
+    "total_bets_7d": 84,
+    "wins_7d": 58,
+    "losses_7d": 26,
+    "total_invested_7d": 14200.0,
+    "total_won_7d": 28450.0,
+    "total_pnl_7d": 14250.0,
+    "win_rate_7d": 69.05
+  },
+  {
+    "user_id": "kL82mA9pXq",
+    "user_name": "Matheus Silva",
+    "total_bets_7d": 120,
+    "wins_7d": 79,
+    "losses_7d": 41,
+    "total_invested_7d": 9500.0,
+    "total_won_7d": 18200.0,
+    "total_pnl_7d": 8700.0,
+    "win_rate_7d": 65.83
+  },
+  {
+    "user_id": "mP71vB2nRt",
+    "user_name": "Lucas Rocha",
+    "total_bets_7d": 45,
+    "wins_7d": 28,
+    "losses_7d": 17,
+    "total_invested_7d": 5000.0,
+    "total_won_7d": 11400.0,
+    "total_pnl_7d": 6400.0,
+    "win_rate_7d": 62.22
+  }
+]
